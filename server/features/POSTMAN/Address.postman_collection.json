@@ -1,0 +1,248 @@
+{
+    "info": {
+        "name": "Address API (Automated)",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Get Empty Addresses (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/addresses",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses"]
+                }
+            }
+        },
+        {
+            "name": "2. Create New Address (Success - 201)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                            "pm.test(\"Store address_id dynamically\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.true;",
+                            "    pm.expect(jsonData.data).to.have.property('_id');",
+                            "    pm.environment.set(\"address_id\", jsonData.data._id);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"fullName\": \"Newman Validation Test\",\n  \"phone\": \"9998887776\",\n  \"pincode\": \"110001\",\n  \"state\": \"Delhi\",\n  \"city\": \"New Delhi\",\n  \"houseNo\": \"112\",\n  \"area\": \"Connaught Place\",\n  \"isDefault\": true\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/addresses",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses"]
+                }
+            }
+        },
+        {
+            "name": "3. Create Address (Missing Fields - 400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 400\", function () { pm.response.to.have.status(400); });",
+                            "pm.test(\"Validation error present\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.false;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"fullName\": \"Incomplete\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/addresses",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses"]
+                }
+            }
+        },
+        {
+            "name": "4. Get My Addresses (Validates Seed)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Check created address exists\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data).to.be.an('array').that.is.not.empty;",
+                            "    const found = jsonData.data.find(a => a._id === pm.environment.get(\"address_id\"));",
+                            "    pm.expect(found).to.exist;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/addresses",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses"]
+                }
+            }
+        },
+        {
+            "name": "5. Update Address (Success - 200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Value was updated\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.houseNo).to.eql(\"112A Updated Newman\");",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"houseNo\": \"112A Updated Newman\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/addresses/{{address_id}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses", "{{address_id}}"]
+                }
+            }
+        },
+        {
+            "name": "6. Delete Address (Success - 200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Verify address deleted message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.message).to.include(\"deleted successfully\");",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/addresses/{{address_id}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses", "{{address_id}}"]
+                }
+            }
+        },
+        {
+            "name": "7. Get Deleted Address (Should be 404/Empty)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Check deleted address is gone\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    const found = jsonData.data.find(a => a._id === pm.environment.get(\"address_id\"));",
+                            "    pm.expect(found).to.be.undefined;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/addresses",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses"]
+                }
+            }
+        }
+    ]
+}

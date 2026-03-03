@@ -1,0 +1,263 @@
+{
+    "info": {
+        "name": "Auth API (Automated)",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Register User (Missing Fields - 400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 400 Bad Request\", function () { pm.response.to.have.status(400); });",
+                            "pm.test(\"Response has success: false\", function () { var jsonData = pm.response.json(); pm.expect(jsonData.success).to.be.false; });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"name\": \"Test User\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/users/register",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "register"]
+                }
+            }
+        },
+        {
+            "name": "2. Register User (Success - 201)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 201 or 409 (if exists)\", function () {",
+                            "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"name\": \"Newman User\",\n  \"email\": \"newman@test.com\",\n  \"password\": \"newman123\",\n  \"phone\": \"9876543210\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/users/register",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "register"]
+                }
+            }
+        },
+        {
+            "name": "3. Login User (Invalid Credentials - 401)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 401 Unauthorized\", function () { pm.response.to.have.status(401); });",
+                            "pm.test(\"Error message is present\", function () { var jsonData = pm.response.json(); pm.expect(jsonData.message).to.exist; });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"email\": \"newman@test.com\",\n  \"password\": \"wrongpassword\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/users/login",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "login"]
+                }
+            }
+        },
+        {
+            "name": "4. Login User & Extract Tokens (Success - 200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200 OK\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Extract tokens securely structure matches { success, message, data }\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.true;",
+                            "    pm.expect(jsonData.data).to.have.property('accessToken');",
+                            "    pm.expect(jsonData.data).to.have.property('refreshToken');",
+                            "    pm.environment.set(\"access_token\", jsonData.data.accessToken);",
+                            "    pm.environment.set(\"refresh_token\", jsonData.data.refreshToken);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"email\": \"newman@test.com\",\n  \"password\": \"newman123\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/users/login",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "login"]
+                }
+            }
+        },
+        {
+            "name": "5. Login Admin (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200 OK\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Set admin_token\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.user.role).to.eql('admin');",
+                            "    pm.environment.set(\"admin_token\", jsonData.data.accessToken);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"email\": \"admin@test.com\",\n  \"password\": \"admin123\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/users/login",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "login"]
+                }
+            }
+        },
+        {
+            "name": "6. Get Me (Success - 200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200 OK\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Schema validation\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data).to.have.property('email');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/users/profile",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "profile"]
+                }
+            }
+        },
+        {
+            "name": "7. Refresh Token (Success - 200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Verify token refresh success message\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.true;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/users/refresh-token",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "refresh-token"]
+                }
+            }
+        },
+        {
+            "name": "8. Logout (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/users/logout",
+                    "host": ["{{base_url}}"],
+                    "path": ["users", "logout"]
+                }
+            }
+        }
+    ]
+}

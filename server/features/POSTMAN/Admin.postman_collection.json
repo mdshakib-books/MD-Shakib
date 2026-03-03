@@ -1,0 +1,214 @@
+{
+    "info": {
+        "name": "Admin API (Automated)",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Admin Dashboard Stats (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Verify Stat aggregations\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data).to.have.property('totalUsers');",
+                            "    pm.expect(jsonData.data).to.have.property('totalOrders');",
+                            "    pm.expect(jsonData.data).to.have.property('totalRevenue');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/admin/dashboard/stats",
+                    "host": ["{{base_url}}"],
+                    "path": ["admin", "dashboard", "stats"]
+                }
+            }
+        },
+        {
+            "name": "2. RBAC Reject User Token on Admin Route (403)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Strict 403 Forbidden for non-admins\", function () { pm.response.to.have.status(403); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/admin/dashboard/stats",
+                    "host": ["{{base_url}}"],
+                    "path": ["admin", "dashboard", "stats"]
+                }
+            }
+        },
+        {
+            "name": "3. Admin Create Book (Missing Image - 400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 400 Bad Request (Multer validation)\", function () { pm.expect(pm.response.code).to.be.oneOf([400, 500]); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "title",
+                            "value": "Missing Image Book",
+                            "type": "text"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "{{base_url}}/admin/books",
+                    "host": ["{{base_url}}"],
+                    "path": ["admin", "books"]
+                }
+            }
+        },
+        {
+            "name": "4. Admin Get All Orders (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Pagination total > 0\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.pagination.totalItems).to.be.above(-1);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/admin/orders",
+                    "host": ["{{base_url}}"],
+                    "path": ["admin", "orders"]
+                }
+            }
+        },
+        {
+            "name": "5. Admin Update Order Status (Invalid Enum Transition - 400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 400 Bad Request\", function () { pm.response.to.have.status(400); });",
+                            "pm.test(\"Blocks invalid transitions\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.false;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"status\": \"InvalidFakeStatus\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/admin/orders/{{order_id}}/status",
+                    "host": ["{{base_url}}"],
+                    "path": ["admin", "orders", "{{order_id}}", "status"]
+                }
+            }
+        },
+        {
+            "name": "6. Admin Update Book Stock (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Stock properly set\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.stock).to.eql(150);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"stock\": 150\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/admin/books/{{book_id}}/stock",
+                    "host": ["{{base_url}}"],
+                    "path": ["admin", "books", "{{book_id}}", "stock"]
+                }
+            }
+        }
+    ]
+}

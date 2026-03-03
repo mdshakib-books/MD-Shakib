@@ -1,0 +1,359 @@
+{
+    "info": {
+        "name": "Orders API (Automated)",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Reset Setup - Add Book Fast",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200 or 201\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"bookId\": \"{{book_id}}\",\n  \"quantity\": 1\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/cart/add",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart", "add"]
+                }
+            }
+        },
+        {
+            "name": "1.5. Prepare Address Scriptually",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Store address for checkout\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    if(jsonData.data && jsonData.data._id) {",
+                            "        pm.environment.set(\"address_id\", jsonData.data._id);",
+                            "    }",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"fullName\": \"Checkout Prep\",\n  \"phone\": \"9998887776\",\n  \"pincode\": \"110001\",\n  \"state\": \"Delhi\",\n  \"city\": \"New Delhi\",\n  \"houseNo\": \"112\",\n  \"area\": \"Connaught Place\",\n  \"isDefault\": true\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/addresses",
+                    "host": ["{{base_url}}"],
+                    "path": ["addresses"]
+                }
+            }
+        },
+        {
+            "name": "2. Create Order (Validation Missing Address - 404)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 4xx\", function () { pm.expect(pm.response.code).to.be.oneOf([400, 404]); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"addressId\": \"662b7fc00000000000000000\",\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"{{$guid}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/orders",
+                    "host": ["{{base_url}}"],
+                    "path": ["orders"]
+                }
+            }
+        },
+        {
+            "name": "3. Create Order (COD Success)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                            "pm.test(\"Verify Order Flow Checks Out\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.true;",
+                            "    pm.expect(jsonData.data.order.paymentMethod).to.eql('COD');",
+                            "    pm.environment.set(\"order_id_cod\", jsonData.data.order._id);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"addressId\": \"{{address_id}}\",\n  \"paymentMethod\": \"COD\",\n  \"idempotencyKey\": \"{{$guid}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/orders",
+                    "host": ["{{base_url}}"],
+                    "path": ["orders"]
+                }
+            }
+        },
+        {
+            "name": "4. Verify Cart Emptied Automatically",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Cart is empty\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.items).to.be.an('array').that.is.empty;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/cart",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart"]
+                }
+            }
+        },
+        {
+            "name": "5. Repopulate Check-out details for Online Test",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": []
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"bookId\": \"{{book_id}}\",\n  \"quantity\": 1\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/cart/add",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart", "add"]
+                }
+            }
+        },
+        {
+            "name": "6. Create Order (Online Intent Success)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                            "pm.test(\"Verify Intent is Built\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.order.paymentMethod).to.eql('Online');",
+                            "    pm.environment.set(\"order_id\", jsonData.data.order._id);",
+                            "    // Notice we capture intent payload to test verifying later",
+                            "    if(jsonData.data.paymentSessionId) pm.environment.set(\"payment_session_id\", jsonData.data.paymentSessionId);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"addressId\": \"{{address_id}}\",\n  \"paymentMethod\": \"Online\",\n  \"idempotencyKey\": \"{{$guid}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/orders",
+                    "host": ["{{base_url}}"],
+                    "path": ["orders"]
+                }
+            }
+        },
+        {
+            "name": "7. Get My Orders (Verifying Paginated Records Filter)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Multiple records found\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.items.length).to.be.above(0);",
+                            "    pm.expect(jsonData.data.pagination).to.have.property('totalItems');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/orders?page=1&limit=10",
+                    "host": ["{{base_url}}"],
+                    "path": ["orders"],
+                    "query": [
+                        { "key": "page", "value": "1" },
+                        { "key": "limit", "value": "10" }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "8. Cancel Order (User - Success)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Order status changed to Cancelled\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.orderStatus).to.eql(\"Cancelled\");",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"reason\": \"Changed my mind during automated suite\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/orders/{{order_id_cod}}/cancel",
+                    "host": ["{{base_url}}"],
+                    "path": ["orders", "{{order_id_cod}}", "cancel"]
+                }
+            }
+        },
+        {
+            "name": "9. Cancel Order (Conflict / Already Cancelled - 400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Strict 400 Bad Request on state collision\", function () { pm.response.to.have.status(400); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"reason\": \"Spamming cancel\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/orders/{{order_id_cod}}/cancel",
+                    "host": ["{{base_url}}"],
+                    "path": ["orders", "{{order_id_cod}}", "cancel"]
+                }
+            }
+        }
+    ]
+}

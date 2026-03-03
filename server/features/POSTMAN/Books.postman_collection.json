@@ -1,0 +1,125 @@
+{
+    "info": {
+        "name": "Books API (Automated)",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Get All Books (Pagination Check)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200 OK\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Pagination properties exist\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.true;",
+                            "    pm.expect(jsonData.data).to.have.property('items');",
+                            "    pm.expect(jsonData.data).to.have.property('pagination');",
+                            "    pm.expect(jsonData.data.pagination).to.have.property('currentPage');",
+                            "});",
+                            "pm.test(\"Extract book_id and out_of_stock_book_id\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    let foundInStock = false, foundOutOfStock = false;",
+                            "    jsonData.data.items.forEach(book => {",
+                            "        if (book.stock > 0 && !foundInStock) { pm.environment.set(\"book_id\", book._id); foundInStock = true; }",
+                            "        if (book.stock === 0 && !foundOutOfStock) { pm.environment.set(\"out_of_stock_book_id\", book._id); foundOutOfStock = true; }",
+                            "    });",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "{{base_url}}/books?page=1&limit=10",
+                    "host": ["{{base_url}}"],
+                    "path": ["books"],
+                    "query": [
+                        { "key": "page", "value": "1" },
+                        { "key": "limit", "value": "10" }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "2. Get Invalid Book ID (400/404)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 4xx\", function () { pm.expect(pm.response.code).to.be.oneOf([400, 404]); });",
+                            "pm.test(\"Success is false\", function () { var jsonData = pm.response.json(); pm.expect(jsonData.success).to.be.false; });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "{{base_url}}/books/662b7fc00000000000000000",
+                    "host": ["{{base_url}}"],
+                    "path": ["books", "662b7fc00000000000000000"]
+                }
+            }
+        },
+        {
+            "name": "3. Get Book By Valid ID (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Matches ID\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data._id).to.eql(pm.environment.get(\"book_id\"));",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "{{base_url}}/books/{{book_id}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["books", "{{book_id}}"]
+                }
+            }
+        },
+        {
+            "name": "4. Search Books (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Array returned\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data.items).to.be.an('array');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "url": {
+                    "raw": "{{base_url}}/books/search?q=habit",
+                    "host": ["{{base_url}}"],
+                    "path": ["books", "search"],
+                    "query": [{ "key": "q", "value": "habit" }]
+                }
+            }
+        }
+    ]
+}

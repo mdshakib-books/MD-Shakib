@@ -1,0 +1,214 @@
+{
+    "info": {
+        "name": "Cart API (Automated)",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Clear Initial Cart State (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/cart/clear",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart", "clear"]
+                }
+            }
+        },
+        {
+            "name": "2. Add Book to Cart (200/201)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200 or 201\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                            "pm.test(\"Verify item inside cart payload\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.true;",
+                            "    pm.expect(jsonData.data.items).to.be.an('array').that.is.not.empty;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"bookId\": \"{{book_id}}\",\n  \"quantity\": 2\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/cart/add",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart", "add"]
+                }
+            }
+        },
+        {
+            "name": "3. Add Out of Stock Book (400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 4xx\", function () { pm.expect(pm.response.code).to.be.oneOf([400, 404]); });",
+                            "pm.test(\"Failed message check\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.success).to.be.false;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"bookId\": \"{{out_of_stock_book_id}}\",\n  \"quantity\": 1\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/cart/add",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart", "add"]
+                }
+            }
+        },
+        {
+            "name": "4. Get User Cart Details (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Cart items exist\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data).to.have.property('items');",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/cart",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart"]
+                }
+            }
+        },
+        {
+            "name": "5. Update Item Quantity (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Quantity updated successfully\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    const updatedItem = jsonData.data.items.find(i => i.bookId === pm.environment.get('book_id'));",
+                            "    pm.expect(updatedItem.quantity).to.eql(3);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "PATCH",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"quantity\": 3\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/cart/update/{{book_id}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart", "update", "{{book_id}}"]
+                }
+            }
+        },
+        {
+            "name": "6. Remove Item from Cart (200)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                            "pm.test(\"Ensure item was popped\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    const found = jsonData.data.items.find(i => i.bookId === pm.environment.get('book_id'));",
+                            "    pm.expect(found).to.be.undefined;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/cart/remove/{{book_id}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["cart", "remove", "{{book_id}}"]
+                }
+            }
+        }
+    ]
+}

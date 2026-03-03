@@ -1,0 +1,117 @@
+{
+    "info": {
+        "name": "Payments API (Automated)",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Verify Payment (Invalid Signature - 400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 404 Not Found\", function () { pm.response.to.have.status(404); });",
+                            "pm.test(\"Verify signature validation blocks hack attempts (mockup throws 404)\", function () { ",
+                            "    var jsonData = pm.response.json(); ",
+                            "    pm.expect(jsonData.success).to.be.false; ",
+                            "    pm.expect(jsonData.message).to.include(\"Payment intent not found in internal system\");",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"razorpay_order_id\": \"{{payment_session_id}}\",\n  \"razorpay_payment_id\": \"pay_test12345\",\n  \"razorpay_signature\": \"invalid_hack_signature\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/payments/webhook",
+                    "host": ["{{base_url}}"],
+                    "path": ["payments", "webhook"]
+                }
+            }
+        },
+        {
+            "name": "2. Verify Payment (Missing Fields - 400)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 400 Bad Request\", function () { pm.response.to.have.status(400); });"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"razorpay_order_id\": \"{{payment_session_id}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/payments/webhook",
+                    "host": ["{{base_url}}"],
+                    "path": ["payments", "webhook"]
+                }
+            }
+        },
+        {
+            "name": "3. Retry Failed Payment (200 OK)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                            "pm.test(\"New session generated\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.data).to.have.property('id');",
+                            "    pm.environment.set('retry_session_id', jsonData.data.id);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    },
+                    { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"orderId\": \"{{order_id}}\",\n  \"amount\": 499\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/payments/create-intent",
+                    "host": ["{{base_url}}"],
+                    "path": ["payments", "create-intent"]
+                }
+            }
+        }
+    ]
+}

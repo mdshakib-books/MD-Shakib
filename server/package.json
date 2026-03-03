@@ -1,0 +1,38 @@
+{
+    "name": "server",
+    "version": "1.0.0",
+    "description": "",
+    "main": "server.js",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js",
+        "seed": "node SEED-DATA/seed.js",
+        "test:api": "newman run features/POSTMAN/Auth.postman_collection.json -e features/POSTMAN/Environment.postman_environment.json && newman run features/POSTMAN/Books.postman_collection.json -e features/POSTMAN/Environment.postman_environment.json && newman run features/POSTMAN/Cart.postman_collection.json -e features/POSTMAN/Environment.postman_environment.json && newman run features/POSTMAN/Address.postman_collection.json -e features/POSTMAN/Environment.postman_environment.json && newman run features/POSTMAN/Orders.postman_collection.json -e features/POSTMAN/Environment.postman_environment.json && newman run features/POSTMAN/Payments.postman_collection.json -e features/POSTMAN/Environment.postman_environment.json && newman run features/POSTMAN/Admin.postman_collection.json -e features/POSTMAN/Environment.postman_environment.json"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "bcrypt": "^6.0.0",
+        "cloudinary": "^2.9.0",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.6",
+        "dotenv": "^17.3.1",
+        "express": "^5.2.1",
+        "express-rate-limit": "^8.2.1",
+        "helmet": "^8.1.0",
+        "joi": "^18.0.2",
+        "jsonwebtoken": "^9.0.3",
+        "mongoose": "^9.2.1",
+        "morgan": "^1.10.1",
+        "multer": "^2.0.2",
+        "razorpay": "^2.9.6",
+        "socket.io": "^4.8.3",
+        "uuid": "^13.0.0"
+    },
+    "devDependencies": {
+        "newman": "^6.2.2",
+        "nodemon": "^3.1.14"
+    }
+}
