@@ -1,7 +1,8 @@
 import Joi from "joi";
 
 export const searchSchema = Joi.object({
-    q: Joi.string().optional().trim(),
+    query: Joi.string().optional().trim(),
+    q: Joi.string().optional().trim(), // Keep for backwards compatibility
     category: Joi.string().optional().trim(),
     page: Joi.number().min(1).optional(),
     limit: Joi.number().min(1).max(50).optional(),

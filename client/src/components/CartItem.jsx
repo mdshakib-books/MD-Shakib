@@ -3,55 +3,71 @@ import { formatPrice } from "../utils/formatPrice";
 
 const CartItem = ({ item, onUpdateQuantity, onRemove }) => {
     return (
-        <div className="flex items-center justify-between border-b pb-4 mb-4">
-            <div className="flex items-center space-x-4">
+        <div className="border border-[#2A2A2A] rounded-xl p-4 bg-[#111111] hover:border-[var(--color-primary-gold)] transition">
+            {/* TOP SECTION */}
+            <div className="flex items-start gap-4">
+                {/* Image */}
                 <img
                     src={
                         item.imageUrl ||
-                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400&h=300"
+                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f"
                     }
-                    alt={item.title || "Book Cover"}
-                    className="w-16 h-16 object-cover rounded"
+                    alt={item.title}
+                    className="w-16 h-20 object-cover rounded-md"
                 />
-                <div>
-                    <h4 className="font-semibold">
-                        {item.title || "Unknown Book"}
-                    </h4>
-                    <p className="text-gray-500 text-sm">
-                        {formatPrice(item.price)}
-                    </p>
+
+                {/* Title + Remove */}
+                <div className="flex-1 flex justify-between items-start">
+                    <div>
+                        <h4 className="text-sm md:text-base font-semibold">
+                            {item.title || "Unknown Book"}
+                        </h4>
+
+                        <p className="text-gray-400 text-sm mt-1">
+                            {formatPrice(item.price)}
+                        </p>
+                    </div>
+
+                    {/* Remove button */}
+                    <button
+                        onClick={() => onRemove(item.bookId)}
+                        className="text-red-500 text-sm hover:text-red-400 transition"
+                    >
+                        Remove
+                    </button>
                 </div>
             </div>
-            <div className="flex items-center space-x-6">
-                <div className="flex items-center border rounded">
+
+            {/* BOTTOM SECTION */}
+            <div className="flex items-center justify-between mt-4">
+                {/* Quantity */}
+                <div className="flex items-center border border-[#2A2A2A] rounded-lg overflow-hidden">
                     <button
                         onClick={() =>
                             onUpdateQuantity(item.bookId, item.quantity - 1)
                         }
                         disabled={item.quantity <= 1}
-                        className="px-3 py-1 bg-gray-100 disabled:opacity-50"
+                        className="px-3 py-1 hover:bg-[#1a1a1a]"
                     >
                         -
                     </button>
-                    <span className="px-3 py-1">{item.quantity}</span>
+
+                    <span className="px-4 text-sm">{item.quantity}</span>
+
                     <button
                         onClick={() =>
                             onUpdateQuantity(item.bookId, item.quantity + 1)
                         }
-                        className="px-3 py-1 bg-gray-100"
+                        className="px-3 py-1 hover:bg-[#1a1a1a]"
                     >
                         +
                     </button>
                 </div>
-                <div className="font-semibold">
+
+                {/* Total price */}
+                <div className="text-sm md:text-base font-semibold text-[var(--color-primary-gold)]">
                     {formatPrice(item.price * item.quantity)}
                 </div>
-                <button
-                    onClick={() => onRemove(item.bookId)}
-                    className="text-red-500 hover:text-red-700"
-                >
-                    Remove
-                </button>
             </div>
         </div>
     );

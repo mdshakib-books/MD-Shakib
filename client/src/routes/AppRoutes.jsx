@@ -20,6 +20,8 @@ import AdminDashboardPage from "../pages/AdminDashboardPage";
 import AdminBooksPage from "../pages/AdminBooksPage";
 import AdminOrdersPage from "../pages/AdminOrdersPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import AboutPage from "../pages/AboutPage";
+import SupportPage from "../pages/SupportPage"  ;
 
 const AppRoutes = () => {
     return (
@@ -27,6 +29,8 @@ const AppRoutes = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/books" element={<BooksPage />} />
             <Route path="/books/:id" element={<BookDetailsPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/support" element={<SupportPage />} />
 
             {/* Auth */}
             <Route path="/login" element={<LoginPage />} />

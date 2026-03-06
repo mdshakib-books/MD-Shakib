@@ -37,37 +37,56 @@ class BookService {
     }
 
     async searchBooks(req) {
-        const { page, limit, skip, sort } = parseQueryParams(req);
-        const searchQuery = req.query.q;
+        const { page, limit, skip } = parseQueryParams(req);
+        const searchQuery = (req.query.query || req.query.q || "").trim();
 
+        // If no search query provided, return all books
         if (!searchQuery) {
-            return this.getAllBooks(req); // Fallback if search query is empty
+            return this.getAllBooks(req);
         }
 
         const filter = {
             isActive: true,
-            $text: { $search: searchQuery },
         };
 
         if (req.query.category) {
             filter.category = req.query.category;
         }
 
-        // Default text search sorting by relevance score if no explicit sort
-        let searchSort = req.query.sort
-            ? sort
-            : { score: { $meta: "textScore" } };
+        // Use regex search for partial matching (case-insensitive)
+        // MongoDB text search won't match partial words like "Dee" in "Deep Work"
+        const regexPattern = new RegExp(searchQuery, "i");
+        const regexFilter = {
+            ...filter,
+            $or: [
+                { title: regexPattern },
+                { author: regexPattern },
+                { description: regexPattern },
+                { category: regexPattern },
+            ],
+        };
 
-        const [books, total] = await Promise.all([
-            Book.find(filter, { score: { $meta: "textScore" } })
-                .sort(searchSort)
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            Book.countDocuments(filter),
+        let books = [];
+        let total = 0;
+
+        [books, total] = await Promise.all([
+            Book.find(regexFilter).skip(skip).limit(limit).lean(),
+            Book.countDocuments(regexFilter),
         ]);
 
-        return buildPaginatedResponse(books, total, page, limit);
+        // Return in format expected by frontend
+        const totalPages = Math.ceil(total / limit);
+        console.log(
+            `Search Query: "${searchQuery}" | Results: ${total} | Page: ${page}/${totalPages}`,
+        );
+        return {
+            books,
+            total,
+            totalPages,
+            page,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        };
     }
 
     async getBooksByCategory(category, req) {

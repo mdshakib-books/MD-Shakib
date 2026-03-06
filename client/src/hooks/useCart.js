@@ -18,10 +18,6 @@ export const useCart = () => {
         dispatch(fetchCart());
     };
 
-    useEffect(() => {
-        loadCart();
-    }, [dispatch]);
-
     const addToCart = async (productId, qty) => {
         await cartService.addToCart(productId, qty);
         await loadCart();
