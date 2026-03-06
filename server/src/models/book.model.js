@@ -51,8 +51,10 @@ const bookSchema = new mongoose.Schema(
     },
 );
 
-// Text index for search on title
-bookSchema.index({ title: "text" });
+// Text indexes for optimized search on title and author
+bookSchema.index({ title: "text", author: "text" });
+// Category index for filtering
+bookSchema.index({ category: 1 });
 // We already have index: true on category, price, and isActive in the schema fields
 
 const Book = mongoose.model("Book", bookSchema);

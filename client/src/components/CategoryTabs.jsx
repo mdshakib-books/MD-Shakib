@@ -6,13 +6,13 @@ const CategoryTabs = ({
     onSelectCategory,
 }) => {
     return (
-        <div className="flex space-x-2 overflow-x-auto py-2 no-scrollbar">
+        <div className="flex justify-center space-x-3 overflow-x-auto py-4 no-scrollbar">
             <button
                 onClick={() => onSelectCategory("")}
-                className={`px-4 py-2 rounded-full whitespace-nowrap text-sm ${
+                className={`px-6 py-2 rounded-[20px] whitespace-nowrap text-sm font-medium transition-colors ${
                     !activeCategory
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "bg-[var(--color-primary-gold)] text-black shadow-[0_0_15px_rgba(201,162,74,0.3)]"
+                        : "bg-[#111111] border border-[#2A2A2A] text-gray-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)]"
                 }`}
             >
                 All Books
@@ -21,10 +21,10 @@ const CategoryTabs = ({
                 <button
                     key={cat}
                     onClick={() => onSelectCategory(cat)}
-                    className={`px-4 py-2 rounded-full whitespace-nowrap text-sm ${
+                    className={`px-6 py-2 rounded-[20px] whitespace-nowrap text-sm font-medium transition-colors ${
                         activeCategory === cat
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-[var(--color-primary-gold)] text-black shadow-[0_0_15px_rgba(201,162,74,0.3)]"
+                            : "bg-[#111111] border border-[#2A2A2A] text-gray-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)]"
                     }`}
                 >
                     {cat}
