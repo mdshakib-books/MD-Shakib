@@ -74,7 +74,11 @@ class UserService {
     async deleteAccount(userId) {
         const user = await User.findByIdAndUpdate(
             userId,
-            { isBlocked: true },
+            {
+                isDeleted: true,
+                deletedAt: new Date(),
+                isBlocked: true, // Also block account
+            },
             { new: true },
         );
         if (!user) throw new ApiError(404, ERROR_MESSAGES.USER_NOT_FOUND);
@@ -104,6 +108,26 @@ class UserService {
             return true;
         } catch (error) {
             throw new ApiError(400, "Invalid or expired reset token");
+        }
+    }
+
+    async refreshAccessToken(token) {
+        try {
+            const decoded = jwt.verify(
+                token,
+                process.env.REFRESH_TOKEN_SECRET || "fallback_refresh_secret",
+            );
+            const user = await User.findById(decoded._id).select("-password");
+            if (!user) throw new ApiError(404, ERROR_MESSAGES.USER_NOT_FOUND);
+            if (user.isBlocked)
+                throw new ApiError(403, ERROR_MESSAGES.ACCOUNT_BLOCKED);
+
+            const accessToken = generateAccessToken(user);
+            const refreshToken = generateRefreshToken(user);
+
+            return { user, accessToken, refreshToken };
+        } catch (error) {
+            throw new ApiError(401, "Invalid or expired refresh token");
         }
     }
 }

@@ -35,11 +35,28 @@ const userSchema = new mongoose.Schema(
             required: true,
             default: false,
         },
+        isDeleted: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,
     },
 );
+
+// Middleware to exclude soft-deleted records by default
+userSchema.pre(/^find/, function () {
+    if (this.options._recursed) {
+        return;
+    }
+    this.where({ isDeleted: { $ne: true } });
+});
 
 const User = mongoose.model("User", userSchema);
 export default User;

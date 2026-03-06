@@ -42,15 +42,30 @@ class PaymentService {
     }
 
     async verifyPaymentWebhook(payload) {
-        // 1. Verify Signature (Razorpay style)
-        // const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_SECRET)
-        //                               .update(payload.razorpay_order_id + "|" + payload.razorpay_payment_id)
-        //                               .digest('hex');
-        // if (expectedSignature !== payload.razorpay_signature) throw Error;
+        // Verify Razorpay Signature using HMAC-SHA256
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+            payload;
 
-        const { razorpay_order_id, razorpay_payment_id } = payload;
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            throw new ApiError(400, "Missing required webhook fields");
+        }
 
-        // For mockup purposes, we trust the webhook ID passed
+        const webhookSecret =
+            process.env.RAZORPAY_WEBHOOK_SECRET || "test_secret";
+        const expectedSignature = crypto
+            .createHmac("sha256", webhookSecret)
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+            .digest("hex");
+
+        if (expectedSignature !== razorpay_signature) {
+            console.error("Invalid webhook signature");
+            throw new ApiError(
+                401,
+                "Invalid payment signature. Webhook rejected.",
+            );
+        }
+
+        // Find payment record
         const payment = await Payment.findOne({
             paymentId: razorpay_payment_id,
         });
@@ -65,12 +80,12 @@ class PaymentService {
 
         // Update statuses
         payment.status = PAYMENT_STATUS.PAID;
+        payment.verifiedAt = new Date();
         await payment.save();
 
         order.paymentStatus = "Paid";
         order.isPaid = true;
         order.paidAt = new Date();
-        // Assuming Order becomes officially Placed once Paid
         order.orderStatus = ORDER_STATUS.PAID;
         await order.save();
 

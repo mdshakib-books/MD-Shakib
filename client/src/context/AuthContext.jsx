@@ -1,33 +1,31 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProfile } from "../redux/slices/authSlice";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const dispatch = useDispatch();
+    const { user, isAuthenticated, loading } = useSelector(
+        (state) => state.auth,
+    );
+    const token = localStorage.getItem("token");
 
     useEffect(() => {
-        // Mock user session load
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) setUser(JSON.parse(storedUser));
-        setLoading(false);
-    }, []);
-
-    const login = (userData) => {
-        setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
-    };
-
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem("user");
-    };
+        if (token && !user) {
+            dispatch(fetchProfile());
+        }
+    }, [token, user, dispatch]);
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, loading }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuthContext = () => useContext(AuthContext);
+
+if (!useAuthContext) {
+    throw new Error("useAuthContext must be used within AuthProvider");
+}
