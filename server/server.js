@@ -5,9 +5,12 @@ import { app } from "./app.js";
 import http from "http";
 import { initializeSocket } from "./src/config/socket.js";
 
-dotenv.config({
-    path: "./.env",
-});
+// dotenv.config({
+//     path: "./.env",
+// });
+// For Production
+dotenv.config();
+
 
 // Initialize Cloudinary configuration
 configureCloudinary();
@@ -20,6 +23,7 @@ initializeSocket(server);
 connectDB()
     .then(() => {
         const PORT = process.env.PORT || 8000;
+
         server
             .listen(PORT, () => {
                 console.log(`⚙️  Server is running at port : ${PORT}`);
@@ -27,16 +31,21 @@ connectDB()
             .on("error", (err) => {
                 if (err.code === "EADDRINUSE") {
                     console.error(`⚠️  Port ${PORT} is already in use.`);
-                    console.error(
-                        "Please stop the other process or set a different PORT in your .env file.",
-                    );
                     process.exit(1);
                 } else {
-                    // rethrow unexpected errors so they can be logged by nodemon
                     throw err;
                 }
             });
+
+        // ✅ ADD THIS HERE
+        process.on("SIGINT", () => {
+            console.log("🛑 Server shutting down...");
+            server.close(() => {
+                process.exit(0);
+            });
+        });
     })
     .catch((err) => {
-        console.log("MONGO db connection failed !!! ", err);
+        console.error("❌ MongoDB connection failed:", err.message);
+        process.exit(1);
     });
