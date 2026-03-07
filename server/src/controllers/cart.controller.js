@@ -10,8 +10,9 @@ export const getCart = asyncHandler(async (req, res) => {
 });
 
 export const addToCart = asyncHandler(async (req, res) => {
-    const { bookId, quantity } = req.body;
-    const cart = await cartService.addToCart(req.user._id, bookId, quantity); // add to cart service already handles adding/updating
+    const bookId = req.body.bookId || req.body.productId;
+    const quantity = Number(req.body.quantity);
+    const cart = await cartService.addToCart(req.user._id, bookId, quantity);
     return res
         .status(200)
         .json(new ApiResponse(200, cart, "Item added to cart"));
@@ -21,7 +22,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
     const cart = await cartService.updateCartItem(
         req.user._id,
         req.params.bookId,
-        req.body.quantity,
+        Number(req.body.quantity),
     );
     return res
         .status(200)
@@ -43,4 +44,12 @@ export const clearCart = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, cart, "Cart cleared successfully"));
+});
+
+export const mergeCart = asyncHandler(async (req, res) => {
+    const { guestCart } = req.body;
+    const cart = await cartService.mergeCart(req.user._id, guestCart || []);
+    return res
+        .status(200)
+        .json(new ApiResponse(200, cart, "Cart merged successfully"));
 });

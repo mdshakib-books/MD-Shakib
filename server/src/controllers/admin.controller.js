@@ -5,7 +5,8 @@ import adminService from "../services/admin.service.js";
 // ================= BOOKS =================
 
 export const createBook = asyncHandler(async (req, res) => {
-    const book = await adminService.createBook(req.body);
+    const localImagePath = req.file?.path;
+    const book = await adminService.createBook(req.body, localImagePath);
     return res
         .status(201)
         .json(new ApiResponse(201, book, "Book created successfully"));

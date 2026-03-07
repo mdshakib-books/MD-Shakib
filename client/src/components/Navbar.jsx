@@ -8,7 +8,7 @@ import { FiBell } from "react-icons/fi";
 
 const Navbar = () => {
     const { user } = useSelector((state) => state.auth);
-    const { items: cartItems } = useSelector((state) => state.cart);
+    const { items: cartItems, guestItems } = useSelector((state) => state.cart);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const location = useLocation();
@@ -35,8 +35,9 @@ const Navbar = () => {
         }
     }, [user, dispatch]);
 
-    const cartCount =
-        cartItems?.reduce((total, item) => total + item.quantity, 0) || 0;
+    const cartCount = user
+        ? cartItems?.reduce((total, item) => total + item.quantity, 0) || 0
+        : guestItems?.reduce((total, item) => total + item.quantity, 0) || 0;
 
     const handleLogoutConfirm = () => {
         dispatch(logoutUser());
@@ -200,7 +201,7 @@ const Navbar = () => {
                             )}
                         </div>
 
-                        {/* Cart Icon (Only for normal users) */}
+                        {/* Cart Icon (guests + normal users, hidden for admin) */}
                         {user?.role !== "admin" && (
                             <Link
                                 to="/cart"

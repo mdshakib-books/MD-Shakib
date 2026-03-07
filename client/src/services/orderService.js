@@ -5,12 +5,25 @@ export const orderService = {
         const response = await api.get("/orders");
         return response.data.data.items || response.data.data;
     },
+
     getOrderById: async (id) => {
         const response = await api.get(`/orders/${id}`);
         return response.data.data;
     },
-    createOrder: async (orderData) => {
-        const response = await api.post("/orders", orderData);
+
+    /**
+     * Create an order.
+     * @param {object} payload
+     * @param {string} payload.addressId  - MongoDB _id of selected address
+     * @param {string} payload.paymentMethod - "COD" | "Online"
+     * @param {string} payload.idempotencyKey - unique UUID per submit attempt
+     */
+    createOrder: async ({ addressId, paymentMethod, idempotencyKey }) => {
+        const response = await api.post("/orders", {
+            addressId,
+            paymentMethod,
+            idempotencyKey,
+        });
         return response.data.data;
     },
 };

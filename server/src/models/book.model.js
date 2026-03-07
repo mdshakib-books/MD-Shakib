@@ -30,7 +30,7 @@ const bookSchema = new mongoose.Schema(
         },
         discount: {
             type: Number,
-            required: true,
+            default: 0,
             min: 0,
             max: 100,
         },
@@ -38,7 +38,6 @@ const bookSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-            index: true,
         },
         imageUrl: {
             type: String,
@@ -61,7 +60,7 @@ const bookSchema = new mongoose.Schema(
 bookSchema.index({ title: "text", author: "text" });
 // Category index for filtering
 bookSchema.index({ category: 1 });
-// We already have index: true on category, price, and isActive in the schema fields
+// Price and category indexed via schema field definitions
 
 const Book = mongoose.model("Book", bookSchema);
 export default Book;

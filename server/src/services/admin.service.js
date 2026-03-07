@@ -79,7 +79,7 @@ class AdminService {
         const book = await Book.findByIdAndUpdate(
             bookId,
             { isActive: false },
-            { new: true },
+            { returnDocument: "after" },
         );
         if (!book) throw new ApiError(404, "Book not found");
         return book;
@@ -89,7 +89,7 @@ class AdminService {
         const book = await Book.findByIdAndUpdate(
             bookId,
             { stock: newStock },
-            { new: true, runValidators: true },
+            { returnDocument: "after", runValidators: true },
         );
         if (!book) throw new ApiError(404, "Book not found");
         return book;
@@ -213,14 +213,18 @@ class AdminService {
         const filter = {};
         if (req.query.role) filter.role = req.query.role;
         if (req.query.blocked) filter.isBlocked = req.query.blocked === "true";
+        const includeDeleted = req.query.includeDeleted === "true";
+
+        let userQuery = User.find(filter).select("-password");
+        if (includeDeleted) {
+            userQuery = userQuery.setOptions({ _recursed: true });
+        }
 
         const [users, total] = await Promise.all([
-            User.find(filter)
-                .select("-password")
-                .sort(sort)
-                .skip(skip)
-                .limit(limit),
-            User.countDocuments(filter),
+            userQuery.sort(sort).skip(skip).limit(limit),
+            includeDeleted
+                ? User.countDocuments(filter).setOptions({ _recursed: true })
+                : User.countDocuments(filter),
         ]);
 
         return buildPaginatedResponse(users, total, page, limit);
@@ -240,7 +244,7 @@ class AdminService {
         const user = await User.findByIdAndUpdate(
             userId,
             { isBlocked: true },
-            { new: true },
+            { returnDocument: "after" },
         ).select("-password");
 
         if (!user) throw new ApiError(404, "User not found");
@@ -251,7 +255,7 @@ class AdminService {
         const user = await User.findByIdAndUpdate(
             userId,
             { isBlocked: false },
-            { new: true },
+            { returnDocument: "after" },
         ).select("-password");
 
         if (!user) throw new ApiError(404, "User not found");

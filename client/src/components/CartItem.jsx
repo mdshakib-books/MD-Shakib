@@ -10,6 +10,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemove }) => {
                 <img
                     src={
                         item.imageUrl ||
+                        item.image ||
                         "https://images.unsplash.com/photo-1544947950-fa07a98d237f"
                     }
                     alt={item.title}

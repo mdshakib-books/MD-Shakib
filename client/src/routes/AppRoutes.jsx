@@ -18,12 +18,14 @@ import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import AdminDashboardPage from "../pages/AdminDashboardPage";
 import AdminBooksPage from "../pages/AdminBooksPage";
+import AdminAddBookPage from "../pages/AdminAddBookPage";
 import AdminOrdersPage from "../pages/AdminOrdersPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import AboutPage from "../pages/AboutPage";
-import SupportPage from "../pages/SupportPage"  ;
+import SupportPage from "../pages/SupportPage";
 import AdminUsersPage from "../pages/AdminUsersPage";
 import AdminProfilePage from "../pages/AdminProfilePage";
+import OrderSuccessPage from "../pages/OrderSuccessPage";
 
 const AppRoutes = () => {
     return (
@@ -39,16 +41,9 @@ const AppRoutes = () => {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/cart" element={<CartPage />} />
 
             {/* User Protected Routes */}
-            <Route
-                path="/cart"
-                element={
-                    <ProtectedRoute>
-                        <CartPage />
-                    </ProtectedRoute>
-                }
-            />
             <Route
                 path="/checkout"
                 element={
@@ -89,6 +84,14 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 }
             />
+            <Route
+                path="/order-success"
+                element={
+                    <ProtectedRoute>
+                        <OrderSuccessPage />
+                    </ProtectedRoute>
+                }
+            />
 
             {/* Admin Protected Routes */}
             <Route
@@ -104,6 +107,14 @@ const AppRoutes = () => {
                 element={
                     <ProtectedRoute requireAdmin>
                         <AdminBooksPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/books/add"
+                element={
+                    <ProtectedRoute requireAdmin>
+                        <AdminAddBookPage />
                     </ProtectedRoute>
                 }
             />
