@@ -1,33 +1,27 @@
 import { useEffect } from "react";
 import AdminLayout from "../components/admin/AdminLayout";
 
-const AdminBooksPage = () => {
+const AdminUsersPage = () => {
     useEffect(() => {
-        fetchBooks();
+        fetchUsers();
     }, []);
 
-    const fetchBooks = async () => {
+    const fetchUsers = async () => {
         // TODO: API
     };
 
     return (
         <AdminLayout>
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-semibold">Manage Books</h1>
-
-                <button className="bg-[var(--color-primary-gold)] text-black px-5 py-2 rounded-lg font-semibold hover:opacity-90">
-                    Add New Book
-                </button>
-            </div>
+            <h1 className="text-3xl font-semibold mb-8">Manage Users</h1>
 
             <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="border-b border-[#2A2A2A] text-gray-400">
                         <tr>
-                            <th className="px-6 py-4 text-left">Title</th>
-                            <th className="px-6 py-4 text-left">Author</th>
-                            <th className="px-6 py-4 text-left">Price</th>
-                            <th className="px-6 py-4 text-left">Stock</th>
+                            <th className="px-6 py-4 text-left">Name</th>
+                            <th className="px-6 py-4 text-left">Email</th>
+                            <th className="px-6 py-4 text-left">Role</th>
+                            <th className="px-6 py-4 text-left">Status</th>
                             <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -38,7 +32,7 @@ const AdminBooksPage = () => {
                                 colSpan="5"
                                 className="text-center py-16 text-gray-500"
                             >
-                                No books found
+                                No users found
                             </td>
                         </tr>
                     </tbody>
@@ -48,4 +42,4 @@ const AdminBooksPage = () => {
     );
 };
 
-export default AdminBooksPage;
+export default AdminUsersPage;

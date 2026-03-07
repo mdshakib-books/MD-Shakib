@@ -22,6 +22,8 @@ import AdminOrdersPage from "../pages/AdminOrdersPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import AboutPage from "../pages/AboutPage";
 import SupportPage from "../pages/SupportPage"  ;
+import AdminUsersPage from "../pages/AdminUsersPage";
+import AdminProfilePage from "../pages/AdminProfilePage";
 
 const AppRoutes = () => {
     return (
@@ -110,6 +112,22 @@ const AppRoutes = () => {
                 element={
                     <ProtectedRoute requireAdmin>
                         <AdminOrdersPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/users"
+                element={
+                    <ProtectedRoute requireAdmin>
+                        <AdminUsersPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/profile"
+                element={
+                    <ProtectedRoute requireAdmin>
+                        <AdminProfilePage />
                     </ProtectedRoute>
                 }
             />

@@ -1,16 +1,18 @@
 import React, { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { useAuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { FiUser, FiBox, FiMapPin, FiKey, FiLogOut } from "react-icons/fi";
+import { logoutUser } from "../redux/slices/authSlice";
+import LogoutModal from "../components/LogoutModal";
 
 const ProfilePage = () => {
-    const { user } = useAuthContext();
+    const user = useSelector((state) => state.auth.user);
     const navigate = useNavigate();
     const [editing, setEditing] = useState(false);
     const dispatch = useDispatch();
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const [form, setForm] = useState({
         name: user?.name || "",
@@ -25,9 +27,13 @@ const ProfilePage = () => {
         });
     };
 
-    const handleLogout = async () => {
-        await dispatch(logoutUser());
+    const handleLogoutConfirm = () => {
+        dispatch(logoutUser());
         navigate("/login");
+    };
+
+    const handleLogout = () => {
+        setShowLogoutModal(true);
     };
 
     return (
@@ -83,7 +89,7 @@ const ProfilePage = () => {
 
                                 <button className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-[#1a1a1a] transition">
                                     <FiKey className="text-lg" />
-                                    <span>Forgot Password</span>
+                                    <span>Change Password</span>
                                 </button>
 
                                 <button
@@ -256,6 +262,13 @@ const ProfilePage = () => {
             </main>
 
             <Footer />
+
+            {/* Logout Modal */}
+            <LogoutModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleLogoutConfirm}
+            />
         </div>
     );
 };
