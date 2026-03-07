@@ -6,52 +6,70 @@ const OrderCard = ({ order }) => {
     const getStatusColor = (status) => {
         switch (status) {
             case "Delivered":
-                return "bg-green-100 text-green-800";
-            case "Processing":
-                return "bg-blue-100 text-blue-800";
+                return "text-green-400";
             case "Shipped":
-                return "bg-yellow-100 text-yellow-800";
+                return "text-yellow-400";
+            case "Packed":
+                return "text-blue-400";
             case "Cancelled":
-                return "bg-red-100 text-red-800";
+                return "text-red-400";
             default:
-                return "bg-gray-100 text-gray-800";
+                return "text-gray-400";
         }
     };
 
+    const firstItem = order.items?.[0];
+
     return (
-        <div className="border rounded p-4 mb-4 bg-white shadow-sm">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <div>
-                    <span className="text-gray-500 text-sm">
-                        Order ID: #{order._id.slice(-6)}
-                    </span>
+        <Link
+            to={`/orders/${order._id}`}
+            className="block bg-[#111111] border border-[#2A2A2A] rounded-xl p-5 hover:border-[var(--color-primary-gold)] transition"
+        >
+            <div className="flex items-center gap-5">
+                {/* BOOK IMAGE */}
+                {firstItem?.imageUrl && (
+                    <img
+                        src={firstItem.imageUrl}
+                        alt={firstItem.title}
+                        className="w-16 h-20 object-cover rounded"
+                    />
+                )}
+
+                {/* ORDER INFO */}
+                <div className="flex-grow">
+                    <p className="font-medium">
+                        {firstItem?.title || "Book"}
+                    </p>
+
+                    <p className="text-sm text-gray-400 mt-1">
+                        Order #{order._id.slice(-6)}
+                    </p>
+
                     <p className="text-sm text-gray-400">
                         {new Date(order.createdAt).toLocaleDateString()}
                     </p>
-                </div>
-                <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
-                >
-                    {order.status}
-                </span>
-            </div>
-            <div className="flex justify-between items-center">
-                <div>
-                    <p className="font-semibold">
-                        Total: {formatPrice(order.totalAmount)}
-                    </p>
+
                     <p className="text-sm text-gray-500">
                         {order.items?.length || 0} items
                     </p>
                 </div>
-                <Link
-                    to={`/orders/${order._id}`}
-                    className="text-blue-600 hover:underline text-sm font-medium"
-                >
-                    View Details
-                </Link>
+
+                {/* RIGHT SIDE */}
+                <div className="text-right">
+                    <p className="font-semibold text-[var(--color-primary-gold)]">
+                        {formatPrice(order.totalAmount)}
+                    </p>
+
+                    <p
+                        className={`text-sm mt-1 font-medium ${getStatusColor(
+                            order.orderStatus
+                        )}`}
+                    >
+                        {order.orderStatus}
+                    </p>
+                </div>
             </div>
-        </div>
+        </Link>
     );
 };
 

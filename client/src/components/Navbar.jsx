@@ -3,6 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser } from "../redux/slices/authSlice";
 import { fetchCart } from "../redux/slices/cartSlice";
+import LogoutModal from "./LogoutModal";
+import { FiBell } from "react-icons/fi";
 
 const Navbar = () => {
     const { user } = useSelector((state) => state.auth);
@@ -12,6 +14,7 @@ const Navbar = () => {
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -35,8 +38,13 @@ const Navbar = () => {
     const cartCount =
         cartItems?.reduce((total, item) => total + item.quantity, 0) || 0;
 
-    const handleLogout = async () => {
-        await dispatch(logoutUser());
+    const handleLogoutConfirm = () => {
+        dispatch(logoutUser());
+        navigate("/login");
+    };
+
+    const handleLogout = () => {
+        dispatch(logoutUser());
         navigate("/login");
     };
 
@@ -177,13 +185,13 @@ const Navbar = () => {
                                         </p>
                                     </div>
                                     <button
-                                        onClick={ () => navigate("/orders")}
+                                        onClick={() => navigate("/orders")}
                                         className="w-full text-left block px-4 py-3 text-sm text-[var(--color-text-light)] hover:text-[var(--color-primary-gold)] hover:bg-[#1a1a1a] transition-colors"
                                     >
                                         My Orders
                                     </button>
                                     <button
-                                        onClick={handleLogout}
+                                        onClick={() => setShowLogoutModal(true)}
                                         className="w-full text-left block px-4 py-3 text-sm text-[var(--color-text-light)] hover:text-[var(--color-primary-gold)] hover:bg-[#1a1a1a] transition-colors"
                                     >
                                         Log Out
@@ -192,30 +200,60 @@ const Navbar = () => {
                             )}
                         </div>
 
-                        {/* Cart Icon */}
-                        <Link
-                            to="/cart"
-                            className="relative hover:text-[var(--color-accent-gold)] transition-colors"
-                        >
-                            <svg
-                                className="w-[18px] h-[18px]"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                        {/* Cart Icon (Only for normal users) */}
+                        {user?.role !== "admin" && (
+                            <Link
+                                to="/cart"
+                                className="relative hover:text-[var(--color-accent-gold)] transition-colors"
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                                />
-                            </svg>
-                            {cartCount > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-[var(--color-primary-gold)] text-[var(--color-secondary-dark)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                                    {cartCount > 9 ? "9+" : cartCount}
+                                <svg
+                                    className="w-[18px] h-[18px]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                                    />
+                                </svg>
+
+                                {cartCount > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-[var(--color-primary-gold)] text-[var(--color-secondary-dark)] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                                        {cartCount > 9 ? "9+" : cartCount}
+                                    </span>
+                                )}
+                            </Link>
+                        )}
+
+                        {/* Notification Icon (Only for admin) */}
+                        {user?.role === "admin" && (
+                            <button
+                                className="relative hover:text-[var(--color-accent-gold)] transition-colors"
+                                title="Notifications"
+                            >
+                                <svg
+                                    className="w-[18px] h-[18px]"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14V11a6 6 0 10-12 0v3c0 .386-.146.735-.405 1.003L4 17h5m6 0a3 3 0 11-6 0"
+                                    />
+                                </svg>
+
+                                {/* Notification Count */}
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                                    3
                                 </span>
-                            )}
-                        </Link>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -240,7 +278,7 @@ const Navbar = () => {
                             {user ? (
                                 <button
                                     onClick={() => {
-                                        handleLogout();
+                                        setShowLogoutModal(true);
                                         setIsMobileMenuOpen(false);
                                     }}
                                     className="block w-full text-left px-3 py-2 rounded-md font-medium text-red-500 hover:bg-[#1a1a1a]"
@@ -259,6 +297,13 @@ const Navbar = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Logout Modal */}
+                <LogoutModal
+                    isOpen={showLogoutModal}
+                    onClose={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogoutConfirm}
+                />
             </nav>
         </React.Fragment>
     );

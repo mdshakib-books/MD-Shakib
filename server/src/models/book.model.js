@@ -28,6 +28,12 @@ const bookSchema = new mongoose.Schema(
             required: true,
             min: 0,
         },
+        discount: {
+            type: Number,
+            required: true,
+            min: 0,
+            max: 100,
+        },
         category: {
             type: String,
             required: true,

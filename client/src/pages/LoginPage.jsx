@@ -7,14 +7,18 @@ const LoginPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+
     const dispatch = useDispatch();
     const { loading, error } = useSelector((state) => state.auth);
+
     const navigate = useNavigate();
     const location = useLocation();
 
     const handleLogin = async (e) => {
         e.preventDefault();
+
         const result = await dispatch(loginUser({ email, password }));
+
         if (result.payload) {
             const from = location.state?.from?.pathname || "/";
             navigate(from, { replace: true });
@@ -22,76 +26,101 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-sm">
+        <div className="min-h-screen flex items-center justify-center bg-[#0B0B0B] px-4">
+            <div className="w-full max-w-md bg-[#111111] border border-[#2A2A2A] rounded-xl p-8 shadow-xl">
+                {/* TITLE */}
+
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-extrabold text-gray-900">
-                        Sign in to your account
+                    <h2 className="font-heading text-3xl text-[var(--color-primary-gold)]">
+                        Welcome Back
                     </h2>
+
+                    <p className="text-gray-400 text-sm mt-2">
+                        Sign in to continue
+                    </p>
                 </div>
+
+                {/* ERROR */}
+
                 {error && (
-                    <div className="bg-red-50 text-red-500 p-3 rounded mb-4 text-sm">
+                    <div className="bg-red-500/10 text-red-400 p-3 rounded mb-4 text-sm">
                         {error}
                     </div>
                 )}
-                <form className="space-y-6" onSubmit={handleLogin}>
+
+                <form onSubmit={handleLogin} className="space-y-5">
+                    {/* EMAIL */}
+
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                            Email address
+                        <label className="text-sm text-gray-400">
+                            Email Address
                         </label>
+
                         <input
                             type="email"
                             required
-                            className="mt-1 appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            className="mt-1 w-full bg-[#0B0B0B] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--color-primary-gold)]"
                         />
                     </div>
+
+                    {/* PASSWORD */}
+
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="text-sm text-gray-400">
                             Password
                         </label>
+
                         <div className="relative">
                             <input
                                 type={showPassword ? "text" : "password"}
                                 required
-                                className="mt-1 appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                className="mt-1 w-full bg-[#0B0B0B] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--color-primary-gold)]"
                             />
+
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-3 text-gray-500 hover:text-gray-700 text-sm"
+                                className="absolute right-3 top-2.5 text-gray-400 text-sm hover:text-white"
                             >
                                 {showPassword ? "Hide" : "Show"}
                             </button>
                         </div>
                     </div>
+
+                    {/* BUTTON */}
+
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                        className="w-full py-2.5 rounded-lg font-semibold bg-[var(--color-primary-gold)] text-black hover:bg-[var(--color-accent-gold)] transition disabled:opacity-50"
                     >
-                        {loading ? "Signing in..." : "Sign in"}
+                        {loading ? "Signing in..." : "Sign In"}
                     </button>
                 </form>
-                <div className="mt-6 space-y-4 text-center">
-                    <p className="text-sm text-gray-600">
+
+                {/* LINKS */}
+
+                <div className="mt-6 text-center text-sm text-gray-400">
+                    <p>
                         <Link
                             to="/forgot-password"
-                            className="font-medium text-blue-600 hover:text-blue-500"
+                            className="hover:text-white"
                         >
-                            Forgot your password?
+                            Forgot Password?
                         </Link>
                     </p>
-                    <p className="text-sm text-gray-600">
+
+                    <p className="mt-3">
                         Don't have an account?{" "}
                         <Link
                             to="/register"
-                            className="font-medium text-blue-600 hover:text-blue-500"
+                            className="text-[var(--color-primary-gold)] hover:underline"
                         >
-                            Register here
+                            Create one
                         </Link>
                     </p>
                 </div>
