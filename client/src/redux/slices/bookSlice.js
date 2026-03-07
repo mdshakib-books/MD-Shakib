@@ -6,9 +6,11 @@ export const fetchBooks = createAsyncThunk(
     async (params, { rejectWithValue }) => {
         try {
             const data = await bookService.getBooks(params);
+            // bookService.getBooks returns: data.items || data (from API)
+            // So `data` is already an array OR has a .books/.items key
             return data;
         } catch (err) {
-            return rejectWithValue(err.response.data);
+            return rejectWithValue(err.response?.data || err.message);
         }
     },
 );
@@ -25,10 +27,24 @@ const bookSlice = createSlice({
         builder
             .addCase(fetchBooks.pending, (state) => {
                 state.loading = true;
+                state.error = null; // Clear stale errors on new fetch
             })
             .addCase(fetchBooks.fulfilled, (state, action) => {
                 state.loading = false;
-                state.items = action.payload.books || action.payload;
+                const payload = action.payload;
+                // Handle all possible shapes:
+                // 1. Already an array (bookService extracted .items)
+                // 2. { items: [...] } — paginated wrapper
+                // 3. { books: [...] } — alternative shape
+                if (Array.isArray(payload)) {
+                    state.items = payload;
+                } else if (Array.isArray(payload?.items)) {
+                    state.items = payload.items;
+                } else if (Array.isArray(payload?.books)) {
+                    state.items = payload.books;
+                } else {
+                    state.items = [];
+                }
             })
             .addCase(fetchBooks.rejected, (state, action) => {
                 state.loading = false;

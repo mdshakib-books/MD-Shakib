@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import connectDB from "./src/config/db.js";
+import { configureCloudinary } from "./src/config/cloudinary.config.js";
 import { app } from "./app.js";
 import http from "http";
 import { initializeSocket } from "./src/config/socket.js";
@@ -7,6 +8,9 @@ import { initializeSocket } from "./src/config/socket.js";
 dotenv.config({
     path: "./.env",
 });
+
+// Initialize Cloudinary configuration
+configureCloudinary();
 
 const server = http.createServer(app);
 

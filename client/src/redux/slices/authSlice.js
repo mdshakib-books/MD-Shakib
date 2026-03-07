@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { authService } from "../../services/authService";
+import { cartService } from "../../services/cartService";
 
 export const registerUser = createAsyncThunk(
     "auth/register",
@@ -20,7 +21,21 @@ export const loginUser = createAsyncThunk(
     async (credentials, { rejectWithValue }) => {
         try {
             const data = await authService.login(credentials);
-            return data.data.user;
+            const user = data.data.user;
+
+            // Merge guest cart → DB cart immediately after login
+            try {
+                const raw = localStorage.getItem("guest_cart");
+                const guestCart = raw ? JSON.parse(raw) : [];
+                if (guestCart.length > 0) {
+                    await cartService.mergeCart(guestCart);
+                    localStorage.removeItem("guest_cart");
+                }
+            } catch {
+                // Non-fatal: proceed even if merge fails
+            }
+
+            return user;
         } catch (err) {
             return rejectWithValue(
                 err.response?.data?.message || "Login failed",

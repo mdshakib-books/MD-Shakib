@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import CartItem from "../components/CartItem";
@@ -8,16 +8,47 @@ import EmptyState from "../components/EmptyState";
 import { useCart } from "../hooks/useCart";
 import AddressSelector from "../components/AddressSelector";
 import { formatPrice } from "../utils/formatPrice";
+import { useToast } from "../context/ToastContext";
 
 const CartPage = () => {
-    const { cart, loading, fetchCart } = useCart();
+    const {
+        cart,
+        loading,
+        fetchCart,
+        removeFromCart,
+        updateQuantity,
+        isLoggedIn,
+    } = useCart();
+    const { addToast } = useToast();
+    const navigate = useNavigate();
     const [feeOpen, setFeeOpen] = React.useState(false);
     const [discountOpen, setDiscountOpen] = React.useState(false);
+    // Only show the full-page loader on the very first fetch (not on mutations)
+    const [initialLoad, setInitialLoad] = React.useState(true);
+
+    const handleRemove = (bookId) => {
+        // removeFromCart is optimistic — no await needed, UI already updated
+        removeFromCart(bookId);
+        addToast("Item removed from cart", "info");
+    };
+
+    const handleUpdateQuantity = (bookId, qty) => {
+        updateQuantity(bookId, qty);
+    };
 
     useEffect(() => {
-        fetchCart();
+        if (isLoggedIn) {
+            fetchCart();
+        }
         window.scrollTo(0, 0);
-    }, []);
+    }, [isLoggedIn]);
+
+    // Clear initialLoad once the first fetch completes (loading flips false)
+    useEffect(() => {
+        if (!loading && initialLoad) {
+            setInitialLoad(false);
+        }
+    }, [loading]);
 
     const subtotal = Math.round(
         cart?.items?.reduce(
@@ -54,7 +85,8 @@ const CartPage = () => {
                         Your Cart
                     </h1>
 
-                    {loading ? (
+                    {/* Only show full-page loader on FIRST load, never during mutations */}
+                    {initialLoad && loading ? (
                         <Loader />
                     ) : !cart || cart.items?.length === 0 ? (
                         <EmptyState
@@ -66,15 +98,24 @@ const CartPage = () => {
                         <div className="grid lg:grid-cols-[1fr_320px] gap-8">
                             {/* CART ITEMS */}
                             <div className="space-y-4">
-                                <AddressSelector />
+                                {isLoggedIn && (
+                                    <AddressSelector onSelect={() => {}} />
+                                )}
 
                                 <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 md:p-6 space-y-4 shadow-xl">
                                     {cart?.items?.map((item) => (
                                         <CartItem
                                             key={item.bookId}
                                             item={item}
-                                            onUpdateQuantity={() => {}}
-                                            onRemove={() => {}}
+                                            onUpdateQuantity={(bookId, qty) =>
+                                                handleUpdateQuantity(
+                                                    bookId,
+                                                    qty,
+                                                )
+                                            }
+                                            onRemove={(bookId) =>
+                                                handleRemove(bookId)
+                                            }
                                         />
                                     ))}
                                 </div>
@@ -90,7 +131,7 @@ const CartPage = () => {
                                     {/* MRP */}
                                     <div className="flex justify-between text-gray-300">
                                         <span>MRP</span>
-                                        <span>₹{formatPrice(MRP)}</span>
+                                        <span>{formatPrice(MRP)}</span>
                                     </div>
 
                                     {/* FEES */}
@@ -181,7 +222,6 @@ const CartPage = () => {
                                                 <div className="flex justify-between">
                                                     <span>Discount on MRP</span>
                                                     <span>
-                                                        
                                                         -{formatPrice(discount)}
                                                     </span>
                                                 </div>
@@ -204,12 +244,24 @@ const CartPage = () => {
                                     </div>
                                 </div>
 
-                                <Link
-                                    to="/checkout"
+                                <button
+                                    onClick={() => {
+                                        if (isLoggedIn) {
+                                            navigate("/checkout");
+                                        } else {
+                                            navigate("/login", {
+                                                state: {
+                                                    from: { pathname: "/cart" },
+                                                },
+                                            });
+                                        }
+                                    }}
                                     className="mt-6 block w-full text-center py-3 rounded-lg bg-[var(--color-primary-gold)] text-black font-semibold hover:scale-[1.02] hover:bg-[var(--color-accent-gold)] transition"
                                 >
-                                    Proceed to Checkout
-                                </Link>
+                                    {isLoggedIn
+                                        ? "Proceed to Checkout"
+                                        : "Login to Checkout"}
+                                </button>
 
                                 <Link
                                     to="/books"

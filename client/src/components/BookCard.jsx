@@ -1,19 +1,52 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { formatPrice } from "../utils/formatPrice";
-import { useCart } from "../hooks/useCart"; // Assuming useCart exposes addToCart
+import { useCart } from "../hooks/useCart";
+import { useToast } from "../context/ToastContext";
 
 const BookCard = ({ book }) => {
-    const { addToCart } = useCart();
+    const { addToCart, cart } = useCart();
+    const { addToast } = useToast();
+    const navigate = useNavigate();
 
-    // Simulate an old price for the aesthetic (-20% discount)
+    // Check if this book is already in the active cart
+    const isInCart = cart?.items?.some(
+        (item) => item.bookId === book._id || item.bookId?._id === book._id,
+    );
+    const [added, setAdded] = useState(isInCart);
+
     const oldPrice = Math.round(book.price * 1.25);
     const discount = "20%";
 
-    const handleAddToCart = (e) => {
+    const handleCartClick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        addToCart(book._id, 1);
+
+        if (!book.stock || book.stock <= 0) {
+            addToast("This book is currently out of stock.", "error");
+            return;
+        }
+
+        if (added) {
+            navigate("/cart");
+            return;
+        }
+
+        try {
+            await addToCart(
+                {
+                    bookId: book._id,
+                    title: book.title,
+                    price: book.price,
+                    image: book.imageUrl,
+                },
+                1,
+            );
+            setAdded(true);
+            addToast(`"${book.title}" added to cart`, "success");
+        } catch {
+            addToast("Failed to add to cart. Please try again.", "error");
+        }
     };
 
     return (
@@ -79,25 +112,51 @@ const BookCard = ({ book }) => {
                 </div>
             </div>
 
-            {/* Add to Cart Button */}
+            {/* Add to Cart / Go to Cart Button */}
             <button
-                onClick={handleAddToCart}
-                className="mt-4 w-full bg-[var(--color-primary-gold)] hover:bg-[var(--color-accent-gold)] text-black font-semibold py-2.5 rounded-[10px] text-sm flex items-center justify-center gap-2 transition-colors"
+                onClick={handleCartClick}
+                className={`mt-4 w-full font-semibold py-2.5 rounded-[10px] text-sm flex items-center justify-center gap-2 transition-all duration-300
+                    ${
+                        added
+                            ? "bg-transparent border border-[var(--color-primary-gold)] text-[var(--color-primary-gold)] hover:bg-[var(--color-primary-gold)] hover:text-black"
+                            : "bg-[var(--color-primary-gold)] hover:bg-[var(--color-accent-gold)] text-black"
+                    }`}
             >
-                <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                </svg>
-                Add to Cart
+                {added ? (
+                    <>
+                        <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                            />
+                        </svg>
+                        Go to Cart
+                    </>
+                ) : (
+                    <>
+                        <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                            />
+                        </svg>
+                        Add to Cart
+                    </>
+                )}
             </button>
         </Link>
     );

@@ -2,6 +2,7 @@ import Order from "../models/order.model.js";
 import Cart from "../models/cart.model.js";
 import Address from "../models/address.model.js";
 import Payment from "../models/payment.model.js";
+import Book from "../models/book.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { checkAndSetIdempotency } from "../utils/idempotency.util.js";
 import { validateAndReduceStock, restoreStock } from "../utils/stock.util.js";
@@ -56,17 +57,24 @@ class OrderService {
         await validateAndReduceStock(cart.items);
 
         // 4. Calculate total amount safely on backend using snapshot prices generated at cart-add time
+        const bookIds = cart.items.map((item) => item.bookId);
+        const books = await Book.find({ _id: { $in: bookIds } })
+            .select("_id title imageUrl isActive")
+            .lean();
+        const bookMap = new Map(books.map((book) => [String(book._id), book]));
+
         let totalAmount = 0;
         const itemsSnapshot = cart.items.map((item) => {
-            // In a completely zero-trust system, you'd fetch the Book price here again.
-            // But according to the requested architecture, we snapshot price in the Cart.
+            const book = bookMap.get(String(item.bookId));
             totalAmount += item.price * item.quantity;
             return {
                 bookId: item.bookId,
-                title: item.title || "Book Title", // Assuming title/image were stored in cart or easily populated.
+                title: book?.title || "Book",
                 price: item.price,
                 quantity: item.quantity,
-                imageUrl: item.imageUrl || "No image",
+                imageUrl:
+                    book?.imageUrl ||
+                    "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=120",
             };
         });
 
@@ -92,9 +100,6 @@ class OrderService {
             newOrder.paymentStatus = "Pending";
             await newOrder.save();
 
-            // Clear the Cart
-            await Cart.updateOne({ userId }, { items: [] });
-
             emitNewOrder(newOrder); // Notify Admin
         } else if (paymentMethod === PAYMENT_METHODS.ONLINE) {
             // Initialize Razorpay/Stripe intent
@@ -115,6 +120,9 @@ class OrderService {
                 );
             }
         }
+
+        // Clear the cart after successful order creation
+        await Cart.updateOne({ userId }, { items: [] });
 
         return responseData;
     }
