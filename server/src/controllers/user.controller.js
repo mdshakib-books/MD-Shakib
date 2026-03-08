@@ -49,6 +49,12 @@ export const loginUser = asyncHandler(async (req, res) => {
         await req.auditLog("LOGIN", "User", user._id, {}, { email });
     }
 
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    };
+
     return res
         .status(200)
         .cookie("accessToken", accessToken, cookieOptions)
@@ -66,6 +72,12 @@ export const logoutUser = asyncHandler(async (req, res) => {
     if (req.auditLog) {
         await req.auditLog("LOGOUT", "User", req.user._id, {}, {});
     }
+
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    };
 
     return res
         .status(200)
@@ -157,6 +169,11 @@ export const deleteAccount = asyncHandler(async (req, res) => {
         );
     }
 
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    };
     return res
         .status(200)
         .clearCookie("accessToken", cookieOptions)
