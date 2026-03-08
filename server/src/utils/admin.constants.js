@@ -8,7 +8,7 @@ export const ORDER_STATUS_TRANSITIONS = {
     Paid: ["Packed", "Cancelled"],
     Packed: ["Shipped"],
     Shipped: ["Delivered"],
-    Delivered: ["Returned"],
+    Delivered: [],
     Cancelled: [],
     Returned: [],
 };

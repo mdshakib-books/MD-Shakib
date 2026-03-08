@@ -7,24 +7,10 @@ const orderItemSchema = new mongoose.Schema(
             ref: "Book",
             required: true,
         },
-        title: {
-            type: String,
-            required: true,
-        },
-        price: {
-            type: Number,
-            required: true,
-            min: 0,
-        },
-        quantity: {
-            type: Number,
-            required: true,
-            min: 1,
-        },
-        imageUrl: {
-            type: String,
-            required: true,
-        },
+        title: { type: String, required: true },
+        price: { type: Number, required: true, min: 0 },
+        quantity: { type: Number, required: true, min: 1 },
+        imageUrl: { type: String, required: true },
     },
     { _id: false },
 );
@@ -43,6 +29,16 @@ const addressSnapshotSchema = new mongoose.Schema(
     { _id: false },
 );
 
+// Tracks each status change with timestamp
+const statusHistorySchema = new mongoose.Schema(
+    {
+        status: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+        note: { type: String, default: "" },
+    },
+    { _id: false },
+);
+
 const orderSchema = new mongoose.Schema(
     {
         userId: {
@@ -55,21 +51,12 @@ const orderSchema = new mongoose.Schema(
             type: [orderItemSchema],
             required: true,
             validate: {
-                validator: function (v) {
-                    return v && v.length > 0;
-                },
+                validator: (v) => v && v.length > 0,
                 message: "Order items cannot be empty.",
             },
         },
-        address: {
-            type: addressSnapshotSchema,
-            required: true,
-        },
-        totalAmount: {
-            type: Number,
-            required: true,
-            min: 0,
-        },
+        address: { type: addressSnapshotSchema, required: true },
+        totalAmount: { type: Number, required: true, min: 0 },
         paymentMethod: {
             type: String,
             required: true,
@@ -97,24 +84,28 @@ const orderSchema = new mongoose.Schema(
             default: "Pending",
             index: true,
         },
-        isPaid: {
-            type: Boolean,
-            required: true,
-            default: false,
+        // Full audit trail of every status change
+        statusHistory: {
+            type: [statusHistorySchema],
+            default: [],
         },
-        paidAt: {
-            type: Date,
-        },
-        deliveredAt: {
-            type: Date,
-        },
+        cancelReason: { type: String, default: "" },
+        isPaid: { type: Boolean, required: true, default: false },
+        paidAt: { type: Date },
+        deliveredAt: { type: Date },
     },
-    {
-        timestamps: true,
-    },
+    { timestamps: true },
 );
 
 orderSchema.index({ createdAt: -1 });
+
+// Auto-push the initial "Pending" status entry on creation
+orderSchema.pre("save", function (next) {
+    if (this.isNew && this.statusHistory.length === 0) {
+        this.statusHistory.push({ status: "Pending", timestamp: new Date() });
+    }
+    next();
+});
 
 const Order = mongoose.model("Order", orderSchema);
 export default Order;

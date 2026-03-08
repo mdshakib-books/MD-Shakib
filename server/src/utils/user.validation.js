@@ -26,7 +26,26 @@ export const forgotPasswordSchema = Joi.object({
     email: Joi.string().email().required().trim().lowercase(),
 });
 
-export const resetPasswordSchema = Joi.object({
-    token: Joi.string().required(),
+export const sendOtpSchema = Joi.object({
+    email: Joi.string().email().required().trim().lowercase(),
+});
+
+export const verifyOtpSchema = Joi.object({
+    email: Joi.string().email().required().trim().lowercase(),
+    otp: Joi.number().integer().min(100000).max(999999).required(),
+});
+
+export const resetPasswordOtpSchema = Joi.object({
+    email: Joi.string().email().required().trim().lowercase(),
     newPassword: Joi.string().min(6).required(),
+});
+
+// Registration email OTP schemas (reuse same shape as password OTP)
+export const sendRegistrationOtpSchema = Joi.object({
+    email: Joi.string().email().required().trim().lowercase(),
+});
+
+export const verifyRegistrationOtpSchema = Joi.object({
+    email: Joi.string().email().required().trim().lowercase(),
+    otp: Joi.number().integer().min(100000).max(999999).required(),
 });

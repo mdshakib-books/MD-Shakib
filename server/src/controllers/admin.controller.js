@@ -5,24 +5,44 @@ import adminService from "../services/admin.service.js";
 // ================= BOOKS =================
 
 export const createBook = asyncHandler(async (req, res) => {
-    const localImagePath = req.file?.path;
-    const book = await adminService.createBook(req.body, localImagePath);
+    // Accept single or multiple files
+    const files = req.files?.length
+        ? req.files.map((f) => f.path)
+        : req.file?.path || null;
+    const book = await adminService.createBook(req.body, files);
     return res
         .status(201)
         .json(new ApiResponse(201, book, "Book created successfully"));
 });
 
 export const updateBook = asyncHandler(async (req, res) => {
-    const localImagePath = req.file?.path;
-    const book = await adminService.updateBook(
-        req.params.id,
-        req.body,
-        localImagePath,
-    );
-
+    const files = req.files?.length
+        ? req.files.map((f) => f.path)
+        : req.file?.path || null;
+    const book = await adminService.updateBook(req.params.id, req.body, files);
     return res
         .status(200)
         .json(new ApiResponse(200, book, "Book updated successfully"));
+});
+
+export const setCoverImage = asyncHandler(async (req, res) => {
+    const book = await adminService.setCoverImage(
+        req.params.id,
+        req.body.imageUrl,
+    );
+    return res
+        .status(200)
+        .json(new ApiResponse(200, book, "Cover image updated"));
+});
+
+export const deleteBookImage = asyncHandler(async (req, res) => {
+    const book = await adminService.deleteBookImage(
+        req.params.id,
+        req.body.imageUrl,
+    );
+    return res
+        .status(200)
+        .json(new ApiResponse(200, book, "Image removed successfully"));
 });
 
 export const deleteBook = asyncHandler(async (req, res) => {
@@ -83,7 +103,10 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 });
 
 export const cancelOrderByAdmin = asyncHandler(async (req, res) => {
-    const order = await adminService.cancelOrderByAdmin(req.params.id);
+    const order = await adminService.cancelOrderByAdmin(
+        req.params.id,
+        req.body.cancelReason || "",
+    );
     return res
         .status(200)
         .json(new ApiResponse(200, order, "Order cancelled by admin"));
@@ -117,6 +140,13 @@ export const unblockUser = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, user, "User unblocked successfully"));
+});
+
+export const deleteUser = asyncHandler(async (req, res) => {
+    const result = await adminService.deleteUser(req.params.id, req.user._id);
+    return res
+        .status(200)
+        .json(new ApiResponse(200, result, "User deleted successfully"));
 });
 
 // ================= DASHBOARD =================
