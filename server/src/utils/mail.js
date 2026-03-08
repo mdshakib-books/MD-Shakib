@@ -6,13 +6,24 @@ dotenv.config();
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
-    secure: false, // IMPORTANT
+    secure: false,
+    requireTLS: true,
     auth: {
         user: process.env.EMAIL,
         pass: process.env.PASS,
     },
+    tls: {
+        rejectUnauthorized: false
+    }
 });
 
+transporter.verify((err, success) => {
+    if (err) {
+        console.log("SMTP ERROR:", err);
+    } else {
+        console.log("SMTP READY");
+    }
+});
 // ── OTP for password reset ────────────────────────────────────────────────────
 export const sendOtp = async (to, otp) => {
     try {
