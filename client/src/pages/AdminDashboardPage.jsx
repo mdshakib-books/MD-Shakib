@@ -65,26 +65,35 @@ const AdminDashboardPage = () => {
 
     return (
         <AdminLayout>
-            <h1 className="text-3xl font-semibold mb-8">Admin Dashboard</h1>
+            <h1 className="text-3xl font-semibold mb-8 italic">Dashboard</h1>
 
             {/* ========================
-                STATS CARDS
+                    STATS CARDS
             ======================== */}
 
-            <div className="grid md:grid-cols-3 gap-6 mb-10">
-                <div className="bg-[#111111] p-6 rounded-xl border border-[#2A2A2A]">
-                    <p className="text-gray-400 text-sm">Total Books</p>
-                    <h2 className="text-3xl font-bold mt-2">124</h2>
+            <div className="grid grid-cols-3 gap-3 md:gap-6 mb-10">
+                {/* Total Books */}
+                <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl px-3 py-4 md:p-6 text-center">
+                    <p className="text-gray-400 text-[11px] md:text-sm uppercase tracking-wide">
+                        Books
+                    </p>
+                    <h2 className="text-lg md:text-3xl font-bold mt-1">124</h2>
                 </div>
 
-                <div className="bg-[#111111] p-6 rounded-xl border border-[#2A2A2A]">
-                    <p className="text-gray-400 text-sm">Total Orders</p>
-                    <h2 className="text-3xl font-bold mt-2">48</h2>
+                {/* Total Orders */}
+                <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl px-3 py-4 md:p-6 text-center">
+                    <p className="text-gray-400 text-[11px] md:text-sm uppercase tracking-wide">
+                        Orders
+                    </p>
+                    <h2 className="text-lg md:text-3xl font-bold mt-1">48</h2>
                 </div>
 
-                <div className="bg-[#111111] p-6 rounded-xl border border-[#2A2A2A]">
-                    <p className="text-gray-400 text-sm">Total Users</p>
-                    <h2 className="text-3xl font-bold mt-2">85</h2>
+                {/* Total Users */}
+                <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl px-3 py-4 md:p-6 text-center">
+                    <p className="text-gray-400 text-[11px] md:text-sm uppercase tracking-wide">
+                        Users
+                    </p>
+                    <h2 className="text-lg md:text-3xl font-bold mt-1">85</h2>
                 </div>
             </div>
 

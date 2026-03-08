@@ -6,6 +6,8 @@ import {
     updateBookStock,
     getAllBooksAdmin,
     getBookByIdAdmin,
+    setCoverImage,
+    deleteBookImage,
     getAllOrders,
     getOrderById,
     updateOrderStatus,
@@ -14,6 +16,7 @@ import {
     getUserById,
     blockUser,
     unblockUser,
+    deleteUser,
     getDashboardStats,
     getSalesAnalytics,
 } from "../controllers/admin.controller.js";
@@ -37,7 +40,7 @@ router.use(verifyJWT, isAdmin);
 // ================= BOOKS =================
 router.post(
     "/books",
-    upload.single("image"),
+    upload.array("images", 5), // Support up to 5 images
     validate(createBookSchema),
     createBook,
 );
@@ -45,12 +48,14 @@ router.get("/books", getAllBooksAdmin);
 router.get("/books/:id", getBookByIdAdmin);
 router.patch(
     "/books/:id",
-    upload.single("image"),
+    upload.array("images", 5),
     validate(updateBookSchema),
     updateBook,
 );
 router.delete("/books/:id", deleteBook);
 router.patch("/books/:id/stock", validate(updateStockSchema), updateBookStock);
+router.patch("/books/:id/cover", setCoverImage);
+router.delete("/books/:id/image", deleteBookImage);
 
 // ================= ORDERS =================
 router.get("/orders", getAllOrders);
@@ -67,6 +72,7 @@ router.get("/users", getAllUsers);
 router.get("/users/:id", getUserById);
 router.patch("/users/:id/block", validate(blockUserSchema), blockUser);
 router.patch("/users/:id/unblock", unblockUser);
+router.delete("/users/:id", deleteUser);
 
 // ================= DASHBOARD =================
 router.get("/dashboard/stats", getDashboardStats);

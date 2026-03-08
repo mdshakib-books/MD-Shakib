@@ -49,8 +49,13 @@ const updateOrderStatus = async (id, status) => {
     return res.data.data;
 };
 
-const cancelOrder = async (id) => {
-    const res = await api.patch(`/admin/orders/${id}/cancel`);
+const cancelOrder = async (id, cancelReason = "") => {
+    const res = await api.patch(`/admin/orders/${id}/cancel`, { cancelReason });
+    return res.data.data;
+};
+
+const getOrderById = async (id) => {
+    const res = await api.get(`/admin/orders/${id}`);
     return res.data.data;
 };
 
@@ -72,6 +77,28 @@ const unblockUser = async (id) => {
     return res.data.data;
 };
 
+const deleteUser = async (id) => {
+    const res = await api.delete(`/admin/users/${id}`);
+    return res.data.data;
+};
+
+const getUserById = async (id) => {
+    const res = await api.get(`/admin/users/${id}`);
+    return res.data.data;
+};
+
+const setCoverImage = async (id, imageUrl) => {
+    const res = await api.patch(`/admin/books/${id}/cover`, { imageUrl });
+    return res.data.data;
+};
+
+const deleteBookImage = async (id, imageUrl) => {
+    const res = await api.delete(`/admin/books/${id}/image`, {
+        data: { imageUrl },
+    });
+    return res.data.data;
+};
+
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
 const getDashboardStats = async () => {
@@ -85,11 +112,16 @@ export const adminService = {
     createBook,
     updateBook,
     deleteBook,
+    setCoverImage,
+    deleteBookImage,
     getOrders,
+    getOrderById,
     updateOrderStatus,
     cancelOrder,
     getUsers,
+    getUserById,
     blockUser,
     unblockUser,
+    deleteUser,
     getDashboardStats,
 };

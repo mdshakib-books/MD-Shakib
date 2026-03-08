@@ -21,56 +21,157 @@ import {
 } from "../utils/dashboard.utils.js";
 
 class AdminService {
+    normalizeOptionalBookFields(input = {}) {
+        const normalized = { ...input };
+
+        const emptyToNull = (key) => {
+            if (
+                normalized[key] === "" ||
+                normalized[key] === undefined ||
+                normalized[key] === null
+            ) {
+                normalized[key] = null;
+            }
+        };
+
+        emptyToNull("language");
+        emptyToNull("publisher");
+        emptyToNull("publishedDate");
+        emptyToNull("pages");
+
+        if (normalized.pages !== null) {
+            normalized.pages = Number(normalized.pages);
+        }
+        if (normalized.discount !== undefined) {
+            normalized.discount = Number(normalized.discount);
+        }
+        if (normalized.price !== undefined) {
+            normalized.price = Number(normalized.price);
+        }
+        if (normalized.stock !== undefined) {
+            normalized.stock = Number(normalized.stock);
+        }
+
+        return normalized;
+    }
+
     // ================= BOOKS =================
 
-    async createBook(bookData, localImagePath) {
-        if (!localImagePath && !bookData.imageUrl) {
+    async createBook(bookData, localFilePaths) {
+        // Support both single file (req.file) and multiple (req.files)
+        const paths = Array.isArray(localFilePaths)
+            ? localFilePaths
+            : localFilePaths
+              ? [localFilePaths]
+              : [];
+
+        if (paths.length === 0 && !bookData.imageUrl) {
             throw new ApiError(400, "Book image is required.");
         }
 
-        let imageUrl = bookData.imageUrl;
-
-        // If a file was uploaded, bounce it up to Cloudinary
-        if (localImagePath) {
-            imageUrl = await uploadOnCloudinary(localImagePath, "books");
-            if (!imageUrl) {
-                throw new ApiError(
-                    500,
-                    "Failed to upload book image securely.",
-                );
-            }
+        const uploadedUrls = [];
+        for (const p of paths.slice(0, 5)) {
+            const url = await uploadOnCloudinary(p, "books");
+            if (url) uploadedUrls.push(url);
         }
 
+        const coverImage = uploadedUrls[0] || bookData.imageUrl || "";
+        const imageUrl = coverImage;
+
+        const normalizedData = this.normalizeOptionalBookFields(bookData);
+
         const book = await Book.create({
-            ...bookData,
+            ...normalizedData,
             imageUrl,
+            coverImage,
+            images: uploadedUrls.length
+                ? uploadedUrls
+                : imageUrl
+                  ? [imageUrl]
+                  : [],
         });
 
         return book;
     }
 
-    async updateBook(bookId, updateData, localImagePath) {
+    async updateBook(bookId, updateData, localFilePaths) {
         const book = await Book.findById(bookId);
         if (!book) throw new ApiError(404, "Book not found");
 
-        // If a new image was passed, upload it and delete the old one
-        if (localImagePath) {
-            const newImageUrl = await uploadOnCloudinary(
-                localImagePath,
-                "books",
-            );
-            if (newImageUrl) {
-                // Background process: delete the old image passively
-                if (book.imageUrl) {
-                    deleteFromCloudinary(book.imageUrl).catch((err) =>
-                        console.error("Could not delete old image", err),
-                    );
-                }
-                updateData.imageUrl = newImageUrl;
+        const paths = Array.isArray(localFilePaths)
+            ? localFilePaths
+            : localFilePaths
+              ? [localFilePaths]
+              : [];
+
+        if (paths.length > 0) {
+            const currentCount = (book.images || []).length;
+            const slots = Math.max(0, 5 - currentCount);
+            const toUpload = paths.slice(0, slots);
+
+            for (const p of toUpload) {
+                const url = await uploadOnCloudinary(p, "books");
+                if (url) book.images.push(url);
+            }
+
+            // Keep imageUrl and coverImage in sync
+            if (!book.coverImage && book.images.length > 0) {
+                book.coverImage = book.images[0];
+                book.imageUrl = book.images[0];
             }
         }
 
-        Object.assign(book, updateData);
+        // Apply scalar updates
+        const normalizedData = this.normalizeOptionalBookFields(updateData);
+        const allowed = [
+            "title",
+            "author",
+            "description",
+            "category",
+            "price",
+            "stock",
+            "discount",
+            "language",
+            "pages",
+            "publisher",
+            "publishedDate",
+            "isActive",
+        ];
+        for (const key of allowed) {
+            if (normalizedData[key] !== undefined) book[key] = normalizedData[key];
+        }
+
+        await book.save();
+        return book;
+    }
+
+    async setCoverImage(bookId, imageUrl) {
+        const book = await Book.findById(bookId);
+        if (!book) throw new ApiError(404, "Book not found");
+        if (!book.images.includes(imageUrl)) {
+            throw new ApiError(400, "Image not found in book's image list");
+        }
+        book.coverImage = imageUrl;
+        book.imageUrl = imageUrl;
+        await book.save();
+        return book;
+    }
+
+    async deleteBookImage(bookId, imageUrl) {
+        const book = await Book.findById(bookId);
+        if (!book) throw new ApiError(404, "Book not found");
+        const idx = book.images.indexOf(imageUrl);
+        if (idx === -1) throw new ApiError(404, "Image not found");
+        if (book.images.length === 1) {
+            throw new ApiError(400, "Cannot remove the only book image");
+        }
+        book.images.splice(idx, 1);
+        deleteFromCloudinary(imageUrl).catch(console.error);
+        // If removed image was cover, reassign
+        if (book.coverImage === imageUrl) {
+            book.coverImage = book.images[0];
+            book.imageUrl = book.images[0];
+        }
         await book.save();
         return book;
     }
@@ -160,20 +261,28 @@ class AdminService {
         if (!allowedTransitions.includes(newStatus)) {
             throw new ApiError(
                 400,
-                `Cannot transition order status from ${currentStatus} to ${newStatus}`,
+                `Cannot transition order status from "${currentStatus}" to "${newStatus}"`,
             );
         }
 
         order.orderStatus = newStatus;
         if (newStatus === "Delivered") order.deliveredAt = new Date();
 
+        // Append to status audit trail
+        if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+        order.statusHistory.push({ status: newStatus, timestamp: new Date() });
+
         await order.save();
         return order;
     }
 
-    async cancelOrderByAdmin(orderId) {
+    async cancelOrderByAdmin(orderId, cancelReason = "") {
         const order = await Order.findById(orderId);
         if (!order) throw new ApiError(404, "Order not found");
+
+        if (!String(cancelReason).trim()) {
+            throw new ApiError(400, "Cancel reason is required");
+        }
 
         if (
             ["Delivered", "Cancelled", "Returned"].includes(order.orderStatus)
@@ -181,23 +290,25 @@ class AdminService {
             throw new ApiError(400, `Order is already ${order.orderStatus}`);
         }
 
-        // Here you would optimally run MongoDB sessions/transactions to restore book stock
-        // as well as trigger refund mechanisms if paymentStatus was 'Paid'
-
-        // Simulate stock restore
-        const stockUpdatePromises = order.items.map((item) => {
-            return Book.updateOne(
+        // Restore stock for each item
+        const stockUpdatePromises = order.items.map((item) =>
+            Book.updateOne(
                 { _id: item.bookId },
                 { $inc: { stock: item.quantity } },
-            );
-        });
-
+            ),
+        );
         await Promise.all(stockUpdatePromises);
 
         order.orderStatus = "Cancelled";
+        order.cancelReason = String(cancelReason).trim();
+        if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+        order.statusHistory.push({
+            status: "Cancelled",
+            timestamp: new Date(),
+            note: order.cancelReason,
+        });
 
         if (order.paymentStatus === "Paid") {
-            // Logic to initiate refund via payment provider goes here
             order.paymentStatus = "Refunded";
         }
 
@@ -260,6 +371,15 @@ class AdminService {
 
         if (!user) throw new ApiError(404, "User not found");
         return user;
+    }
+
+    async deleteUser(userId, adminId) {
+        if (userId.toString() === adminId.toString()) {
+            throw new ApiError(403, "Admin cannot delete themselves");
+        }
+        const user = await User.findByIdAndDelete(userId);
+        if (!user) throw new ApiError(404, "User not found");
+        return { message: "User deleted successfully" };
     }
 
     // ================= DASHBOARD =================

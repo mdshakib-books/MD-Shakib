@@ -156,7 +156,7 @@ const Navbar = () => {
                                 to={
                                     user
                                         ? user.role === "admin"
-                                            ? "/admin"
+                                            ? "/admin/dashboard"
                                             : "/profile"
                                         : "/login"
                                 }
@@ -186,10 +186,18 @@ const Navbar = () => {
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => navigate("/orders")}
+                                        onClick={() =>
+                                            navigate(
+                                                user?.role === "admin"
+                                                    ? "/admin/orders"
+                                                    : "/orders",
+                                            )
+                                        }
                                         className="w-full text-left block px-4 py-3 text-sm text-[var(--color-text-light)] hover:text-[var(--color-primary-gold)] hover:bg-[#1a1a1a] transition-colors"
                                     >
-                                        My Orders
+                                        {user?.role === "admin"
+                                            ? "Manage Orders"
+                                            : "My Orders"}
                                     </button>
                                     <button
                                         onClick={() => setShowLogoutModal(true)}

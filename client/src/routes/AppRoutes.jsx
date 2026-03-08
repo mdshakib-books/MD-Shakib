@@ -16,6 +16,9 @@ import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
+import VerifyOTPPage from "../pages/VerifyOTPPage";
+import EmailVerificationPage from "../pages/EmailVerificationPage";
+import VerifyRegistrationOTPPage from "../pages/VerifyRegistrationOTPPage";
 import AdminDashboardPage from "../pages/AdminDashboardPage";
 import AdminBooksPage from "../pages/AdminBooksPage";
 import AdminAddBookPage from "../pages/AdminAddBookPage";
@@ -39,7 +42,13 @@ const AppRoutes = () => {
             {/* Auth */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify-email" element={<EmailVerificationPage />} />
+            <Route
+                path="/verify-registration-otp"
+                element={<VerifyRegistrationOTPPage />}
+            />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/verify-otp" element={<VerifyOTPPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/cart" element={<CartPage />} />
 
@@ -96,6 +105,14 @@ const AppRoutes = () => {
             {/* Admin Protected Routes */}
             <Route
                 path="/admin"
+                element={
+                    <ProtectedRoute requireAdmin>
+                        <AdminDashboardPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/dashboard"
                 element={
                     <ProtectedRoute requireAdmin>
                         <AdminDashboardPage />
