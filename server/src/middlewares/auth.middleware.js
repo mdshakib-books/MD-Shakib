@@ -2,8 +2,14 @@ import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import User from "../models/user.model.js";
+import { ERROR_MESSAGES } from "../utils/user.constants.js";
 
 export const verifyJWT = asyncHandler(async (req, res, next) => {
+    const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+    };
+
     const token =
         req.cookies?.accessToken ||
         req.header("Authorization")?.replace("Bearer ", "");
@@ -25,12 +31,17 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
         }
 
         if (user.isBlocked) {
-            throw new ApiError(403, "User account is blocked");
+            res.clearCookie("accessToken", cookieOptions);
+            res.clearCookie("refreshToken", cookieOptions);
+            throw new ApiError(403, ERROR_MESSAGES.ACCOUNT_BLOCKED);
         }
 
         req.user = user;
         next();
     } catch (error) {
+        if (error instanceof ApiError) {
+            throw error;
+        }
         throw new ApiError(401, error?.message || "Invalid access token");
     }
 });

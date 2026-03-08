@@ -6,17 +6,21 @@ import userService from "../services/user.service.js";
 const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 };
+
+/* ───────────────── REGISTER ───────────────── */
 
 export const registerUser = asyncHandler(async (req, res) => {
     const { email } = req.body;
 
-    // Enforce email verification before registration
     const RegistrationOtp = (await import("../models/registrationOtp.model.js"))
         .default;
+
     const otpRecord = await RegistrationOtp.findOne({
         email: email.toLowerCase().trim(),
     });
+
     if (!otpRecord || !otpRecord.verified) {
         throw new ApiError(
             403,
@@ -26,7 +30,6 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     const user = await userService.createUser(req.body);
 
-    // Cleanup OTP record now that user is created
     await RegistrationOtp.deleteOne({ email: email.toLowerCase().trim() });
 
     if (req.auditLog) {
@@ -38,8 +41,11 @@ export const registerUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(201, user, "User registered successfully"));
 });
 
+/* ───────────────── LOGIN ───────────────── */
+
 export const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
+
     const { user, accessToken, refreshToken } = await userService.login(
         email,
         password,
@@ -68,6 +74,8 @@ export const loginUser = asyncHandler(async (req, res) => {
         );
 });
 
+/* ───────────────── LOGOUT ───────────────── */
+
 export const logoutUser = asyncHandler(async (req, res) => {
     if (req.auditLog) {
         await req.auditLog("LOGOUT", "User", req.user._id, {}, {});
@@ -85,6 +93,8 @@ export const logoutUser = asyncHandler(async (req, res) => {
         .clearCookie("refreshToken", cookieOptions)
         .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
+
+/* ───────────────── REFRESH TOKEN ───────────────── */
 
 export const refreshToken = asyncHandler(async (req, res) => {
     const { refreshToken: token } = req.body;
@@ -110,6 +120,8 @@ export const refreshToken = asyncHandler(async (req, res) => {
         );
 });
 
+/* ───────────────── PROFILE ───────────────── */
+
 export const getProfile = asyncHandler(async (req, res) => {
     return res
         .status(200)
@@ -118,6 +130,7 @@ export const getProfile = asyncHandler(async (req, res) => {
 
 export const updateProfile = asyncHandler(async (req, res) => {
     const oldUser = (await req.user.toObject?.()) || req.user;
+
     const updatedUser = await userService.updateProfile(req.user._id, req.body);
 
     if (req.auditLog) {
@@ -137,8 +150,11 @@ export const updateProfile = asyncHandler(async (req, res) => {
         );
 });
 
+/* ───────────────── CHANGE PASSWORD ───────────────── */
+
 export const changePassword = asyncHandler(async (req, res) => {
     const { oldPassword, newPassword } = req.body;
+
     await userService.changePassword(req.user._id, oldPassword, newPassword);
 
     if (req.auditLog) {
@@ -155,6 +171,8 @@ export const changePassword = asyncHandler(async (req, res) => {
         .status(200)
         .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
+
+/* ───────────────── DELETE ACCOUNT ───────────────── */
 
 export const deleteAccount = asyncHandler(async (req, res) => {
     await userService.deleteAccount(req.user._id);
@@ -181,11 +199,13 @@ export const deleteAccount = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "Account soft deleted successfully"));
 });
 
-// ── OTP-based Password Reset ──────────────────────────────────────────────────
+/* ───────────────── PASSWORD RESET OTP ───────────────── */
 
 export const sendOTP = asyncHandler(async (req, res) => {
     const { email } = req.body;
+
     await userService.sendOtp(email);
+
     return res
         .status(200)
         .json(new ApiResponse(200, {}, "OTP sent to your email successfully"));
@@ -193,7 +213,9 @@ export const sendOTP = asyncHandler(async (req, res) => {
 
 export const verifyOTP = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
+
     await userService.verifyOtp(email, otp);
+
     return res
         .status(200)
         .json(new ApiResponse(200, {}, "OTP verified successfully"));
@@ -201,6 +223,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
 export const resetPassword = asyncHandler(async (req, res) => {
     const { email, newPassword } = req.body;
+
     const { user, accessToken, refreshToken } =
         await userService.resetPasswordOtp(email, newPassword);
 
@@ -217,9 +240,13 @@ export const resetPassword = asyncHandler(async (req, res) => {
         );
 });
 
+/* ───────────────── REGISTRATION OTP ───────────────── */
+
 export const sendRegistrationOTP = asyncHandler(async (req, res) => {
     const { email } = req.body;
+
     await userService.sendRegistrationOtp(email);
+
     return res
         .status(200)
         .json(
@@ -229,7 +256,9 @@ export const sendRegistrationOTP = asyncHandler(async (req, res) => {
 
 export const verifyRegistrationOTP = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
+
     await userService.verifyRegistrationOtp(email, otp);
+
     return res
         .status(200)
         .json(new ApiResponse(200, {}, "Email verified successfully"));
