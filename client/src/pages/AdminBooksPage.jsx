@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout";
+import AdminConfirmModal from "../components/admin/AdminConfirmModal";
 import { adminService } from "../services/adminService";
 import { useToast } from "../context/ToastContext";
 import { formatPrice } from "../utils/formatPrice";
 
 const CATEGORIES = ["Quran", "Hadith", "Fiqh", "History", "Biography", "Other"];
 
-// ── Tiny reusable components ─────────────────────────────────────────────────
+// ── Spinner / Empty helpers ────────────────────────────────────────────────────
 
 const Spinner = () => (
     <tr>
@@ -25,7 +26,7 @@ const Empty = ({ cols }) => (
     </tr>
 );
 
-// ── Edit modal ────────────────────────────────────────────────────────────────
+// ── Edit Modal ─────────────────────────────────────────────────────────────────
 
 const EditModal = ({ book, onClose, onSaved }) => {
     const { addToast } = useToast();
@@ -33,12 +34,25 @@ const EditModal = ({ book, onClose, onSaved }) => {
         title: book.title || "",
         author: book.author || "",
         description: book.description || "",
-        category: book.category || "",
+        category: book.category || CATEGORIES[0],
         price: book.price ?? "",
         stock: book.stock ?? "",
+        discount: book.discount ?? 0,
+        language: book.language || "",
+        pages: book.pages ?? "",
+        publisher: book.publisher || "",
+        publishedDate: book.publishedDate
+            ? new Date(book.publishedDate).toISOString().split("T")[0]
+            : "",
     });
-    const [imageFile, setImageFile] = useState(null);
+    const [newFiles, setNewFiles] = useState([]); // Files[] to upload
+    const [coverTarget, setCoverTarget] = useState(null); // URL being set as cover
+    const [removeTarget, setRemoveTarget] = useState(null); // URL being removed
     const [saving, setSaving] = useState(false);
+    const [coverLoading, setCoverLoading] = useState(false);
+    const [removeLoading, setRemoveLoading] = useState(false);
+
+    const [currentBook, setCurrentBook] = useState(book); // Tracks server state of images
 
     const handleChange = (e) =>
         setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -47,7 +61,7 @@ const EditModal = ({ book, onClose, onSaved }) => {
         e.preventDefault();
         const fd = new FormData();
         Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-        if (imageFile) fd.append("image", imageFile);
+        newFiles.forEach((f) => fd.append("images", f));
 
         setSaving(true);
         try {
@@ -61,7 +75,45 @@ const EditModal = ({ book, onClose, onSaved }) => {
         }
     };
 
-    const inp = (label, name, type = "text") => (
+    const handleSetCover = async (url) => {
+        setCoverLoading(true);
+        try {
+            const updated = await adminService.setCoverImage(book._id, url);
+            setCurrentBook(updated);
+            addToast("Cover image updated", "success");
+            setCoverTarget(null);
+        } catch (err) {
+            addToast(
+                err.response?.data?.message || "Failed to set cover",
+                "error",
+            );
+        } finally {
+            setCoverLoading(false);
+        }
+    };
+
+    const handleRemoveImage = async () => {
+        if (!removeTarget) return;
+        setRemoveLoading(true);
+        try {
+            const updated = await adminService.deleteBookImage(
+                book._id,
+                removeTarget,
+            );
+            setCurrentBook(updated);
+            addToast("Image removed", "info");
+            setRemoveTarget(null);
+        } catch (err) {
+            addToast(
+                err.response?.data?.message || "Failed to remove image",
+                "error",
+            );
+        } finally {
+            setRemoveLoading(false);
+        }
+    };
+
+    const inp = (label, name, type = "text", extra = {}) => (
         <div>
             <label className="block text-xs text-gray-400 mb-1">{label}</label>
             <input
@@ -69,6 +121,7 @@ const EditModal = ({ book, onClose, onSaved }) => {
                 name={name}
                 value={form[name]}
                 onChange={handleChange}
+                {...extra}
                 className="w-full bg-[#0B0B0B] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[var(--color-primary-gold)] transition"
             />
         </div>
@@ -76,7 +129,7 @@ const EditModal = ({ book, onClose, onSaved }) => {
 
     return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl w-full max-w-xl p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-5">
                     <h2 className="font-heading text-lg text-[var(--color-primary-gold)]">
                         Edit Book
@@ -121,25 +174,101 @@ const EditModal = ({ book, onClose, onSaved }) => {
                             ))}
                         </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        {inp("Price (₹)", "price", "number")}
-                        {inp("Stock", "stock", "number")}
+                    <div className="grid grid-cols-3 gap-3">
+                        {inp("Price (₹)", "price", "number", { min: 0 })}
+                        {inp("Stock", "stock", "number", { min: 0 })}
+                        {inp("Discount (%)", "discount", "number", {
+                            min: 0,
+                            max: 100,
+                        })}
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                            Product Details (optional)
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {inp("Language", "language")}
+                            {inp("Pages", "pages", "number", { min: 1 })}
+                            {inp("Publisher", "publisher")}
+                            {inp("Published Date", "publishedDate", "date")}
+                        </div>
                     </div>
 
-                    {/* Replace image */}
-                    <div>
-                        <label className="block text-xs text-gray-400 mb-1">
-                            Replace Cover Image (optional)
-                        </label>
-                        <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={(e) =>
-                                setImageFile(e.target.files[0] || null)
-                            }
-                            className="text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-[#2A2A2A] file:text-white file:text-xs cursor-pointer"
-                        />
-                    </div>
+                    {/* Existing Images Grid */}
+                    {(currentBook.images || []).length > 0 && (
+                        <div>
+                            <label className="block text-xs text-gray-400 mb-2">
+                                Existing Images ({currentBook.images.length}/5)
+                            </label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {currentBook.images.map((url, i) => (
+                                    <div
+                                        key={i}
+                                        className="relative group rounded-lg overflow-hidden border border-[#2A2A2A]"
+                                    >
+                                        <img
+                                            src={url}
+                                            alt={`img-${i}`}
+                                            className="w-full aspect-[3/4] object-cover"
+                                        />
+                                        {url === currentBook.coverImage && (
+                                            <div className="absolute top-0 left-0 right-0 bg-[var(--color-primary-gold)] text-black text-[9px] font-bold text-center py-0.5">
+                                                COVER
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5 p-1">
+                                            {url !== currentBook.coverImage && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setCoverTarget(url)
+                                                    }
+                                                    className="text-[9px] bg-[var(--color-primary-gold)] text-black px-2 py-0.5 rounded font-semibold"
+                                                >
+                                                    Set Cover
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setRemoveTarget(url)
+                                                }
+                                                className="text-[9px] bg-red-600 text-white px-2 py-0.5 rounded font-semibold"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Add New Images */}
+                    {(currentBook.images || []).length < 5 && (
+                        <div>
+                            <label className="block text-xs text-gray-400 mb-1">
+                                Add Images (up to{" "}
+                                {5 - (currentBook.images || []).length} more)
+                            </label>
+                            <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                multiple
+                                onChange={(e) =>
+                                    setNewFiles(
+                                        Array.from(e.target.files).slice(
+                                            0,
+                                            5 -
+                                                (currentBook.images || [])
+                                                    .length,
+                                        ),
+                                    )
+                                }
+                                className="text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-[#2A2A2A] file:text-white file:text-xs cursor-pointer"
+                            />
+                        </div>
+                    )}
 
                     <div className="flex gap-3 pt-2">
                         <button
@@ -147,7 +276,7 @@ const EditModal = ({ book, onClose, onSaved }) => {
                             onClick={onClose}
                             className="flex-1 py-2.5 rounded-lg border border-[#2A2A2A] text-gray-400 hover:border-[#3A3A3A] text-sm transition"
                         >
-                            Cancel
+                            Close
                         </button>
                         <button
                             type="submit"
@@ -159,11 +288,35 @@ const EditModal = ({ book, onClose, onSaved }) => {
                     </div>
                 </form>
             </div>
+
+            {/* Set Cover Confirm */}
+            {coverTarget && (
+                <AdminConfirmModal
+                    title="Set as Cover Image?"
+                    message="This will become the primary display image for this book."
+                    dangerous={false}
+                    loading={coverLoading}
+                    onConfirm={() => handleSetCover(coverTarget)}
+                    onCancel={() => setCoverTarget(null)}
+                />
+            )}
+
+            {/* Remove Image Confirm */}
+            {removeTarget && (
+                <AdminConfirmModal
+                    title="Remove Image?"
+                    message="This image will be permanently deleted from Cloudinary."
+                    dangerous
+                    loading={removeLoading}
+                    onConfirm={handleRemoveImage}
+                    onCancel={() => setRemoveTarget(null)}
+                />
+            )}
         </div>
     );
 };
 
-// ── Delete confirm ────────────────────────────────────────────────────────────
+// ── Delete Confirm ─────────────────────────────────────────────────────────────
 
 const DeleteConfirm = ({ book, onClose, onDeleted }) => {
     const { addToast } = useToast();
@@ -173,7 +326,7 @@ const DeleteConfirm = ({ book, onClose, onDeleted }) => {
         setLoading(true);
         try {
             await adminService.deleteBook(book._id);
-            addToast("Book removed", "info");
+            addToast("Book deactivated", "info");
             onDeleted(book._id);
         } catch (err) {
             addToast(err.response?.data?.message || "Delete failed", "error");
@@ -183,45 +336,27 @@ const DeleteConfirm = ({ book, onClose, onDeleted }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-                <h2 className="font-heading text-lg text-red-400 mb-2">
-                    Delete Book?
-                </h2>
-                <p className="text-gray-400 text-sm mb-1">
-                    This will disable the book from the storefront.
-                </p>
-                <p className="text-white text-sm font-medium mb-6 truncate">
-                    "{book.title}"
-                </p>
-                <div className="flex gap-3">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-2.5 rounded-lg border border-[#2A2A2A] text-gray-400 text-sm transition hover:border-[#3A3A3A]"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleDelete}
-                        disabled={loading}
-                        className="flex-1 py-2.5 rounded-lg bg-red-600 text-white font-bold text-sm hover:bg-red-700 disabled:opacity-50 transition"
-                    >
-                        {loading ? "Deleting…" : "Delete"}
-                    </button>
-                </div>
-            </div>
-        </div>
+        <AdminConfirmModal
+            title="Deactivate Book?"
+            message={`"${book.title}" will be hidden from the storefront. You can reactivate it later.`}
+            dangerous
+            loading={loading}
+            onConfirm={handleDelete}
+            onCancel={onClose}
+        />
     );
 };
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main Page ──────────────────────────────────────────────────────────────────
 
 const AdminBooksPage = () => {
     const navigate = useNavigate();
+    const { addToast } = useToast();
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editTarget, setEditTarget] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [activeBusyId, setActiveBusyId] = useState(null);
 
     useEffect(() => {
         const load = async () => {
@@ -229,7 +364,7 @@ const AdminBooksPage = () => {
                 const data = await adminService.getBooks();
                 setBooks(data);
             } catch {
-                /* silent — error shown via empty state */
+                /* silent */
             } finally {
                 setLoading(false);
             }
@@ -245,8 +380,34 @@ const AdminBooksPage = () => {
     };
 
     const handleDeleted = (id) => {
-        setBooks((prev) => prev.filter((b) => b._id !== id));
+        // Soft delete — just mark as inactive in UI
+        setBooks((prev) =>
+            prev.map((b) => (b._id === id ? { ...b, isActive: false } : b)),
+        );
         setDeleteTarget(null);
+    };
+
+    const toggleActive = async (book) => {
+        setActiveBusyId(book._id);
+        try {
+            const fd = new FormData();
+            fd.append("isActive", !book.isActive);
+            const updated = await adminService.updateBook(book._id, fd);
+            setBooks((prev) =>
+                prev.map((b) => (b._id === book._id ? updated : b)),
+            );
+            addToast(
+                updated.isActive ? "Book activated" : "Book deactivated",
+                "success",
+            );
+        } catch (err) {
+            addToast(
+                err.response?.data?.message || "Failed to update",
+                "error",
+            );
+        } finally {
+            setActiveBusyId(null);
+        }
     };
 
     return (
@@ -270,13 +431,14 @@ const AdminBooksPage = () => {
             </div>
 
             {/* Table */}
-            <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
+            <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl overflow-x-auto">
+                <table className="w-full min-w-[980px] text-sm">
                     <thead className="border-b border-[#2A2A2A] text-gray-400 text-xs uppercase tracking-wide">
                         <tr>
                             <th className="px-5 py-4 text-left">Book</th>
                             <th className="px-5 py-4 text-left">Category</th>
                             <th className="px-5 py-4 text-left">Price</th>
+                            <th className="px-5 py-4 text-left">Discount</th>
                             <th className="px-5 py-4 text-left">Stock</th>
                             <th className="px-5 py-4 text-left">Status</th>
                             <th className="px-5 py-4 text-right">Actions</th>
@@ -286,18 +448,18 @@ const AdminBooksPage = () => {
                         {loading ? (
                             <Spinner />
                         ) : books.length === 0 ? (
-                            <Empty cols={6} />
+                            <Empty cols={7} />
                         ) : (
                             books.map((book) => (
                                 <tr
                                     key={book._id}
                                     className="hover:bg-[#161616] transition"
                                 >
-                                    {/* Book info */}
                                     <td className="px-5 py-3">
                                         <div className="flex items-center gap-3">
                                             <img
                                                 src={
+                                                    book.coverImage ||
                                                     book.imageUrl ||
                                                     "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=60"
                                                 }
@@ -320,6 +482,17 @@ const AdminBooksPage = () => {
                                     <td className="px-5 py-3 text-[var(--color-primary-gold)] font-medium">
                                         {formatPrice(book.price)}
                                     </td>
+                                    <td className="px-5 py-3 text-gray-400">
+                                        {book.discount ? (
+                                            <span className="text-green-400">
+                                                {book.discount}% off
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-600">
+                                                —
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="px-5 py-3">
                                         <span
                                             className={
@@ -333,11 +506,7 @@ const AdminBooksPage = () => {
                                     </td>
                                     <td className="px-5 py-3">
                                         <span
-                                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                book.isActive
-                                                    ? "bg-green-900/40 text-green-400"
-                                                    : "bg-red-900/40 text-red-400"
-                                            }`}
+                                            className={`px-2 py-1 rounded-full text-xs font-medium ${book.isActive ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"}`}
                                         >
                                             {book.isActive
                                                 ? "Active"
@@ -356,12 +525,33 @@ const AdminBooksPage = () => {
                                             </button>
                                             <button
                                                 onClick={() =>
-                                                    setDeleteTarget(book)
+                                                    toggleActive(book)
                                                 }
-                                                className="px-3 py-1.5 rounded-lg border border-[#2A2A2A] text-gray-300 text-xs hover:border-red-500 hover:text-red-400 transition"
+                                                disabled={
+                                                    activeBusyId === book._id
+                                                }
+                                                className={`px-3 py-1.5 rounded-lg border text-xs transition disabled:opacity-50 ${
+                                                    book.isActive
+                                                        ? "border-yellow-600 text-yellow-400 hover:bg-yellow-700 hover:text-white"
+                                                        : "border-green-600 text-green-400 hover:bg-green-700 hover:text-white"
+                                                }`}
                                             >
-                                                Delete
+                                                {activeBusyId === book._id
+                                                    ? "…"
+                                                    : book.isActive
+                                                      ? "Deactivate"
+                                                      : "Activate"}
                                             </button>
+                                            {book.isActive && (
+                                                <button
+                                                    onClick={() =>
+                                                        setDeleteTarget(book)
+                                                    }
+                                                    className="px-3 py-1.5 rounded-lg border border-[#2A2A2A] text-gray-300 text-xs hover:border-red-500 hover:text-red-400 transition"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

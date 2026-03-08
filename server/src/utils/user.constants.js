@@ -12,5 +12,5 @@ export const ERROR_MESSAGES = {
     USER_NOT_FOUND: "User not found",
     USER_EXISTS: "User with email already exists",
     INVALID_CREDENTIALS: "Password or email is incorrect",
-    ACCOUNT_BLOCKED: "This account has been blocked",
+    ACCOUNT_BLOCKED: "You are banned by our website",
 };

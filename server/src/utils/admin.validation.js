@@ -8,6 +8,10 @@ export const createBookSchema = Joi.object({
     stock: Joi.number().min(0).required(),
     discount: Joi.number().min(0).max(100).optional(),
     category: Joi.string().required().trim(),
+    language: Joi.string().optional().trim().allow("", null),
+    pages: Joi.number().min(1).optional().allow("", null),
+    publisher: Joi.string().optional().trim().allow("", null),
+    publishedDate: Joi.date().optional().allow("", null),
     // imageUrl is no longer manually required in req.body, as we extract it via multer/cloudinary
     imageUrl: Joi.string().uri().optional().trim(),
     isActive: Joi.boolean().optional(),
@@ -21,6 +25,10 @@ export const updateBookSchema = Joi.object({
     stock: Joi.number().min(0).optional(),
     discount: Joi.number().min(0).max(100).optional(),
     category: Joi.string().optional().trim(),
+    language: Joi.string().optional().trim().allow("", null),
+    pages: Joi.number().min(1).optional().allow("", null),
+    publisher: Joi.string().optional().trim().allow("", null),
+    publishedDate: Joi.date().optional().allow("", null),
     imageUrl: Joi.string().uri().optional().trim(),
     isActive: Joi.boolean().optional(),
 });

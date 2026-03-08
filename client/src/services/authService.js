@@ -47,16 +47,28 @@ export const authService = {
         return response.data;
     },
 
-    forgotPassword: async (email) => {
-        const response = await api.post("/users/forgot-password", { email });
+    sendOtp: async (email) => {
+        const response = await api.post("/users/send-otp", { email });
         return response.data;
     },
 
-    resetPassword: async (token, newPassword) => {
+    verifyOtp: async (email, otp) => {
+        const response = await api.post("/users/verify-otp", { email, otp });
+        return response.data;
+    },
+
+    resetPasswordOtp: async (email, newPassword) => {
         const response = await api.post("/users/reset-password", {
-            token,
+            email,
             newPassword,
         });
+        // Backend returns user + tokens for auto-login
+        const { accessToken, refreshToken, user } = response.data.data;
+        if (accessToken) {
+            localStorage.setItem("token", accessToken);
+            localStorage.setItem("refreshToken", refreshToken);
+            localStorage.setItem("user", JSON.stringify(user));
+        }
         return response.data;
     },
 

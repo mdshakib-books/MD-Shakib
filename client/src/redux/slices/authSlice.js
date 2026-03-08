@@ -72,29 +72,45 @@ export const fetchProfile = createAsyncThunk(
     },
 );
 
-export const forgotPassword = createAsyncThunk(
-    "auth/forgotPassword",
+// ── OTP-based password reset thunks ──────────────────────────────────────────
+
+export const sendOtp = createAsyncThunk(
+    "auth/sendOtp",
     async (email, { rejectWithValue }) => {
         try {
-            const data = await authService.forgotPassword(email);
+            const data = await authService.sendOtp(email);
             return data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.message || "Failed to send reset email",
+                err.response?.data?.message || "Failed to send OTP",
             );
         }
     },
 );
 
-export const resetPassword = createAsyncThunk(
-    "auth/resetPassword",
-    async ({ token, newPassword }, { rejectWithValue }) => {
+export const verifyOtp = createAsyncThunk(
+    "auth/verifyOtp",
+    async ({ email, otp }, { rejectWithValue }) => {
         try {
-            const data = await authService.resetPassword(token, newPassword);
+            const data = await authService.verifyOtp(email, otp);
             return data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.message || "Failed to reset password",
+                err.response?.data?.message || "OTP verification failed",
+            );
+        }
+    },
+);
+
+export const resetPasswordOtp = createAsyncThunk(
+    "auth/resetPasswordOtp",
+    async ({ email, newPassword }, { rejectWithValue }) => {
+        try {
+            const data = await authService.resetPasswordOtp(email, newPassword);
+            return data.data?.user || null;
+        } catch (err) {
+            return rejectWithValue(
+                err.response?.data?.message || "Password reset failed",
             );
         }
     },
@@ -198,27 +214,45 @@ const authSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
-            // Forgot Password
-            .addCase(forgotPassword.pending, (state) => {
+            // Send OTP
+            .addCase(sendOtp.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(forgotPassword.fulfilled, (state) => {
+            .addCase(sendOtp.fulfilled, (state) => {
                 state.loading = false;
             })
-            .addCase(forgotPassword.rejected, (state, action) => {
+            .addCase(sendOtp.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })
-            // Reset Password
-            .addCase(resetPassword.pending, (state) => {
+            // Verify OTP
+            .addCase(verifyOtp.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(resetPassword.fulfilled, (state) => {
+            .addCase(verifyOtp.fulfilled, (state) => {
                 state.loading = false;
             })
-            .addCase(resetPassword.rejected, (state, action) => {
+            .addCase(verifyOtp.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            // Reset Password (OTP)
+            .addCase(resetPasswordOtp.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(resetPasswordOtp.fulfilled, (state, action) => {
+                state.loading = false;
+                if (action.payload) {
+                    state.user = action.payload;
+                    state.token = localStorage.getItem("token");
+                    state.refreshToken = localStorage.getItem("refreshToken");
+                    state.isAuthenticated = true;
+                }
+            })
+            .addCase(resetPasswordOtp.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })

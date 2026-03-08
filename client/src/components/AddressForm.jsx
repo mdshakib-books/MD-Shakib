@@ -1,5 +1,21 @@
 import React, { useState } from "react";
 import { addressService } from "../services/addressService";
+import { validateField, inputBorder } from "../utils/validators";
+
+const inputCls = (err) =>
+    `bg-[#0B0B0B] border rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:outline-none transition w-full ${inputBorder(err)}`;
+
+const INITIAL = {
+    fullName: "",
+    phone: "",
+    pincode: "",
+    state: "",
+    city: "",
+    houseNo: "",
+    area: "",
+    landmark: "",
+    isDefault: false,
+};
 
 const AddressForm = ({ address, onClose, onSuccess }) => {
     const [form, setForm] = useState({
@@ -13,24 +29,65 @@ const AddressForm = ({ address, onClose, onSuccess }) => {
         landmark: address?.landmark || "",
         isDefault: address?.isDefault || false,
     });
+    const [errors, setErrors] = useState({});
+    const [submitting, setSubmitting] = useState(false);
 
     const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setForm((p) => ({ ...p, [name]: value }));
+        if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+    };
+
+    // ── validate all address fields ───────────────────────────────────────────
+    const validate = () => {
+        const e = {};
+
+        // Name — letters only
+        const nameErr = validateField("name", form.fullName);
+        if (nameErr) e.fullName = nameErr;
+
+        // Phone — 10 digits
+        const phoneErr = validateField("phone", form.phone);
+        if (phoneErr) e.phone = phoneErr;
+
+        // Pincode — 6 digits
+        const pinErr = validateField("pincode", form.pincode);
+        if (pinErr) e.pincode = pinErr;
+
+        // Required text fields — min 2 chars
+        const required = [
+            ["city", "City"],
+            ["state", "State"],
+            ["houseNo", "House / Flat No."],
+            ["area", "Area / Street"],
+        ];
+        required.forEach(([key, label]) => {
+            if (!form[key] || form[key].trim().length < 2)
+                e[key] = `${label} is required (min 2 characters)`;
+        });
+
+        setErrors(e);
+        return Object.keys(e).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validate()) return;
 
-        if (address) {
-            await addressService.updateAddress(address._id, form);
-        } else {
-            await addressService.addAddress(form);
+        setSubmitting(true);
+        try {
+            if (address) {
+                await addressService.updateAddress(address._id, form);
+            } else {
+                await addressService.addAddress(form);
+            }
+            onSuccess();
+        } catch (err) {
+            console.error("Address save error:", err);
+        } finally {
+            setSubmitting(false);
         }
-
-        onSuccess();
     };
-
-    const inputStyle = "bg-[#0B0B0B] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary-gold)] w-full transition-colors";
 
     return (
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-6 mb-8">
@@ -38,100 +95,183 @@ const AddressForm = ({ address, onClose, onSuccess }) => {
                 {address ? "Edit Address" : "Add New Address"}
             </h2>
 
-            <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
-                <input
-                    name="fullName"
-                    placeholder="Full Name"
-                    value={form.fullName}
-                    onChange={handleChange}
-                    className={inputStyle}
-                    required
-                />
+            <form
+                onSubmit={handleSubmit}
+                noValidate
+                className="grid md:grid-cols-2 gap-4"
+            >
+                {/* Full Name */}
+                <div>
+                    <input
+                        name="fullName"
+                        placeholder="Full Name"
+                        value={form.fullName}
+                        onChange={handleChange}
+                        className={inputCls(errors.fullName)}
+                    />
+                    {errors.fullName && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.fullName}
+                        </p>
+                    )}
+                </div>
 
-                <input
-                    className={inputStyle}
-                    name="phone"
-                    placeholder="Phone Number"
-                    value={form.phone}
-                    onChange={handleChange}
-                    required
-                />
+                {/* Phone */}
+                <div>
+                    <input
+                        name="phone"
+                        placeholder="Phone Number (10 digits)"
+                        value={form.phone}
+                        onChange={handleChange}
+                        maxLength={10}
+                        className={inputCls(errors.phone)}
+                    />
+                    {errors.phone && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.phone}
+                        </p>
+                    )}
+                </div>
 
-                <input
-                    name="pincode"
-                    placeholder="Pincode"
-                    value={form.pincode}
-                    onChange={handleChange}
-                    className={inputStyle}
-                    required
-                />
+                {/* Pincode */}
+                <div>
+                    <input
+                        name="pincode"
+                        placeholder="Pincode (6 digits)"
+                        value={form.pincode}
+                        onChange={handleChange}
+                        maxLength={6}
+                        className={inputCls(errors.pincode)}
+                    />
+                    {errors.pincode && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.pincode}
+                        </p>
+                    )}
+                </div>
 
-                <input
-                    name="city"
-                    placeholder="City"
-                    value={form.city}
-                    onChange={handleChange}
-                    className={inputStyle}
-                    required
-                />
+                {/* City */}
+                <div>
+                    <input
+                        name="city"
+                        placeholder="City"
+                        value={form.city}
+                        onChange={handleChange}
+                        className={inputCls(errors.city)}
+                    />
+                    {errors.city && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.city}
+                        </p>
+                    )}
+                </div>
 
-                <input
-                    name="state"
-                    placeholder="State"
-                    value={form.state}
-                    onChange={handleChange}
-                    className={inputStyle}
-                    required
-                />
+                {/* State */}
+                <div>
+                    <input
+                        name="state"
+                        placeholder="State"
+                        value={form.state}
+                        onChange={handleChange}
+                        className={inputCls(errors.state)}
+                    />
+                    {errors.state && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.state}
+                        </p>
+                    )}
+                </div>
 
-                <input
-                    name="houseNo"
-                    placeholder="House / Flat No."
-                    value={form.houseNo}
-                    onChange={handleChange}
-                    className={inputStyle}
-                />
+                {/* House No */}
+                <div>
+                    <input
+                        name="houseNo"
+                        placeholder="House / Flat No."
+                        value={form.houseNo}
+                        onChange={handleChange}
+                        className={inputCls(errors.houseNo)}
+                    />
+                    {errors.houseNo && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.houseNo}
+                        </p>
+                    )}
+                </div>
 
-                <input
-                    name="area"
-                    placeholder="Area / Street"
-                    value={form.area}
-                    onChange={handleChange}
-                    className={inputStyle}
-                    required
-                />
+                {/* Area */}
+                <div>
+                    <input
+                        name="area"
+                        placeholder="Area / Street"
+                        value={form.area}
+                        onChange={handleChange}
+                        className={inputCls(errors.area)}
+                    />
+                    {errors.area && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.area}
+                        </p>
+                    )}
+                </div>
 
-                <input
-                    name="landmark"
-                    placeholder="Landmark (Optional)"
-                    value={form.landmark}
-                    onChange={handleChange}
-                    className={inputStyle}
-                />
+                {/* Landmark (optional) */}
+                <div>
+                    <input
+                        name="landmark"
+                        placeholder="Landmark (Optional)"
+                        value={form.landmark}
+                        onChange={handleChange}
+                        className={inputCls(false)}
+                    />
+                </div>
 
-                <label className="flex items-center gap-2 md:col-span-2 text-sm">
+                {/* Default checkbox */}
+                <label className="flex items-center gap-2 md:col-span-2 text-sm text-gray-400 cursor-pointer">
                     <input
                         type="checkbox"
                         checked={form.isDefault}
                         onChange={(e) =>
                             setForm({ ...form, isDefault: e.target.checked })
                         }
+                        className="accent-[var(--color-primary-gold)]"
                     />
                     Set as default address
                 </label>
 
-                <div className="flex gap-4 md:col-span-2 mt-4">
+                {/* Actions */}
+                <div className="flex gap-4 md:col-span-2 mt-2">
                     <button
                         type="submit"
-                        className="bg-[var(--color-primary-gold)] text-black px-6 py-2 rounded-lg font-semibold"
+                        disabled={submitting}
+                        className="flex items-center gap-2 bg-[var(--color-primary-gold)] text-black px-6 py-2.5 rounded-lg font-semibold transition hover:bg-[var(--color-accent-gold)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Save Address
+                        {submitting ? (
+                            <svg
+                                className="animate-spin w-4 h-4"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8v8H4z"
+                                />
+                            </svg>
+                        ) : null}
+                        {submitting ? "Saving..." : "Save Address"}
                     </button>
-
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-gray-400 hover:text-white"
+                        className="text-gray-400 hover:text-white transition text-sm"
                     >
                         Cancel
                     </button>

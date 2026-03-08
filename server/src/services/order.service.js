@@ -20,6 +20,8 @@ import {
     emitOrderStatusUpdated,
 } from "../sockets/order.socket.js";
 import paymentService from "./payment.service.js";
+import User from "../models/user.model.js";
+import { sendOrderConfirmationMail } from "../utils/mail.js";
 
 class OrderService {
     async createOrder(userId, addressId, paymentMethod, idempotencyKey) {
@@ -123,6 +125,20 @@ class OrderService {
 
         // Clear the cart after successful order creation
         await Cart.updateOne({ userId }, { items: [] });
+
+        // Send order confirmation email (fire-and-forget)
+        try {
+            const user = await User.findById(userId)
+                .select("name email")
+                .lean();
+            if (user) {
+                sendOrderConfirmationMail(user, newOrder).catch((e) =>
+                    console.error("Order email error:", e),
+                );
+            }
+        } catch (e) {
+            console.error("Could not fetch user for order email:", e);
+        }
 
         return responseData;
     }

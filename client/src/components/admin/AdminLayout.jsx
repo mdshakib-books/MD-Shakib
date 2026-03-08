@@ -29,7 +29,11 @@ const AdminLayout = ({ children }) => {
     };
 
     const menu = [
-        { name: "Dashboard", path: "/admin", icon: <FiHome size={20} /> },
+        {
+            name: "Dashboard",
+            path: "/admin/dashboard",
+            icon: <FiHome size={20} />,
+        },
         {
             name: "Manage Books",
             path: "/admin/books",
@@ -58,6 +62,7 @@ const AdminLayout = ({ children }) => {
                     className={`sticky top-[72px] h-[calc(100vh-72px)]
                     bg-[#111111] border-r border-[#2A2A2A]
                     transition-all duration-300
+                    hidden md:block
                     ${collapsed ? "w-[80px]" : "w-64"}
                     `}
                 >
@@ -105,7 +110,12 @@ const AdminLayout = ({ children }) => {
 
                     <nav className="mt-6 flex flex-col items-center">
                         {menu.map((item) => {
-                            const active = location.pathname === item.path;
+                            const active =
+                                location.pathname === item.path ||
+                                (item.path === "/admin/dashboard" &&
+                                    location.pathname === "/admin") ||
+                                (item.path !== "/admin/dashboard" &&
+                                    location.pathname.startsWith(item.path));
 
                             return (
                                 <Link
@@ -206,7 +216,7 @@ const AdminLayout = ({ children }) => {
 
                 {/* CONTENT */}
 
-                <main className="flex-1 p-10">{children}</main>
+                <main className="flex-1 p-4 md:p-10">{children}</main>
             </div>
         </div>
     );

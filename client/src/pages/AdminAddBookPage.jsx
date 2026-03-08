@@ -13,6 +13,10 @@ const INITIAL = {
     category: "",
     price: "",
     stock: "",
+    language: "",
+    pages: "",
+    publisher: "",
+    publishedDate: "",
 };
 
 const AdminAddBookPage = () => {
@@ -75,8 +79,10 @@ const AdminAddBookPage = () => {
         }
 
         const fd = new FormData();
-        Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-        fd.append("image", imageFile);
+        Object.entries(form).forEach(([k, v]) => {
+            if (v !== "") fd.append(k, v);
+        });
+        fd.append("images", imageFile);
 
         setSubmitting(true);
         try {
@@ -210,6 +216,33 @@ const AdminAddBookPage = () => {
                                 "e.g. 299",
                             )}
                             {field("Stock *", "stock", "number", "e.g. 50")}
+                        </div>
+
+                        {/* Optional Product Details */}
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">
+                                Product Details (optional)
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                {field(
+                                    "Language",
+                                    "language",
+                                    "text",
+                                    "e.g. Arabic, English",
+                                )}
+                                {field("Pages", "pages", "number", "e.g. 450")}
+                                {field(
+                                    "Publisher",
+                                    "publisher",
+                                    "text",
+                                    "e.g. Darussalam",
+                                )}
+                                {field(
+                                    "Published Date",
+                                    "publishedDate",
+                                    "date",
+                                )}
+                            </div>
                         </div>
                     </div>
 

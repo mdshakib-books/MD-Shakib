@@ -8,8 +8,11 @@ import {
     updateProfile,
     changePassword,
     deleteAccount,
-    forgotPassword,
+    sendOTP,
+    verifyOTP,
     resetPassword,
+    sendRegistrationOTP,
+    verifyRegistrationOTP,
 } from "../controllers/user.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
@@ -18,8 +21,11 @@ import {
     loginSchema,
     updateProfileSchema,
     changePasswordSchema,
-    forgotPasswordSchema,
-    resetPasswordSchema,
+    sendOtpSchema,
+    verifyOtpSchema,
+    resetPasswordOtpSchema,
+    sendRegistrationOtpSchema,
+    verifyRegistrationOtpSchema,
 } from "../utils/user.validation.js";
 
 const router = Router();
@@ -27,9 +33,24 @@ const router = Router();
 // Public routes
 router.post("/register", validate(registerSchema), registerUser);
 router.post("/login", validate(loginSchema), loginUser);
-router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
-router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 router.post("/refresh-token", refreshToken);
+
+// OTP-based password reset (replaces old token-based flow)
+router.post("/send-otp", validate(sendOtpSchema), sendOTP);
+router.post("/verify-otp", validate(verifyOtpSchema), verifyOTP);
+router.post("/reset-password", validate(resetPasswordOtpSchema), resetPassword);
+
+// Registration email OTP
+router.post(
+    "/send-registration-otp",
+    validate(sendRegistrationOtpSchema),
+    sendRegistrationOTP,
+);
+router.post(
+    "/verify-registration-otp",
+    validate(verifyRegistrationOtpSchema),
+    verifyRegistrationOTP,
+);
 
 // Secured routes
 router.use(verifyJWT);
