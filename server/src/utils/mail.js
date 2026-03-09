@@ -1,28 +1,26 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,         // Changed from 587
-    secure: true,      // Changed to true for port 465
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL,
-        pass: process.env.PASS, 
+        pass: process.env.PASS,
     },
-    tls: {
-        rejectUnauthorized: false
+});
+
+// Verify SMTP connection on startup
+transporter.verify((err, success) => {
+    if (err) {
+        console.error("SMTP CONNECTION ERROR:", err.message);
+    } else {
+        console.log("SMTP READY: Connected to Gmail successfully!");
     }
 });
 
-transporter.verify((err, success) => {
-    if (err) {
-        console.log("SMTP ERROR:", err);
-    } else {
-        console.log("SMTP READY");
-    }
-});
 // ── OTP for password reset ────────────────────────────────────────────────────
 export const sendOtp = async (to, otp) => {
     try {
