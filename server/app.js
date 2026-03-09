@@ -8,6 +8,9 @@ import rateLimit from "express-rate-limit";
 
 const app = express();
 
+// Tell Express to trust the Render proxy to fix rate-limit errors
+app.set("trust proxy", 1);
+
 // Security Headers
 app.use(helmet());
 
