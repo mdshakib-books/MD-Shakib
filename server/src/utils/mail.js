@@ -10,6 +10,7 @@ const transporter = nodemailer.createTransport({
         user: process.env.EMAIL,
         pass: process.env.PASS,
     },
+    family: 4, // Use IPv4 to avoid potential IPv6 issues
 });
 
 // Verify SMTP connection on startup
