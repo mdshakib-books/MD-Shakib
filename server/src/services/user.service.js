@@ -230,7 +230,7 @@ class UserService {
 
         await RegistrationOtp.findOneAndUpdate({ email }, updateDoc, {
             upsert: true,
-            new: true,
+            returnDocument: "after",
         });
 
         await sendRegistrationOtpMail(email, otp);
