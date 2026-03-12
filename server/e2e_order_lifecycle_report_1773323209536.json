@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "startedAt": "2026-03-12T13:46:48.819Z",
+    "baseUrl": "http://localhost:8000/api/v1",
+    "runTag": "e2e-1773323208820",
+    "finishedAt": "2026-03-12T13:46:49.536Z",
+    "primaryOrders": {
+      "codOrderId": null,
+      "onlineOrderId": null,
+      "onlinePaymentId": null
+    }
+  },
+  "lifecycle": [],
+  "edgeCases": [],
+  "verificationPoints": [],
+  "observations": [],
+  "executionNotes": [
+    "MongoDB connection established for DB-level assertions.",
+    "Fatal execution error: No active book with sufficient stock found for E2E test."
+  ],
+  "summary": {
+    "totalChecks": 0,
+    "pass": 0,
+    "fail": 0,
+    "warn": 0,
+    "blocked": 0
+  }
+}

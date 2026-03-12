@@ -7,8 +7,10 @@ import { PAYMENT_STATUS } from "../utils/payment.constants.js";
 import { ORDER_STATUS } from "../utils/order.constants.js";
 import {
     emitNewOrder,
+    emitOrderStatusUpdated,
     emitPaymentSuccess,
     emitPaymentFailed,
+    emitPaymentUpdated,
 } from "../sockets/order.socket.js";
 import { restoreStock } from "../utils/stock.util.js";
 
@@ -86,13 +88,23 @@ class PaymentService {
         order.paymentStatus = "Paid";
         order.isPaid = true;
         order.paidAt = new Date();
-        order.orderStatus = ORDER_STATUS.PAID;
+        if (order.orderStatus !== ORDER_STATUS.CONFIRMED) {
+            order.orderStatus = ORDER_STATUS.CONFIRMED;
+            if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+            order.statusHistory.push({
+                status: ORDER_STATUS.CONFIRMED,
+                timestamp: new Date(),
+                note: "Online payment captured",
+            });
+        }
         await order.save();
 
         // Clear user cart since it is fully successfully paid now
         await Cart.updateOne({ userId: order.userId }, { items: [] });
 
         // Emit live events
+        emitPaymentUpdated(order);
+        emitOrderStatusUpdated(order);
         emitPaymentSuccess(order._id);
         emitNewOrder(order);
 
@@ -114,10 +126,39 @@ class PaymentService {
             // Since it failed completely, restore the stocks we blocked at creation!
             await restoreStock(order.items);
 
+            emitPaymentUpdated(order);
             emitPaymentFailed(order._id, reason);
         }
 
         return true;
+    }
+
+    async retryPaymentIntent(orderId, userId) {
+        const order = await Order.findOne({ _id: orderId, userId });
+        if (!order) throw new ApiError(404, "Order not found");
+        if (order.paymentMethod !== "Online") {
+            throw new ApiError(400, "Retry payment is only allowed for Online orders");
+        }
+        if (order.paymentStatus === "Paid") {
+            throw new ApiError(400, "Payment already completed for this order");
+        }
+
+        const intent = await this.createPaymentIntent(
+            order._id,
+            order.totalAmount,
+            userId,
+        );
+        order.paymentStatus = "Pending";
+        order.isPaid = false;
+        order.paidAt = null;
+        await order.save();
+        emitPaymentUpdated(order);
+
+        return {
+            orderId: order._id,
+            paymentSessionId: intent.id,
+            clientSecret: intent.clientSecret,
+        };
     }
 }
 

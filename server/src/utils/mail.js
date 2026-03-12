@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import dotenv from "dotenv";
+import EmailLog from "../models/emailLog.model.js";
 dotenv.config();
 
 // Initialize Google OAuth2 Client
@@ -14,6 +15,36 @@ oAuth2Client.setCredentials({
 });
 
 const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+
+const toProviderResponseString = (value) => {
+    if (!value) return "";
+    try {
+        return typeof value === "string" ? value : JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+};
+
+const writeEmailLog = async ({
+    orderId = null,
+    recipient,
+    eventType,
+    status,
+    providerResponse = "",
+}) => {
+    try {
+        await EmailLog.create({
+            orderId,
+            recipient,
+            eventType,
+            status,
+            providerResponse: toProviderResponseString(providerResponse),
+            timestamp: new Date(),
+        });
+    } catch (error) {
+        console.error("EMAIL LOG WRITE ERROR:", error?.message || error);
+    }
+};
 
 // ── Main Engine: Sends email via HTTP API (Bypasses Render's SMTP Block) ──
 const sendEmailViaGmailAPI = async (to, subject, htmlContent) => {
@@ -37,16 +68,22 @@ const sendEmailViaGmailAPI = async (to, subject, htmlContent) => {
         .replace(/\//g, "_")
         .replace(/=+$/, "");
 
-    await gmail.users.messages.send({
+    const response = await gmail.users.messages.send({
         userId: "me",
         requestBody: {
             raw: encodedMessage,
         },
     });
+    return response?.data || {};
 };
 
 // ── OTP for password reset ────────────────────────────────────────────────────
 export const sendOtp = async (to, otp) => {
+    await writeEmailLog({
+        recipient: to,
+        eventType: "PASSWORD_RESET_OTP",
+        status: "queued",
+    });
     try {
         const html = `
             <div style="font-family:Inter,sans-serif;max-width:480px;margin:auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
@@ -72,13 +109,25 @@ export const sendOtp = async (to, otp) => {
                 </div>
             </div>
         `;
-        await sendEmailViaGmailAPI(
+        const providerRes = await sendEmailViaGmailAPI(
             to,
             "OTP Verification for Password Reset — MD Shakib Books",
             html,
         );
+        await writeEmailLog({
+            recipient: to,
+            eventType: "PASSWORD_RESET_OTP",
+            status: "sent",
+            providerResponse: providerRes,
+        });
         console.log("OTP email sent to:", to);
     } catch (error) {
+        await writeEmailLog({
+            recipient: to,
+            eventType: "PASSWORD_RESET_OTP",
+            status: "failed",
+            providerResponse: error?.message || error,
+        });
         console.error("MAIL ERROR (OTP):", error);
         throw error;
     }
@@ -86,15 +135,32 @@ export const sendOtp = async (to, otp) => {
 
 // ── OTP for delivery (legacy) ─────────────────────────────────────────────────
 export const sendOtpDelivery = async (user, otp) => {
+    await writeEmailLog({
+        recipient: user.email,
+        eventType: "DELIVERY_OTP",
+        status: "queued",
+    });
     try {
         const html = `<p>Your delivery OTP is <strong>${otp}</strong>. Do not share it with anyone. It expires in 5 minutes.</p>`;
-        await sendEmailViaGmailAPI(
+        const providerRes = await sendEmailViaGmailAPI(
             user.email,
             "OTP Verification for Delivery — MD Shakib Books",
             html,
         );
+        await writeEmailLog({
+            recipient: user.email,
+            eventType: "DELIVERY_OTP",
+            status: "sent",
+            providerResponse: providerRes,
+        });
         console.log("Delivery OTP email sent to:", user.email);
     } catch (error) {
+        await writeEmailLog({
+            recipient: user.email,
+            eventType: "DELIVERY_OTP",
+            status: "failed",
+            providerResponse: error?.message || error,
+        });
         console.error("MAIL ERROR (Delivery OTP):", error);
         throw error;
     }
@@ -102,6 +168,12 @@ export const sendOtpDelivery = async (user, otp) => {
 
 // ── Order confirmation ────────────────────────────────────────────────────────
 export const sendOrderConfirmationMail = async (user, order) => {
+    await writeEmailLog({
+        orderId: order?._id || null,
+        recipient: user.email,
+        eventType: "ORDER_CONFIRMATION",
+        status: "queued",
+    });
     try {
         const itemsHtml = order.items
             .map(
@@ -166,19 +238,38 @@ export const sendOrderConfirmationMail = async (user, order) => {
                 </div>
             </div>
         `;
-        await sendEmailViaGmailAPI(
+        const providerRes = await sendEmailViaGmailAPI(
             user.email,
             `Order Confirmed #${order._id} — MD Shakib Books`,
             html,
         );
+        await writeEmailLog({
+            orderId: order?._id || null,
+            recipient: user.email,
+            eventType: "ORDER_CONFIRMATION",
+            status: "sent",
+            providerResponse: providerRes,
+        });
         console.log("Order confirmation email sent to:", user.email);
     } catch (error) {
+        await writeEmailLog({
+            orderId: order?._id || null,
+            recipient: user.email,
+            eventType: "ORDER_CONFIRMATION",
+            status: "failed",
+            providerResponse: error?.message || error,
+        });
         console.error("MAIL ERROR (Order Confirmation):", error);
     }
 };
 
 // ── Registration OTP ──────────────────────────────────────────────────────────
 export const sendRegistrationOtp = async (email, otp) => {
+    await writeEmailLog({
+        recipient: email,
+        eventType: "REGISTRATION_OTP",
+        status: "queued",
+    });
     try {
         const html = `
             <div style="font-family:Inter,sans-serif;max-width:480px;margin:auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
@@ -204,13 +295,25 @@ export const sendRegistrationOtp = async (email, otp) => {
                 </div>
             </div>
         `;
-        await sendEmailViaGmailAPI(
+        const providerRes = await sendEmailViaGmailAPI(
             email,
             "Verify your email — MD Shakib Books",
             html,
         );
+        await writeEmailLog({
+            recipient: email,
+            eventType: "REGISTRATION_OTP",
+            status: "sent",
+            providerResponse: providerRes,
+        });
         console.log("Registration OTP sent to:", email);
     } catch (error) {
+        await writeEmailLog({
+            recipient: email,
+            eventType: "REGISTRATION_OTP",
+            status: "failed",
+            providerResponse: error?.message || error,
+        });
         console.error("MAIL ERROR (Registration OTP):", error);
         throw error;
     }

@@ -4,13 +4,19 @@ export const ADMIN_ROLES = {
 };
 
 export const ORDER_STATUS_TRANSITIONS = {
-    Pending: ["Paid", "Cancelled"],
-    Paid: ["Packed", "Cancelled"],
-    Packed: ["Shipped"],
-    Shipped: ["Delivered"],
-    Delivered: [],
-    Cancelled: [],
-    Returned: [],
+    "Pending": ["Confirmed", "Cancelled"],
+    "Confirmed": ["Packed", "Cancelled"],
+    "Packed": ["Shipped", "Cancelled"],
+    "Shipped": ["Out for Delivery", "Cancelled"],
+    "Out for Delivery": ["Delivered", "Cancelled"],
+    "Delivered": ["Replacement Requested"],
+    "Cancelled": [],
+    "Returned": [],
+    "Replacement Requested": ["Replacement Approved", "Replacement Rejected"],
+    "Replacement Approved": ["Replacement Shipped"],
+    "Replacement Rejected": [],
+    "Replacement Shipped": ["Replacement Delivered"],
+    "Replacement Delivered": [],
 };
 
 export const DASHBOARD_CONFIG = {

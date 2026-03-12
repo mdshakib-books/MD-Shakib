@@ -59,6 +59,23 @@ const getOrderById = async (id) => {
     return res.data.data;
 };
 
+const createShipment = async (id) => {
+    const res = await api.post(`/admin/orders/${id}/shipment`);
+    return res.data.data;
+};
+
+const approveReplacement = async (id) => {
+    const res = await api.post(`/admin/orders/${id}/replacement/approve`);
+    return res.data.data;
+};
+
+const rejectReplacement = async (id, reason) => {
+    const res = await api.post(`/admin/orders/${id}/replacement/reject`, {
+        reason,
+    });
+    return res.data.data;
+};
+
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
 const getUsers = async (params = {}) => {
@@ -118,6 +135,9 @@ export const adminService = {
     getOrderById,
     updateOrderStatus,
     cancelOrder,
+    createShipment,
+    approveReplacement,
+    rejectReplacement,
     getUsers,
     getUserById,
     blockUser,

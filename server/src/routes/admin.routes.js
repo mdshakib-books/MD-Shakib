@@ -12,6 +12,9 @@ import {
     getOrderById,
     updateOrderStatus,
     cancelOrderByAdmin,
+    createShipment,
+    approveReplacement,
+    rejectReplacement,
     getAllUsers,
     getUserById,
     blockUser,
@@ -30,6 +33,7 @@ import {
     updateStockSchema,
     updateOrderStatusSchema,
     blockUserSchema,
+    rejectReplacementSchema,
 } from "../utils/admin.validation.js";
 
 const router = Router();
@@ -66,6 +70,13 @@ router.patch(
     updateOrderStatus,
 );
 router.patch("/orders/:id/cancel", cancelOrderByAdmin);
+router.post("/orders/:id/shipment", createShipment);
+router.post("/orders/:id/replacement/approve", approveReplacement);
+router.post(
+    "/orders/:id/replacement/reject",
+    validate(rejectReplacementSchema),
+    rejectReplacement,
+);
 
 // ================= USERS =================
 router.get("/users", getAllUsers);

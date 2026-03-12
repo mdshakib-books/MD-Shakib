@@ -39,6 +39,43 @@ const statusHistorySchema = new mongoose.Schema(
     { _id: false },
 );
 
+// Shipping details
+const shippingSchema = new mongoose.Schema(
+    {
+        courier: { type: String, default: "Delhivery" },
+        awb: { type: String },
+        trackingUrl: { type: String },
+        pickupScheduled: { type: Boolean, default: false },
+        shippedAt: { type: Date },
+        deliveredAt: { type: Date },
+    },
+    { _id: false }
+);
+
+// Replacement details
+const replacementSchema = new mongoose.Schema(
+    {
+        replacementRequested: { type: Boolean, default: false },
+        replacementStatus: {
+            type: String,
+            enum: [
+                "None",
+                "Requested",
+                "Approved",
+                "Rejected",
+                "Replacement Shipped",
+                "Replacement Delivered",
+            ],
+            default: "None",
+        },
+        replacementReason: { type: String },
+        replacementRequestedAt: { type: Date },
+        replacementRejectedAt: { type: Date },
+        replacementRejectionReason: { type: String, default: "" },
+    },
+    { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
     {
         userId: {
@@ -74,11 +111,17 @@ const orderSchema = new mongoose.Schema(
             required: true,
             enum: [
                 "Pending",
-                "Paid",
+                "Confirmed",
                 "Packed",
                 "Shipped",
+                "Out for Delivery",
                 "Delivered",
                 "Cancelled",
+                "Replacement Requested",
+                "Replacement Approved",
+                "Replacement Rejected",
+                "Replacement Shipped",
+                "Replacement Delivered",
                 "Returned",
             ],
             default: "Pending",
@@ -89,6 +132,8 @@ const orderSchema = new mongoose.Schema(
             type: [statusHistorySchema],
             default: [],
         },
+        shipping: { type: shippingSchema, default: () => ({}) },
+        replacement: { type: replacementSchema, default: () => ({}) },
         cancelReason: { type: String, default: "" },
         isPaid: { type: Boolean, required: true, default: false },
         paidAt: { type: Date },
@@ -100,11 +145,10 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ createdAt: -1 });
 
 // Auto-push the initial "Pending" status entry on creation
-orderSchema.pre("save", function (next) {
+orderSchema.pre("save", function () {
     if (this.isNew && this.statusHistory.length === 0) {
         this.statusHistory.push({ status: "Pending", timestamp: new Date() });
     }
-    next();
 });
 
 const Order = mongoose.model("Order", orderSchema);

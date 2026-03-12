@@ -14,6 +14,13 @@ import {
     ORDER_STATUS_TRANSITIONS,
     DASHBOARD_CONFIG,
 } from "../utils/admin.constants.js";
+import delhiveryService from "./delhivery.service.js";
+import { ORDER_STATUS } from "../utils/order.constants.js";
+import {
+    emitOrderStatusUpdated,
+    emitPaymentUpdated,
+    emitReplacementUpdated,
+} from "../sockets/order.socket.js";
 import {
     revenueAggregationPipeline,
     monthlyRevenuePipeline,
@@ -265,14 +272,56 @@ class AdminService {
             );
         }
 
+        if (newStatus === ORDER_STATUS.SHIPPED) {
+            const hasShipmentDetails = Boolean(
+                order.shipping?.courier &&
+                    order.shipping?.awb &&
+                    order.shipping?.trackingUrl,
+            );
+            if (!hasShipmentDetails) {
+                throw new ApiError(400, "Shipment information missing");
+            }
+        }
+
         order.orderStatus = newStatus;
-        if (newStatus === "Delivered") order.deliveredAt = new Date();
+        if (newStatus === ORDER_STATUS.DELIVERED) {
+            const now = new Date();
+            order.deliveredAt = now;
+            if (!order.shipping) {
+                order.shipping = {};
+            }
+            if (!order.shipping.deliveredAt) {
+                order.shipping.deliveredAt = now;
+            }
+        }
 
         // Append to status audit trail
         if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
         order.statusHistory.push({ status: newStatus, timestamp: new Date() });
 
+        let codPaymentSettled = false;
+        if (
+            newStatus === ORDER_STATUS.DELIVERED &&
+            order.paymentMethod === "COD" &&
+            order.paymentStatus !== "Paid"
+        ) {
+            const paidAt = new Date();
+            order.paymentStatus = "Paid";
+            order.isPaid = true;
+            order.paidAt = paidAt;
+            order.statusHistory.push({
+                status: ORDER_STATUS.DELIVERED,
+                timestamp: paidAt,
+                note: "COD payment confirmed at delivery",
+            });
+            codPaymentSettled = true;
+        }
+
         await order.save();
+        emitOrderStatusUpdated(order);
+        if (codPaymentSettled) {
+            emitPaymentUpdated(order);
+        }
         return order;
     }
 
@@ -313,6 +362,96 @@ class AdminService {
         }
 
         await order.save();
+        emitOrderStatusUpdated(order);
+        if (order.paymentStatus === "Refunded") {
+            emitPaymentUpdated(order);
+        }
+        return order;
+    }
+
+    async createShipment(orderId) {
+        const order = await Order.findById(orderId);
+        if (!order) throw new ApiError(404, "Order not found");
+
+        if (!["Packed", "Confirmed"].includes(order.orderStatus)) {
+            throw new ApiError(400, "Order must be Confirmed or Packed to create a shipment");
+        }
+
+        const shipmentRes = await delhiveryService.createShipment(order);
+
+        order.shipping = {
+            courier: "Delhivery",
+            awb: shipmentRes.awb,
+            trackingUrl: shipmentRes.trackingUrl,
+            pickupScheduled: shipmentRes.pickupScheduled,
+            shippedAt: new Date(),
+        };
+
+        order.orderStatus = ORDER_STATUS.SHIPPED;
+        if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+        order.statusHistory.push({
+            status: ORDER_STATUS.SHIPPED,
+            timestamp: new Date(),
+            note: `Shipment Created. AWB: ${shipmentRes.awb}`,
+        });
+
+        await order.save();
+        emitOrderStatusUpdated(order);
+        return order;
+    }
+
+    async approveReplacement(orderId) {
+        const order = await Order.findById(orderId);
+        if (!order) throw new ApiError(404, "Order not found");
+
+        if (order.orderStatus !== ORDER_STATUS.REPLACEMENT_REQUESTED) {
+            throw new ApiError(400, "No replacement requested for this order");
+        }
+
+        order.orderStatus = ORDER_STATUS.REPLACEMENT_APPROVED;
+        order.replacement.replacementStatus = "Approved";
+
+        if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+        order.statusHistory.push({
+            status: ORDER_STATUS.REPLACEMENT_APPROVED,
+            timestamp: new Date(),
+            note: "Admin approved the replacement request.",
+        });
+
+        await order.save();
+        emitOrderStatusUpdated(order);
+        emitReplacementUpdated(order);
+        return order;
+    }
+
+    async rejectReplacement(orderId, reason) {
+        const order = await Order.findById(orderId);
+        if (!order) throw new ApiError(404, "Order not found");
+
+        if (order.orderStatus !== ORDER_STATUS.REPLACEMENT_REQUESTED) {
+            throw new ApiError(400, "No replacement requested for this order");
+        }
+
+        const trimmedReason = String(reason || "").trim();
+        if (!trimmedReason) {
+            throw new ApiError(400, "Replacement rejection reason is required");
+        }
+
+        order.orderStatus = ORDER_STATUS.REPLACEMENT_REJECTED;
+        order.replacement.replacementStatus = "Rejected";
+        order.replacement.replacementRejectedAt = new Date();
+        order.replacement.replacementRejectionReason = trimmedReason;
+
+        if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+        order.statusHistory.push({
+            status: ORDER_STATUS.REPLACEMENT_REJECTED,
+            timestamp: new Date(),
+            note: `Admin rejected replacement: ${trimmedReason}`,
+        });
+
+        await order.save();
+        emitOrderStatusUpdated(order);
+        emitReplacementUpdated(order);
         return order;
     }
 

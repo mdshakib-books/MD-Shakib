@@ -48,6 +48,7 @@ import bookRouter from "./src/routes/book.routes.js";
 import addressRouter from "./src/routes/address.routes.js";
 import cartRouter from "./src/routes/cart.routes.js";
 import paymentRouter from "./src/routes/payment.routes.js";
+import deliveryRouter from "./src/routes/delivery.routes.js";
 
 // routes declaration
 app.use("/api/v1/users", userRouter);
@@ -57,6 +58,8 @@ app.use("/api/v1/books", bookRouter);
 app.use("/api/v1/addresses", addressRouter);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/payments", paymentRouter);
+app.use("/api/v1/payment", paymentRouter); // Backward-compatible singular alias
+app.use("/api/v1/delhivery", deliveryRouter);
 
 // Error Handling Middleware (Global Error Handler)
 app.use(errorHandler);

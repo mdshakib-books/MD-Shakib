@@ -39,3 +39,14 @@ export const cancelOrder = asyncHandler(async (req, res) => {
         .status(200)
         .json(new ApiResponse(200, result, "Order cancelled efficiently"));
 });
+
+export const requestReplacement = asyncHandler(async (req, res) => {
+    const result = await orderService.requestReplacement(
+        req.params.id,
+        req.user._id,
+        req.body.reason,
+    );
+    return res
+        .status(200)
+        .json(new ApiResponse(200, result, "Replacement requested gracefully"));
+});

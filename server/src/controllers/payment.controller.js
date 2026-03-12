@@ -35,3 +35,15 @@ export const handlePaymentFailure = asyncHandler(async (req, res) => {
         .status(200)
         .json(new ApiResponse(200, {}, "Payment failure registered"));
 });
+
+export const retryPayment = asyncHandler(async (req, res) => {
+    const { orderId } = req.body;
+    const result = await paymentService.retryPaymentIntent(
+        orderId,
+        req.user._id,
+    );
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, result, "Payment intent retried"));
+});

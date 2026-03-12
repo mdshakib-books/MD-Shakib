@@ -13,11 +13,12 @@ import {
 import {
     ORDER_STATUS,
     PAYMENT_METHODS,
-    ORDER_STATUS_TRANSITIONS,
 } from "../utils/order.constants.js";
 import {
     emitNewOrder,
     emitOrderStatusUpdated,
+    emitPaymentUpdated,
+    emitReplacementUpdated,
 } from "../sockets/order.socket.js";
 import paymentService from "./payment.service.js";
 import User from "../models/user.model.js";
@@ -101,8 +102,6 @@ class OrderService {
             // COD implicitly means order is placed
             newOrder.paymentStatus = "Pending";
             await newOrder.save();
-
-            emitNewOrder(newOrder); // Notify Admin
         } else if (paymentMethod === PAYMENT_METHODS.ONLINE) {
             // Initialize Razorpay/Stripe intent
             try {
@@ -122,6 +121,9 @@ class OrderService {
                 );
             }
         }
+
+        // Notify Admin dashboard for both COD and Online orders
+        emitNewOrder(newOrder);
 
         // Clear the cart after successful order creation
         await Cart.updateOne({ userId }, { items: [] });
@@ -183,6 +185,13 @@ class OrderService {
         await restoreStock(order.items);
 
         order.orderStatus = ORDER_STATUS.CANCELLED;
+        order.cancelReason = String(reason || "").trim();
+        if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+        order.statusHistory.push({
+            status: ORDER_STATUS.CANCELLED,
+            timestamp: new Date(),
+            note: order.cancelReason || "Cancelled by user",
+        });
 
         // Trigger refund if already paid
         if (order.paymentStatus === "Paid") {
@@ -192,7 +201,46 @@ class OrderService {
 
         await order.save();
         emitOrderStatusUpdated(order);
+        if (order.paymentStatus === "Refunded") {
+            emitPaymentUpdated(order);
+        }
 
+        return order;
+    }
+
+    async requestReplacement(orderId, userId, reason) {
+        const order = await Order.findOne({ _id: orderId, userId });
+        if (!order) throw new ApiError(404, "Order not found");
+
+        if (order.orderStatus !== ORDER_STATUS.DELIVERED) {
+            throw new ApiError(400, "Replacements can only be requested for Delivered orders");
+        }
+
+        // Check 7 day policy
+        const deliveredDate = order.shipping?.deliveredAt || order.updatedAt;
+        const daysSinceDelivery = (new Date() - new Date(deliveredDate)) / (1000 * 60 * 60 * 24);
+        if (daysSinceDelivery > 7) {
+            throw new ApiError(400, "Replacement can only be requested within 7 days of delivery");
+        }
+
+        order.orderStatus = ORDER_STATUS.REPLACEMENT_REQUESTED;
+        order.replacement = {
+            replacementRequested: true,
+            replacementStatus: "Requested",
+            replacementReason: reason,
+            replacementRequestedAt: new Date(),
+        };
+
+        if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
+        order.statusHistory.push({
+            status: ORDER_STATUS.REPLACEMENT_REQUESTED,
+            timestamp: new Date(),
+            note: reason,
+        });
+
+        await order.save();
+        emitOrderStatusUpdated(order);
+        emitReplacementUpdated(order);
         return order;
     }
 }
