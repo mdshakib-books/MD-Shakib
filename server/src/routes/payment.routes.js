@@ -3,12 +3,14 @@ import {
     createOnlinePaymentIntent,
     verifyPaymentWebhook,
     handlePaymentFailure,
+    retryPayment,
 } from "../controllers/payment.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
     createPaymentIntentSchema,
     verifyPaymentWebhookSchema,
+    retryPaymentSchema,
 } from "../utils/payment.validation.js";
 
 const router = Router();
@@ -28,5 +30,6 @@ router.post(
     createOnlinePaymentIntent,
 );
 router.post("/failure", handlePaymentFailure);
+router.post("/retry", validate(retryPaymentSchema), retryPayment);
 
 export default router;

@@ -4,6 +4,7 @@ import {
     FiCheckCircle,
     FiPackage,
     FiTruck,
+    FiMapPin,
     FiHome,
     FiXCircle,
 } from "react-icons/fi";
@@ -16,28 +17,34 @@ const STEPS = [
         desc: "Order placed",
     },
     {
-        key: "Paid",
-        label: "Paid",
+        key: "Confirmed",
+        label: "Confirmed",
         icon: FiCheckCircle,
-        desc: "Payment completed",
+        desc: "Order confirmed",
     },
     {
         key: "Packed",
         label: "Packed",
         icon: FiPackage,
-        desc: "Packed & ready",
+        desc: "Packed and ready",
     },
     {
         key: "Shipped",
         label: "Shipped",
         icon: FiTruck,
-        desc: "On the way",
+        desc: "Courier picked up",
+    },
+    {
+        key: "Out for Delivery",
+        label: "Out for Delivery",
+        icon: FiMapPin,
+        desc: "Nearby for delivery",
     },
     {
         key: "Delivered",
         label: "Delivered",
         icon: FiHome,
-        desc: "Delivered!",
+        desc: "Successfully delivered",
     },
 ];
 
@@ -57,16 +64,21 @@ const OrderTrackingTimeline = ({
     statusHistory = [],
     cancelReason = "",
 }) => {
-    const isCancelled =
-        orderStatus === "Cancelled" || orderStatus === "Returned";
+    const isCancelled = orderStatus === "Cancelled" || orderStatus === "Returned";
 
-    // Build a lookup of status → timestamp from history
     const historyMap = {};
     for (const entry of statusHistory) {
         historyMap[entry.status] = entry.timestamp;
     }
 
-    const currentIdx = STEPS.findIndex((s) => s.key === orderStatus);
+    let currentIdx = STEPS.findIndex((s) => s.key === orderStatus);
+    if (currentIdx === -1 && String(orderStatus || "").startsWith("Replacement")) {
+        currentIdx = STEPS.findIndex((s) => s.key === "Delivered");
+    }
+
+    const extraEvents = (statusHistory || []).filter(
+        (entry) => !STEPS.some((s) => s.key === entry.status),
+    );
 
     return (
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-6 mb-6">
@@ -78,13 +90,9 @@ const OrderTrackingTimeline = ({
                 <div className="flex items-center gap-3 p-4 bg-red-900/20 border border-red-600/30 rounded-xl">
                     <FiXCircle className="text-red-400 w-6 h-6 shrink-0" />
                     <div>
-                        <p className="text-red-400 font-semibold">
-                            Order {orderStatus}
-                        </p>
+                        <p className="text-red-400 font-semibold">Order {orderStatus}</p>
                         {cancelReason && (
-                            <p className="text-gray-400 text-sm mt-0.5">
-                                Reason: {cancelReason}
-                            </p>
+                            <p className="text-gray-400 text-sm mt-0.5">Reason: {cancelReason}</p>
                         )}
                         {historyMap[orderStatus] && (
                             <p className="text-gray-500 text-xs mt-1">
@@ -95,20 +103,15 @@ const OrderTrackingTimeline = ({
                 </div>
             ) : (
                 <>
-                    {/* ── Desktop: horizontal steps ─────────────────────── */}
                     <div className="hidden md:flex items-start relative">
                         {STEPS.map((step, idx) => {
-                            const isDone = idx <= currentIdx;
+                            const isDone = currentIdx >= 0 && idx <= currentIdx;
                             const isCurrent = idx === currentIdx;
                             const Icon = step.icon;
                             const ts = historyMap[step.key];
 
                             return (
-                                <div
-                                    key={step.key}
-                                    className="flex-1 flex flex-col items-center relative"
-                                >
-                                    {/* Connector line */}
+                                <div key={step.key} className="flex-1 flex flex-col items-center relative">
                                     {idx < STEPS.length - 1 && (
                                         <div
                                             className={`absolute top-5 left-1/2 w-full h-0.5 transition-all ${
@@ -119,20 +122,24 @@ const OrderTrackingTimeline = ({
                                         />
                                     )}
 
-                                    {/* Circle */}
                                     <div
                                         className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
                                             isDone
                                                 ? "bg-[var(--color-primary-gold)] border-[var(--color-primary-gold)]"
                                                 : "bg-[#1a1a1a] border-[#2A2A2A]"
-                                        } ${isCurrent ? "ring-4 ring-[var(--color-primary-gold)]/20 animate-pulse" : ""}`}
+                                        } ${
+                                            isCurrent
+                                                ? "ring-4 ring-[var(--color-primary-gold)]/20 animate-pulse"
+                                                : ""
+                                        }`}
                                     >
                                         <Icon
-                                            className={`w-4 h-4 ${isDone ? "text-black" : "text-gray-600"}`}
+                                            className={`w-4 h-4 ${
+                                                isDone ? "text-black" : "text-gray-600"
+                                            }`}
                                         />
                                     </div>
 
-                                    {/* Label */}
                                     <p
                                         className={`mt-2 text-xs font-semibold text-center leading-tight ${
                                             isDone
@@ -143,7 +150,6 @@ const OrderTrackingTimeline = ({
                                         {step.label}
                                     </p>
 
-                                    {/* Timestamp */}
                                     {ts && (
                                         <p className="text-[10px] text-gray-500 mt-0.5 text-center">
                                             {formatDate(ts)}
@@ -154,27 +160,31 @@ const OrderTrackingTimeline = ({
                         })}
                     </div>
 
-                    {/* ── Mobile: vertical timeline ─────────────────────── */}
                     <div className="md:hidden space-y-0">
                         {STEPS.map((step, idx) => {
-                            const isDone = idx <= currentIdx;
+                            const isDone = currentIdx >= 0 && idx <= currentIdx;
                             const isCurrent = idx === currentIdx;
                             const Icon = step.icon;
                             const ts = historyMap[step.key];
 
                             return (
                                 <div key={step.key} className="flex gap-3">
-                                    {/* Left: icon + line */}
                                     <div className="flex flex-col items-center">
                                         <div
                                             className={`w-8 h-8 rounded-full flex items-center justify-center border-2 shrink-0 ${
                                                 isDone
                                                     ? "bg-[var(--color-primary-gold)] border-[var(--color-primary-gold)]"
                                                     : "bg-[#1a1a1a] border-[#2A2A2A]"
-                                            } ${isCurrent ? "ring-2 ring-[var(--color-primary-gold)]/30 animate-pulse" : ""}`}
+                                            } ${
+                                                isCurrent
+                                                    ? "ring-2 ring-[var(--color-primary-gold)]/30 animate-pulse"
+                                                    : ""
+                                            }`}
                                         >
                                             <Icon
-                                                className={`w-3.5 h-3.5 ${isDone ? "text-black" : "text-gray-600"}`}
+                                                className={`w-3.5 h-3.5 ${
+                                                    isDone ? "text-black" : "text-gray-600"
+                                                }`}
                                             />
                                         </div>
                                         {idx < STEPS.length - 1 && (
@@ -188,7 +198,6 @@ const OrderTrackingTimeline = ({
                                         )}
                                     </div>
 
-                                    {/* Right: text */}
                                     <div className="pb-4 pt-0.5">
                                         <p
                                             className={`text-sm font-medium ${
@@ -204,14 +213,28 @@ const OrderTrackingTimeline = ({
                                                 {formatDate(ts)}
                                             </p>
                                         )}
-                                        <p className="text-xs text-gray-600 mt-0.5">
-                                            {step.desc}
-                                        </p>
+                                        <p className="text-xs text-gray-600 mt-0.5">{step.desc}</p>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
+
+                    {extraEvents.length > 0 && (
+                        <div className="border-t border-[#2A2A2A] mt-6 pt-4">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                                Additional Updates
+                            </p>
+                            <div className="space-y-1.5">
+                                {extraEvents.map((entry, idx) => (
+                                    <div key={`${entry.status}-${idx}`} className="flex justify-between text-xs">
+                                        <span className="text-gray-300">{entry.status}</span>
+                                        <span className="text-gray-500">{formatDate(entry.timestamp)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>

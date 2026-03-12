@@ -26,4 +26,9 @@ export const orderService = {
         });
         return response.data.data;
     },
+
+    requestReplacement: async (id, reason) => {
+        const response = await api.post(`/orders/${id}/replacement`, { reason });
+        return response.data.data;
+    },
 };

@@ -5,14 +5,47 @@ import OrderCard from "../components/OrderCard";
 import Loader from "../components/Loader";
 import EmptyState from "../components/EmptyState";
 import { useOrders } from "../hooks/useOrders";
+import { useSocket } from "../hooks/useSocket";
 
 const OrdersPage = () => {
     const { orders, loading, fetchOrders } = useOrders();
+    const { socket, joinUserRoom } = useSocket();
 
     useEffect(() => {
         fetchOrders();
         window.scrollTo(0, 0);
     }, []);
+
+    useEffect(() => {
+        const interval = setInterval(fetchOrders, 30000);
+        return () => clearInterval(interval);
+    }, [fetchOrders]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        try {
+            const user = JSON.parse(localStorage.getItem("user") || "null");
+            if (user?._id) joinUserRoom(user._id);
+        } catch {
+            // fallback polling already enabled
+        }
+
+        const refresh = () => fetchOrders();
+        socket.on("orderCreated", refresh);
+        socket.on("orderStatusUpdated", refresh);
+        socket.on("paymentUpdated", refresh);
+        socket.on("replacementUpdated", refresh);
+        socket.on("order_status_updated", refresh);
+
+        return () => {
+            socket.off("orderCreated", refresh);
+            socket.off("orderStatusUpdated", refresh);
+            socket.off("paymentUpdated", refresh);
+            socket.off("replacementUpdated", refresh);
+            socket.off("order_status_updated", refresh);
+        };
+    }, [socket, joinUserRoom, fetchOrders]);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">

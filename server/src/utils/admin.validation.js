@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { ORDER_STATUS } from "./order.constants.js";
 
 export const createBookSchema = Joi.object({
     title: Joi.string().required().trim(),
@@ -39,18 +40,14 @@ export const updateStockSchema = Joi.object({
 
 export const updateOrderStatusSchema = Joi.object({
     status: Joi.string()
-        .valid(
-            "Pending",
-            "Paid",
-            "Packed",
-            "Shipped",
-            "Delivered",
-            "Cancelled",
-            "Returned",
-        )
+        .valid(...Object.values(ORDER_STATUS))
         .required(),
 });
 
 export const blockUserSchema = Joi.object({
     reason: Joi.string().optional().trim(), // Optional reason for the audit/logs
+});
+
+export const rejectReplacementSchema = Joi.object({
+    reason: Joi.string().trim().min(3).required(),
 });

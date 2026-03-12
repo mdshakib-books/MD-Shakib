@@ -9,6 +9,7 @@ export const useSocket = (
     useEffect(() => {
         const socketIo = io(url, {
             withCredentials: true,
+            transports: ["websocket", "polling"],
         });
 
         setSocket(socketIo);
@@ -18,9 +19,23 @@ export const useSocket = (
         };
     }, [url]);
 
+    const joinUserRoom = useCallback(
+        (userId) => {
+            if (!socket || !userId) return;
+            socket.emit("join_user_room", userId);
+        },
+        [socket],
+    );
+
+    const joinAdminRoom = useCallback(() => {
+        if (socket) socket.emit("join_admin_room");
+    }, [socket]);
+
     const joinRoom = useCallback(
         (room) => {
-            if (socket) socket.emit("joinOrderRoom", room);
+            if (!socket || !room) return;
+            // Backward-compatible join for arbitrary room names.
+            socket.emit("joinOrderRoom", room);
         },
         [socket],
     );
@@ -32,5 +47,5 @@ export const useSocket = (
         [socket],
     );
 
-    return { socket, joinRoom, leaveRoom };
+    return { socket, joinUserRoom, joinAdminRoom, joinRoom, leaveRoom };
 };

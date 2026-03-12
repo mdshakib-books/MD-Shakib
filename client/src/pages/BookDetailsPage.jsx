@@ -65,7 +65,10 @@ const BookDetailsPage = () => {
                 setLoading(true);
                 const data = await bookService.getBookById(id);
                 setBook(data);
-                setSelectedImage(data.imageUrl);
+                
+                // Create a gallery array from the optional `images` field and the main `imageUrl`
+                const imagesArray = data.images && data.images.length > 0 ? data.images : [data.imageUrl];
+                setSelectedImage(imagesArray[0]);
                 setQuantity(1);
             } catch (err) {
                 console.error(err);
@@ -197,8 +200,8 @@ const BookDetailsPage = () => {
         : book.price;
     const isOutOfStock = !book.stock || book.stock <= 0;
 
-    // Build thumbnail list — use imageUrl as primary; pad duplicates if only one image
-    const thumbnails = [book.imageUrl];
+    // Build thumbnail list — use images if available, else fallback to just imageUrl
+    const thumbnails = book.images && book.images.length > 0 ? book.images : [book.imageUrl];
 
     return (
         <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
@@ -225,30 +228,32 @@ const BookDetailsPage = () => {
                                 />
                             </div>
 
-                            {/* Thumbnails */}
-                            <div className="flex gap-3 flex-wrap">
-                                {thumbnails.map((img, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => setSelectedImage(img)}
-                                        className={`w-20 h-24 rounded-lg border-2 overflow-hidden transition-all duration-200 flex-shrink-0 ${
-                                            selectedImage === img
-                                                ? "border-[var(--color-primary-gold)] shadow-[0_0_10px_rgba(201,162,74,0.4)]"
-                                                : "border-[#2A2A2A] hover:border-[#444]"
-                                        }`}
-                                    >
-                                        <img
-                                            src={img}
-                                            alt={`Preview ${i + 1}`}
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                e.target.src =
-                                                    "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=160&h=192";
-                                            }}
-                                        />
-                                    </button>
-                                ))}
-                            </div>
+                            {/* Thumbnails (Only show if multiple images exist) */}
+                            {thumbnails.length > 1 && (
+                                <div className="flex gap-3 flex-wrap">
+                                    {thumbnails.map((img, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setSelectedImage(img)}
+                                            className={`w-20 h-24 rounded-lg border-2 overflow-hidden transition-all duration-200 flex-shrink-0 ${
+                                                selectedImage === img
+                                                    ? "border-[var(--color-primary-gold)] shadow-[0_0_10px_rgba(201,162,74,0.4)]"
+                                                    : "border-[#2A2A2A] hover:border-[#444]"
+                                            }`}
+                                        >
+                                            <img
+                                                src={img}
+                                                alt={`Preview ${i + 1}`}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.target.src =
+                                                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=160&h=192";
+                                                }}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* RIGHT — Book Info */}

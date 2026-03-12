@@ -60,17 +60,11 @@ const CheckoutPage = () => {
             dispatch(setItems([]));
             dispatch(clearGuestCart());
 
-            // Navigate to success page with order id (state kept as fallback)
-            navigate(`/order-success?orderId=${result.order._id}`, {
-                state: {
-                    orderId: result.order._id,
-                    order: result.order,
-                    items,
-                    totalAmount: total,
-                },
-                replace: true,
-            });
+            addToast("Order placed successfully!", "success");
+            // Navigate to orders page after successful order
+            navigate("/orders", { replace: true });
         } catch (err) {
+            console.error("Order Placement Error Stack:", err);
             const msg =
                 err.response?.data?.message ||
                 "Failed to place order. Please try again.";

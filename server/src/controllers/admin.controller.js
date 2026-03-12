@@ -112,6 +112,30 @@ export const cancelOrderByAdmin = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, order, "Order cancelled by admin"));
 });
 
+export const createShipment = asyncHandler(async (req, res) => {
+    const order = await adminService.createShipment(req.params.id);
+    return res
+        .status(200)
+        .json(new ApiResponse(200, order, "Shipment created successfully"));
+});
+
+export const approveReplacement = asyncHandler(async (req, res) => {
+    const order = await adminService.approveReplacement(req.params.id);
+    return res
+        .status(200)
+        .json(new ApiResponse(200, order, "Replacement approved"));
+});
+
+export const rejectReplacement = asyncHandler(async (req, res) => {
+    const order = await adminService.rejectReplacement(
+        req.params.id,
+        req.body.reason,
+    );
+    return res
+        .status(200)
+        .json(new ApiResponse(200, order, "Replacement rejected"));
+});
+
 // ================= USERS =================
 
 export const getAllUsers = asyncHandler(async (req, res) => {
