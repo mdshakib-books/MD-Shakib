@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import AddressSelector from "../components/AddressSelector";
 import { useCart } from "../hooks/useCart";
 import { orderService } from "../services/orderService";
+import { paymentService } from "../services/paymentService";
 import { formatPrice } from "../utils/formatPrice";
 import { useToast } from "../context/ToastContext";
 import { setItems, clearGuestCart } from "../redux/slices/cartSlice";
@@ -38,6 +39,92 @@ const CheckoutPage = () => {
     );
     const total = subtotal + PLATFORM_FEE + DELIVERY_FEE;
 
+    const loadRazorpaySdk = () =>
+        new Promise((resolve) => {
+            if (window.Razorpay) {
+                resolve(true);
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.async = true;
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+        });
+
+    const openRazorpayCheckout = ({ order, intent }) =>
+        new Promise((resolve, reject) => {
+            const user =
+                JSON.parse(localStorage.getItem("user") || "null") || {};
+            const razorpay = new window.Razorpay({
+                key: intent.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
+                amount: intent.amount,
+                currency: intent.currency,
+                name: "MD Shakib Books",
+                description: `Payment for order #${order._id}`,
+                order_id: intent.razorpayOrderId,
+                prefill: {
+                    name: user.name || selectedAddress?.fullName || "",
+                    email: user.email || "",
+                    contact: selectedAddress?.phone || "",
+                },
+                notes: {
+                    orderId: order._id,
+                    paymentRecordId: intent.paymentRecordId || "",
+                },
+                theme: {
+                    color: "#C9A24A",
+                },
+                handler: async (response) => {
+                    try {
+                        const verified = await paymentService.verifyPayment(
+                            response,
+                        );
+                        addToast("Payment completed successfully!", "success");
+                        resolve(verified);
+                    } catch (error) {
+                        const msg =
+                            error.response?.data?.message ||
+                            "Payment received but verification is pending. We will sync your order shortly.";
+                        addToast(msg, "warning");
+                        reject(error);
+                    }
+                },
+                modal: {
+                    ondismiss: async () => {
+                        try {
+                            await paymentService.reportFailure({
+                                razorpayOrderId: intent.razorpayOrderId,
+                                reason: "Checkout closed by customer",
+                            });
+                        } catch {
+                            // no-op: failure report is best-effort only
+                        }
+                        reject(new Error("Checkout closed"));
+                    },
+                },
+            });
+
+            razorpay.on("payment.failed", async (response) => {
+                try {
+                    await paymentService.reportFailure({
+                        razorpayOrderId: intent.razorpayOrderId,
+                        reason:
+                            response?.error?.description ||
+                            response?.error?.reason ||
+                            "Payment failed",
+                    });
+                } catch {
+                    // no-op: failure report is best-effort only
+                }
+                reject(new Error(response?.error?.description || "Payment failed"));
+            });
+
+            razorpay.open();
+        });
+
     const handlePlaceOrder = async () => {
         if (!selectedAddress) {
             addToast("Please select a delivery address", "error");
@@ -49,28 +136,68 @@ const CheckoutPage = () => {
         }
 
         setPlacing(true);
+        let createdOrderId = "";
         try {
-            const result = await orderService.createOrder({
+            const orderResult = await orderService.createOrder({
                 addressId: selectedAddress._id,
                 paymentMethod,
                 idempotencyKey: idempotencyKey.current,
             });
 
-            // Clear Redux cart state immediately so cart appears empty
+            const createdOrder = orderResult?.order;
+            if (!createdOrder?._id) {
+                throw new Error("Order creation response is invalid");
+            }
+            createdOrderId = createdOrder._id;
+
             dispatch(setItems([]));
             dispatch(clearGuestCart());
 
-            addToast("Order placed successfully!", "success");
-            // Navigate to orders page after successful order
-            navigate("/orders", { replace: true });
+            if (paymentMethod === "COD") {
+                addToast("Order placed successfully!", "success");
+                navigate(`/order-success?orderId=${createdOrder._id}`, {
+                    replace: true,
+                });
+                idempotencyKey.current = crypto.randomUUID();
+                return;
+            }
+
+            const isRazorpayLoaded = await loadRazorpaySdk();
+            if (!isRazorpayLoaded) {
+                throw new Error(
+                    "Unable to load payment gateway. Please try again.",
+                );
+            }
+
+            const intent = await paymentService.createPaymentIntent({
+                orderId: createdOrder._id,
+                idempotencyKey: `${idempotencyKey.current}_intent`,
+            });
+
+            await openRazorpayCheckout({
+                order: createdOrder,
+                intent,
+            });
+
+            navigate(`/order-success?orderId=${createdOrder._id}`, {
+                replace: true,
+            });
+            idempotencyKey.current = crypto.randomUUID();
         } catch (err) {
             console.error("Order Placement Error Stack:", err);
             const msg =
                 err.response?.data?.message ||
+                err.message ||
                 "Failed to place order. Please try again.";
-            addToast(msg, "error");
+            addToast(
+                msg === "Checkout closed" ? "Payment window closed." : msg,
+                msg === "Checkout closed" ? "warning" : "error",
+            );
             // Regenerate key so user can retry without duplicate detection
             idempotencyKey.current = crypto.randomUUID();
+            if (paymentMethod === "ONLINE" && createdOrderId) {
+                navigate(`/orders/${createdOrderId}`);
+            }
         } finally {
             setPlacing(false);
         }
@@ -156,7 +283,7 @@ const CheckoutPage = () => {
                                     {/* Online */}
                                     <label
                                         className={`flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all ${
-                                            paymentMethod === "Online"
+                                            paymentMethod === "ONLINE"
                                                 ? "border-[var(--color-primary-gold)] bg-[#1a1a1a]"
                                                 : "border-[#2A2A2A] hover:border-[#3a3a3a]"
                                         }`}
@@ -164,10 +291,10 @@ const CheckoutPage = () => {
                                         <input
                                             type="radio"
                                             name="payment"
-                                            value="Online"
-                                            checked={paymentMethod === "Online"}
+                                            value="ONLINE"
+                                            checked={paymentMethod === "ONLINE"}
                                             onChange={() =>
-                                                setPaymentMethod("Online")
+                                                setPaymentMethod("ONLINE")
                                             }
                                             className="accent-[var(--color-primary-gold)]"
                                         />

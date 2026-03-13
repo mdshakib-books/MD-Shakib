@@ -13,6 +13,7 @@ import {
 import {
     ORDER_STATUS,
     PAYMENT_METHODS,
+    normalizePaymentMethod,
 } from "../utils/order.constants.js";
 import {
     emitNewOrder,
@@ -20,9 +21,9 @@ import {
     emitPaymentUpdated,
     emitReplacementUpdated,
 } from "../sockets/order.socket.js";
-import paymentService from "./payment.service.js";
 import User from "../models/user.model.js";
 import { sendOrderConfirmationMail } from "../utils/mail.js";
+import { PAYMENT_STATUS } from "../utils/payment.constants.js";
 
 class OrderService {
     async createOrder(userId, addressId, paymentMethod, idempotencyKey) {
@@ -31,6 +32,11 @@ class OrderService {
                 409,
                 "Duplicate request detected. Order is already being processed.",
             );
+        }
+
+        const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
+        if (!normalizedPaymentMethod) {
+            throw new ApiError(400, "Invalid payment method selected");
         }
 
         // 1. Fetch dependencies
@@ -87,39 +93,25 @@ class OrderService {
             items: itemsSnapshot,
             address: addressSnapshot,
             totalAmount,
-            paymentMethod,
+            paymentMethod: normalizedPaymentMethod,
             orderStatus: ORDER_STATUS.PENDING,
-            paymentStatus: "Pending",
+            paymentStatus: PAYMENT_STATUS.PENDING,
             isPaid: false,
         };
 
         const newOrder = await Order.create(orderData);
 
-        // 6. Handle Payment Method branches
-        let responseData = { order: newOrder };
+        // 6. Payment mode metadata for frontend action
+        const responseData = {
+            order: newOrder,
+            requiresPayment: normalizedPaymentMethod === PAYMENT_METHODS.ONLINE,
+            paymentStatus: newOrder.paymentStatus,
+        };
 
-        if (paymentMethod === PAYMENT_METHODS.COD) {
-            // COD implicitly means order is placed
-            newOrder.paymentStatus = "Pending";
+        if (normalizedPaymentMethod === PAYMENT_METHODS.COD) {
+            // COD order remains pending until delivery.
+            newOrder.paymentStatus = PAYMENT_STATUS.PENDING;
             await newOrder.save();
-        } else if (paymentMethod === PAYMENT_METHODS.ONLINE) {
-            // Initialize Razorpay/Stripe intent
-            try {
-                const intent = await paymentService.createPaymentIntent(
-                    newOrder._id,
-                    totalAmount,
-                    userId,
-                );
-                responseData.clientSecret = intent.clientSecret;
-                responseData.paymentSessionId = intent.id;
-            } catch (error) {
-                // Oh no, payment provider failed. Let's not fail the whole order, but return gracefully
-                // so the user can 'Retry Payment'
-                console.error(
-                    "Failed to initialize payment gateway intent",
-                    error,
-                );
-            }
         }
 
         // Notify Admin dashboard for both COD and Online orders
@@ -194,14 +186,14 @@ class OrderService {
         });
 
         // Trigger refund if already paid
-        if (order.paymentStatus === "Paid") {
+        if (order.paymentStatus === PAYMENT_STATUS.PAID) {
             // Fire off async refund logic via Payment Provider
-            order.paymentStatus = "Refunded";
+            order.paymentStatus = PAYMENT_STATUS.REFUNDED;
         }
 
         await order.save();
         emitOrderStatusUpdated(order);
-        if (order.paymentStatus === "Refunded") {
+        if (order.paymentStatus === PAYMENT_STATUS.REFUNDED) {
             emitPaymentUpdated(order);
         }
 

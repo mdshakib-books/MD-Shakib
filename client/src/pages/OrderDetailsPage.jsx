@@ -96,12 +96,18 @@ const OrderDetailsPage = () => {
 
         socket.on("orderStatusUpdated", handleRealtimeUpdate);
         socket.on("paymentUpdated", handleRealtimeUpdate);
+        socket.on("orderPaid", handleRealtimeUpdate);
+        socket.on("paymentSuccess", handleRealtimeUpdate);
+        socket.on("paymentFailed", handleRealtimeUpdate);
         socket.on("replacementUpdated", handleRealtimeUpdate);
         socket.on("order_status_updated", handleLegacyOrderStatus);
 
         return () => {
             socket.off("orderStatusUpdated", handleRealtimeUpdate);
             socket.off("paymentUpdated", handleRealtimeUpdate);
+            socket.off("orderPaid", handleRealtimeUpdate);
+            socket.off("paymentSuccess", handleRealtimeUpdate);
+            socket.off("paymentFailed", handleRealtimeUpdate);
             socket.off("replacementUpdated", handleRealtimeUpdate);
             socket.off("order_status_updated", handleLegacyOrderStatus);
         };
@@ -205,6 +211,9 @@ const OrderDetailsPage = () => {
                         orderStatus={order.orderStatus}
                         statusHistory={order.statusHistory || []}
                         cancelReason={order.cancelReason}
+                        paymentMethod={order.paymentMethod}
+                        paymentStatus={order.paymentStatus}
+                        paidAt={order.paidAt}
                     />
 
                     <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-6 mb-6">
@@ -262,6 +271,34 @@ const OrderDetailsPage = () => {
                                         </a>
                                     </p>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {((String(order.paymentMethod || "").toUpperCase() === "ONLINE" ||
+                        order.paymentMethod === "Online") &&
+                        (order.razorpayOrderId || order.razorpayPaymentId)) && (
+                        <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-6 mb-6">
+                            <h3 className="font-heading text-lg text-[var(--color-primary-gold)] mb-4">
+                                Payment Reference
+                            </h3>
+                            <div className="space-y-2 text-sm text-gray-300">
+                                <p>
+                                    <span className="text-gray-500 w-40 inline-block">
+                                        Razorpay Order ID:
+                                    </span>
+                                    <span className="font-mono text-xs text-white">
+                                        {order.razorpayOrderId || "—"}
+                                    </span>
+                                </p>
+                                <p>
+                                    <span className="text-gray-500 w-40 inline-block">
+                                        Razorpay Payment ID:
+                                    </span>
+                                    <span className="font-mono text-xs text-white">
+                                        {order.razorpayPaymentId || "—"}
+                                    </span>
+                                </p>
                             </div>
                         </div>
                     )}

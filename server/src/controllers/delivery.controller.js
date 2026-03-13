@@ -1,12 +1,17 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import Order from "../models/order.model.js";
-import { ORDER_STATUS } from "../utils/order.constants.js";
+import {
+    ORDER_STATUS,
+    PAYMENT_METHODS,
+    normalizePaymentMethod,
+} from "../utils/order.constants.js";
 import delhiveryService from "../services/delhivery.service.js";
 import {
     emitOrderStatusUpdated,
     emitPaymentUpdated,
 } from "../sockets/order.socket.js";
+import { PAYMENT_STATUS } from "../utils/payment.constants.js";
 
 export const checkServiceability = asyncHandler(async (req, res) => {
     const { pincode } = req.query;
@@ -54,6 +59,7 @@ export const handleDelhiveryWebhook = asyncHandler(async (req, res) => {
     if (!order) {
         return res.status(404).send("Order not found with this AWB");
     }
+    const normalizedPaymentMethod = normalizePaymentMethod(order.paymentMethod);
 
     let newStatus = order.orderStatus;
     
@@ -75,8 +81,11 @@ export const handleDelhiveryWebhook = asyncHandler(async (req, res) => {
         order.orderStatus = newStatus;
         if (newStatus === ORDER_STATUS.DELIVERED) {
             order.deliveredAt = new Date();
-            if (order.paymentMethod === "COD" && order.paymentStatus !== "Paid") {
-                order.paymentStatus = "Paid";
+            if (
+                normalizedPaymentMethod === PAYMENT_METHODS.COD &&
+                order.paymentStatus !== PAYMENT_STATUS.PAID
+            ) {
+                order.paymentStatus = PAYMENT_STATUS.PAID;
                 order.isPaid = true;
                 order.paidAt = new Date();
                 order.statusHistory.push({
@@ -93,7 +102,10 @@ export const handleDelhiveryWebhook = asyncHandler(async (req, res) => {
         });
         await order.save();
         emitOrderStatusUpdated(order);
-        if (newStatus === ORDER_STATUS.DELIVERED && order.paymentMethod === "COD") {
+        if (
+            newStatus === ORDER_STATUS.DELIVERED &&
+            normalizedPaymentMethod === PAYMENT_METHODS.COD
+        ) {
             emitPaymentUpdated(order);
         }
     }

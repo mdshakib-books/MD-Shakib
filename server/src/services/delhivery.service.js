@@ -1,6 +1,10 @@
 import { ApiError } from "../utils/ApiError.js";
 import axios from "axios";
 import crypto from "crypto";
+import {
+    PAYMENT_METHODS,
+    normalizePaymentMethod,
+} from "../utils/order.constants.js";
 
 // Assuming you have Delhivery Token in env variables
 // process.env.DELHIVERY_TOKEN
@@ -39,6 +43,9 @@ class DelhiveryService {
     }
 
     async createShipment(order) {
+        const normalizedPaymentMethod = normalizePaymentMethod(order.paymentMethod);
+        const isCodOrder = normalizedPaymentMethod === PAYMENT_METHODS.COD;
+
         // Prepare shipment payload according to Delhivery format
         const payload = `format=json&data={
             "shipments": [{
@@ -50,7 +57,7 @@ class DelhiveryService {
                 "country": "India",
                 "phone": "${order.address.phone}",
                 "order": "${order._id.toString()}",
-                "payment_mode": "${order.paymentMethod === "COD" ? "COD" : "Prepaid"}",
+                "payment_mode": "${isCodOrder ? "COD" : "Prepaid"}",
                 "return_pin": "",
                 "return_city": "",
                 "return_phone": "",
@@ -59,7 +66,7 @@ class DelhiveryService {
                 "return_country": "",
                 "products_desc": "Islamic Books",
                 "hsn_code": "",
-                "cod_amount": "${order.paymentMethod === "COD" ? order.totalAmount : 0}",
+                "cod_amount": "${isCodOrder ? order.totalAmount : 0}",
                 "total_amount": "${order.totalAmount}",
                 "seller_add": "",
                 "seller_name": "MD Shakib Islamic Book Store",
