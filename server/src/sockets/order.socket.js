@@ -81,14 +81,43 @@ export const emitReplacementUpdated = (order) => {
     }
 };
 
-export const emitPaymentSuccess = (orderId) => {
+export const emitPaymentSuccess = (orderId, meta = {}) => {
     if (io) {
-        io.emit(`payment_success_${orderId}`, { success: true });
+        const payload = {
+            success: true,
+            orderId: String(orderId || ""),
+            ...meta,
+            timestamp: new Date().toISOString(),
+        };
+        io.emit("paymentSuccess", payload);
+        io.emit(`payment_success_${orderId}`, payload);
     }
 };
 
-export const emitPaymentFailed = (orderId, reason) => {
+export const emitPaymentFailed = (orderId, reason, meta = {}) => {
     if (io) {
-        io.emit(`payment_failed_${orderId}`, { success: false, reason });
+        const payload = {
+            success: false,
+            orderId: String(orderId || ""),
+            reason,
+            ...meta,
+            timestamp: new Date().toISOString(),
+        };
+        io.emit("paymentFailed", payload);
+        io.emit(`payment_failed_${orderId}`, payload);
+    }
+};
+
+export const emitOrderPaid = (order, meta = {}) => {
+    if (io) {
+        const payload = {
+            ...serializeOrderEvent(order),
+            ...meta,
+        };
+        const userRoom = payload.userId;
+        if (userRoom) {
+            io.to(userRoom).emit("orderPaid", payload);
+        }
+        io.to("admin_room").emit("orderPaid", payload);
     }
 };

@@ -50,6 +50,10 @@ const paymentStatusBadge = (status) => {
     return map[status] || "text-gray-400 bg-gray-700/20";
 };
 
+const isOnlineMethod = (method = "") =>
+    String(method || "").toUpperCase() === "ONLINE" ||
+    String(method || "") === "Online";
+
 const AdminOrdersPage = () => {
     const { addToast } = useToast();
     const { socket, joinAdminRoom } = useSocket();
@@ -62,11 +66,23 @@ const AdminOrdersPage = () => {
     const [cancelLoading, setCancelLoading] = useState(false);
     const [replacementRejectTarget, setReplacementRejectTarget] = useState(null);
     const [replacementRejectLoading, setReplacementRejectLoading] = useState(false);
+    const [statusFilter, setStatusFilter] = useState("");
+    const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
+    const [paymentMethodFilter, setPaymentMethodFilter] = useState("");
 
     const fetchOrders = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await adminService.getOrders({ limit: 100 });
+            const data = await adminService.getOrders({
+                limit: 100,
+                ...(statusFilter ? { status: statusFilter } : {}),
+                ...(paymentStatusFilter
+                    ? { paymentStatus: paymentStatusFilter }
+                    : {}),
+                ...(paymentMethodFilter
+                    ? { paymentMethod: paymentMethodFilter }
+                    : {}),
+            });
             setOrders(Array.isArray(data) ? data : []);
         } catch (err) {
             addToast(
@@ -77,7 +93,7 @@ const AdminOrdersPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [addToast]);
+    }, [addToast, statusFilter, paymentMethodFilter, paymentStatusFilter]);
 
     useEffect(() => {
         fetchOrders();
@@ -107,6 +123,9 @@ const AdminOrdersPage = () => {
             "orderCreated",
             "orderStatusUpdated",
             "paymentUpdated",
+            "orderPaid",
+            "paymentSuccess",
+            "paymentFailed",
             "replacementUpdated",
         ];
 
@@ -236,10 +255,46 @@ const AdminOrdersPage = () => {
 
     return (
         <AdminLayout>
-            <h1 className="text-3xl font-semibold mb-8">Manage Orders</h1>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+                <h1 className="text-3xl font-semibold">Manage Orders</h1>
+                <div className="flex flex-wrap gap-2">
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-[#111111] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-gray-200"
+                    >
+                        <option value="">All Order Status</option>
+                        {Object.keys(NEXT_STATUS).map((status) => (
+                            <option key={status} value={status}>
+                                {status}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        value={paymentStatusFilter}
+                        onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                        className="bg-[#111111] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-gray-200"
+                    >
+                        <option value="">All Payment Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Refunded">Refunded</option>
+                    </select>
+                    <select
+                        value={paymentMethodFilter}
+                        onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                        className="bg-[#111111] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-gray-200"
+                    >
+                        <option value="">All Payment Methods</option>
+                        <option value="COD">COD</option>
+                        <option value="ONLINE">ONLINE</option>
+                    </select>
+                </div>
+            </div>
 
             <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl overflow-x-auto">
-                <table className="w-full min-w-[1150px] text-sm">
+                <table className="w-full min-w-[1250px] text-sm">
                     <thead className="border-b border-[#2A2A2A] text-gray-400 text-xs uppercase tracking-wide">
                         <tr>
                             <th className="px-5 py-4 text-left">Order ID</th>
@@ -248,6 +303,7 @@ const AdminOrdersPage = () => {
                             <th className="px-5 py-4 text-left">Order Status</th>
                             <th className="px-5 py-4 text-left">Payment Status</th>
                             <th className="px-5 py-4 text-left">Method</th>
+                            <th className="px-5 py-4 text-left">Razorpay ID</th>
                             <th className="px-5 py-4 text-left">Total</th>
                             <th className="px-5 py-4 text-right">Actions</th>
                         </tr>
@@ -255,13 +311,13 @@ const AdminOrdersPage = () => {
                     <tbody className="divide-y divide-[#1a1a1a]">
                         {loading ? (
                             <tr>
-                                <td colSpan="8" className="text-center py-16">
+                                <td colSpan="9" className="text-center py-16">
                                     <div className="inline-block w-7 h-7 border-2 border-[var(--color-primary-gold)] border-t-transparent rounded-full animate-spin" />
                                 </td>
                             </tr>
                         ) : orders.length === 0 ? (
                             <tr>
-                                <td colSpan="8" className="text-center py-16 text-gray-500">
+                                <td colSpan="9" className="text-center py-16 text-gray-500">
                                     No orders found
                                 </td>
                             </tr>
@@ -308,6 +364,12 @@ const AdminOrdersPage = () => {
                                         </td>
                                         <td className="px-5 py-3 text-gray-300 text-xs">
                                             {order.paymentMethod || "—"}
+                                        </td>
+                                        <td className="px-5 py-3 font-mono text-[11px] text-gray-400">
+                                            {order.razorpayPaymentId ||
+                                                (isOnlineMethod(order.paymentMethod)
+                                                    ? "Awaiting payment"
+                                                    : "—")}
                                         </td>
                                         <td className="px-5 py-3 text-[var(--color-primary-gold)] font-semibold">
                                             {formatPrice(order.totalAmount || 0)}
@@ -449,6 +511,22 @@ const AdminOrdersPage = () => {
                                     ({selectedOrder.paymentMethod})
                                 </span>
                             </p>
+                            {isOnlineMethod(selectedOrder.paymentMethod) && (
+                                <>
+                                    <p>
+                                        <span className="text-gray-400">Razorpay Order ID:</span>{" "}
+                                        <span className="font-mono text-xs">
+                                            {selectedOrder.razorpayOrderId || "—"}
+                                        </span>
+                                    </p>
+                                    <p>
+                                        <span className="text-gray-400">Razorpay Payment ID:</span>{" "}
+                                        <span className="font-mono text-xs">
+                                            {selectedOrder.razorpayPaymentId || "—"}
+                                        </span>
+                                    </p>
+                                </>
+                            )}
                             {selectedOrder.cancelReason && (
                                 <p>
                                     <span className="text-gray-400">Cancel Reason:</span>{" "}

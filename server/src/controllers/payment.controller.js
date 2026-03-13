@@ -3,44 +3,58 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import paymentService from "../services/payment.service.js";
 
 export const createOnlinePaymentIntent = asyncHandler(async (req, res) => {
-    const { orderId, amount } = req.body; // In production, never trust 'amount' from client, re-calculate it in service
+    const { orderId, idempotencyKey } = req.body;
 
-    const intent = await paymentService.createPaymentIntent(
+    const intent = await paymentService.createRazorpayOrder(
         orderId,
-        amount,
+        undefined,
         req.user._id,
+        idempotencyKey,
     );
 
     return res
         .status(201)
-        .json(new ApiResponse(201, intent, "Payment intent generated"));
+        .json(new ApiResponse(201, intent, "Payment intent created"));
 });
 
-/**
- * Webhook intended for external service hitting our API
- * It receives RazorPay/Stripe payloads
- */
-export const verifyPaymentWebhook = asyncHandler(async (req, res) => {
-    await paymentService.verifyPaymentWebhook(req.body);
-
-    // Return simple 200 OK for Webhook caller (No complex JSON, just acknowledge)
-    return res.status(200).send("Webhook Processed");
-});
-
-export const handlePaymentFailure = asyncHandler(async (req, res) => {
-    const { paymentId, reason } = req.body;
-    await paymentService.handlePaymentFailure(paymentId, reason);
+export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
+    const result = await paymentService.verifyRazorpayPayment(req.body);
 
     return res
         .status(200)
-        .json(new ApiResponse(200, {}, "Payment failure registered"));
+        .json(new ApiResponse(200, result, "Payment verified successfully"));
+});
+
+export const verifyPaymentWebhook = asyncHandler(async (req, res) => {
+    const signature = String(req.headers["x-razorpay-signature"] || "");
+    const eventId = String(req.headers["x-razorpay-event-id"] || "");
+
+    const result = await paymentService.verifyPaymentWebhook(
+        req.body,
+        signature,
+        req.rawBody || "",
+        eventId,
+    );
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, result, "Webhook processed"));
+});
+
+export const handlePaymentFailure = asyncHandler(async (req, res) => {
+    const result = await paymentService.handlePaymentFailure(req.body);
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, result, "Payment failure recorded"));
 });
 
 export const retryPayment = asyncHandler(async (req, res) => {
-    const { orderId } = req.body;
+    const { orderId, idempotencyKey } = req.body;
     const result = await paymentService.retryPaymentIntent(
         orderId,
         req.user._id,
+        idempotencyKey,
     );
 
     return res

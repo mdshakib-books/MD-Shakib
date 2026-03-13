@@ -15,7 +15,11 @@ import {
     DASHBOARD_CONFIG,
 } from "../utils/admin.constants.js";
 import delhiveryService from "./delhivery.service.js";
-import { ORDER_STATUS } from "../utils/order.constants.js";
+import {
+    ORDER_STATUS,
+    PAYMENT_METHODS,
+    normalizePaymentMethod,
+} from "../utils/order.constants.js";
 import {
     emitOrderStatusUpdated,
     emitPaymentUpdated,
@@ -26,6 +30,7 @@ import {
     monthlyRevenuePipeline,
     topSellingBooksPipeline,
 } from "../utils/dashboard.utils.js";
+import { PAYMENT_STATUS } from "../utils/payment.constants.js";
 
 class AdminService {
     normalizeOptionalBookFields(input = {}) {
@@ -235,6 +240,17 @@ class AdminService {
         if (req.query.status) {
             filter.orderStatus = req.query.status;
         }
+        if (req.query.paymentStatus) {
+            filter.paymentStatus = req.query.paymentStatus;
+        }
+        if (req.query.paymentMethod) {
+            const normalized = normalizePaymentMethod(req.query.paymentMethod);
+            if (normalized === PAYMENT_METHODS.ONLINE) {
+                filter.paymentMethod = { $in: ["ONLINE", "Online"] };
+            } else if (normalized === PAYMENT_METHODS.COD) {
+                filter.paymentMethod = PAYMENT_METHODS.COD;
+            }
+        }
 
         const [orders, total] = await Promise.all([
             Order.find(filter)
@@ -272,6 +288,18 @@ class AdminService {
             );
         }
 
+        const normalizedPaymentMethod = normalizePaymentMethod(order.paymentMethod);
+        if (
+            newStatus === ORDER_STATUS.CONFIRMED &&
+            normalizedPaymentMethod === PAYMENT_METHODS.ONLINE &&
+            order.paymentStatus !== PAYMENT_STATUS.PAID
+        ) {
+            throw new ApiError(
+                400,
+                "Online prepaid orders can be confirmed only after successful payment",
+            );
+        }
+
         if (newStatus === ORDER_STATUS.SHIPPED) {
             const hasShipmentDetails = Boolean(
                 order.shipping?.courier &&
@@ -302,11 +330,11 @@ class AdminService {
         let codPaymentSettled = false;
         if (
             newStatus === ORDER_STATUS.DELIVERED &&
-            order.paymentMethod === "COD" &&
-            order.paymentStatus !== "Paid"
+            normalizedPaymentMethod === PAYMENT_METHODS.COD &&
+            order.paymentStatus !== PAYMENT_STATUS.PAID
         ) {
             const paidAt = new Date();
-            order.paymentStatus = "Paid";
+            order.paymentStatus = PAYMENT_STATUS.PAID;
             order.isPaid = true;
             order.paidAt = paidAt;
             order.statusHistory.push({
@@ -357,13 +385,13 @@ class AdminService {
             note: order.cancelReason,
         });
 
-        if (order.paymentStatus === "Paid") {
-            order.paymentStatus = "Refunded";
+        if (order.paymentStatus === PAYMENT_STATUS.PAID) {
+            order.paymentStatus = PAYMENT_STATUS.REFUNDED;
         }
 
         await order.save();
         emitOrderStatusUpdated(order);
-        if (order.paymentStatus === "Refunded") {
+        if (order.paymentStatus === PAYMENT_STATUS.REFUNDED) {
             emitPaymentUpdated(order);
         }
         return order;

@@ -2,6 +2,7 @@ import React from "react";
 import {
     FiClock,
     FiCheckCircle,
+    FiCreditCard,
     FiPackage,
     FiTruck,
     FiMapPin,
@@ -9,7 +10,9 @@ import {
     FiXCircle,
 } from "react-icons/fi";
 
-const STEPS = [
+const PAYMENT_COMPLETED_STEP_KEY = "__PAYMENT_COMPLETED__";
+
+const BASE_STEPS = [
     {
         key: "Pending",
         label: "Pending",
@@ -63,21 +66,53 @@ const OrderTrackingTimeline = ({
     orderStatus,
     statusHistory = [],
     cancelReason = "",
+    paymentMethod = "",
+    paymentStatus = "",
+    paidAt = null,
 }) => {
     const isCancelled = orderStatus === "Cancelled" || orderStatus === "Returned";
+    const isOnlinePayment =
+        String(paymentMethod || "").toUpperCase() === "ONLINE" ||
+        String(paymentMethod || "") === "Online";
+
+    const steps = isOnlinePayment
+        ? [
+              BASE_STEPS[0],
+              {
+                  key: PAYMENT_COMPLETED_STEP_KEY,
+                  label: "Payment Completed",
+                  icon: FiCreditCard,
+                  desc: "Online payment captured",
+              },
+              ...BASE_STEPS.slice(1),
+          ]
+        : BASE_STEPS;
 
     const historyMap = {};
     for (const entry of statusHistory) {
         historyMap[entry.status] = entry.timestamp;
     }
 
-    let currentIdx = STEPS.findIndex((s) => s.key === orderStatus);
+    if (isOnlinePayment && paidAt) {
+        historyMap[PAYMENT_COMPLETED_STEP_KEY] = paidAt;
+    }
+
+    let currentIdx = steps.findIndex((s) => s.key === orderStatus);
     if (currentIdx === -1 && String(orderStatus || "").startsWith("Replacement")) {
-        currentIdx = STEPS.findIndex((s) => s.key === "Delivered");
+        currentIdx = steps.findIndex((s) => s.key === "Delivered");
+    }
+
+    if (isOnlinePayment && paymentStatus === "Paid") {
+        const paymentStepIndex = steps.findIndex(
+            (s) => s.key === PAYMENT_COMPLETED_STEP_KEY,
+        );
+        if (paymentStepIndex >= 0) {
+            currentIdx = Math.max(currentIdx, paymentStepIndex);
+        }
     }
 
     const extraEvents = (statusHistory || []).filter(
-        (entry) => !STEPS.some((s) => s.key === entry.status),
+        (entry) => !steps.some((s) => s.key === entry.status),
     );
 
     return (
@@ -104,7 +139,7 @@ const OrderTrackingTimeline = ({
             ) : (
                 <>
                     <div className="hidden md:flex items-start relative">
-                        {STEPS.map((step, idx) => {
+                        {steps.map((step, idx) => {
                             const isDone = currentIdx >= 0 && idx <= currentIdx;
                             const isCurrent = idx === currentIdx;
                             const Icon = step.icon;
@@ -112,7 +147,7 @@ const OrderTrackingTimeline = ({
 
                             return (
                                 <div key={step.key} className="flex-1 flex flex-col items-center relative">
-                                    {idx < STEPS.length - 1 && (
+                                    {idx < steps.length - 1 && (
                                         <div
                                             className={`absolute top-5 left-1/2 w-full h-0.5 transition-all ${
                                                 isDone && idx < currentIdx
@@ -161,7 +196,7 @@ const OrderTrackingTimeline = ({
                     </div>
 
                     <div className="md:hidden space-y-0">
-                        {STEPS.map((step, idx) => {
+                        {steps.map((step, idx) => {
                             const isDone = currentIdx >= 0 && idx <= currentIdx;
                             const isCurrent = idx === currentIdx;
                             const Icon = step.icon;
@@ -187,7 +222,7 @@ const OrderTrackingTimeline = ({
                                                 }`}
                                             />
                                         </div>
-                                        {idx < STEPS.length - 1 && (
+                                        {idx < steps.length - 1 && (
                                             <div
                                                 className={`w-0.5 flex-1 min-h-[24px] my-1 ${
                                                     isDone && idx < currentIdx

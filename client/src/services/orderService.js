@@ -15,7 +15,7 @@ export const orderService = {
      * Create an order.
      * @param {object} payload
      * @param {string} payload.addressId  - MongoDB _id of selected address
-     * @param {string} payload.paymentMethod - "COD" | "Online"
+     * @param {string} payload.paymentMethod - "COD" | "ONLINE"
      * @param {string} payload.idempotencyKey - unique UUID per submit attempt
      */
     createOrder: async ({ addressId, paymentMethod, idempotencyKey }) => {

@@ -18,6 +18,21 @@ const OrderCard = ({ order }) => {
         }
     };
 
+    const getPaymentColor = (status) => {
+        switch (status) {
+            case "Paid":
+                return "text-green-400";
+            case "Pending":
+                return "text-yellow-400";
+            case "Failed":
+                return "text-red-400";
+            case "Refunded":
+                return "text-blue-400";
+            default:
+                return "text-gray-500";
+        }
+    };
+
     const firstItem = order.items?.[0];
 
     return (
@@ -52,6 +67,9 @@ const OrderCard = ({ order }) => {
                     <p className="text-sm text-gray-500">
                         {order.items?.length || 0} items
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Method: {order.paymentMethod || "—"}
+                    </p>
                 </div>
 
                 {/* RIGHT SIDE */}
@@ -66,6 +84,13 @@ const OrderCard = ({ order }) => {
                         )}`}
                     >
                         {order.orderStatus}
+                    </p>
+                    <p
+                        className={`text-xs mt-1 font-medium ${getPaymentColor(
+                            order.paymentStatus,
+                        )}`}
+                    >
+                        {order.paymentStatus || "Pending"}
                     </p>
                 </div>
             </div>

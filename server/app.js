@@ -34,7 +34,16 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-app.use(express.json({ limit: "16kb" }));
+app.use(
+    express.json({
+        limit: "16kb",
+        verify: (req, _res, buf) => {
+            if (buf?.length) {
+                req.rawBody = buf.toString("utf8");
+            }
+        },
+    }),
+);
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());

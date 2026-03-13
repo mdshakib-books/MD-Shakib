@@ -35,6 +35,9 @@ const OrdersPage = () => {
         socket.on("orderCreated", refresh);
         socket.on("orderStatusUpdated", refresh);
         socket.on("paymentUpdated", refresh);
+        socket.on("orderPaid", refresh);
+        socket.on("paymentSuccess", refresh);
+        socket.on("paymentFailed", refresh);
         socket.on("replacementUpdated", refresh);
         socket.on("order_status_updated", refresh);
 
@@ -42,6 +45,9 @@ const OrdersPage = () => {
             socket.off("orderCreated", refresh);
             socket.off("orderStatusUpdated", refresh);
             socket.off("paymentUpdated", refresh);
+            socket.off("orderPaid", refresh);
+            socket.off("paymentSuccess", refresh);
+            socket.off("paymentFailed", refresh);
             socket.off("replacementUpdated", refresh);
             socket.off("order_status_updated", refresh);
         };

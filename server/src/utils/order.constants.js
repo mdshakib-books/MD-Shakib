@@ -16,7 +16,26 @@ export const ORDER_STATUS = {
 
 export const PAYMENT_METHODS = {
     COD: "COD",
-    ONLINE: "Online",
+    ONLINE: "ONLINE",
+};
+
+export const normalizePaymentMethod = (paymentMethod = "") => {
+    const normalized = String(paymentMethod || "")
+        .trim()
+        .toUpperCase();
+
+    if (normalized === PAYMENT_METHODS.COD) return PAYMENT_METHODS.COD;
+    if (normalized === PAYMENT_METHODS.ONLINE) return PAYMENT_METHODS.ONLINE;
+    if (normalized === "ONLINE_PAYMENT" || normalized === "ONLINEPAYMENT") {
+        return PAYMENT_METHODS.ONLINE;
+    }
+
+    // Backward-compatibility for existing stored "Online" values.
+    if (String(paymentMethod || "").trim() === "Online") {
+        return PAYMENT_METHODS.ONLINE;
+    }
+
+    return null;
 };
 
 // Define valid transitions to prevent invalid status flows

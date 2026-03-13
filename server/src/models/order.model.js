@@ -97,7 +97,15 @@ const orderSchema = new mongoose.Schema(
         paymentMethod: {
             type: String,
             required: true,
-            enum: ["COD", "Online"],
+            enum: ["COD", "ONLINE", "Online"],
+            set: (value) => {
+                const normalized = String(value || "")
+                    .trim()
+                    .toUpperCase();
+                if (normalized === "COD") return "COD";
+                if (normalized === "ONLINE") return "ONLINE";
+                return value;
+            },
         },
         paymentStatus: {
             type: String,
@@ -138,6 +146,8 @@ const orderSchema = new mongoose.Schema(
         isPaid: { type: Boolean, required: true, default: false },
         paidAt: { type: Date },
         deliveredAt: { type: Date },
+        razorpayOrderId: { type: String },
+        razorpayPaymentId: { type: String },
     },
     { timestamps: true },
 );

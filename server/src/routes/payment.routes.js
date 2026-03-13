@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
     createOnlinePaymentIntent,
+    verifyRazorpayPayment,
     verifyPaymentWebhook,
     handlePaymentFailure,
     retryPayment,
@@ -9,7 +10,8 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
     createPaymentIntentSchema,
-    verifyPaymentWebhookSchema,
+    verifyPaymentSchema,
+    handlePaymentFailureSchema,
     retryPaymentSchema,
 } from "../utils/payment.validation.js";
 
@@ -18,7 +20,6 @@ const router = Router();
 // Public webhook
 router.post(
     "/webhook",
-    validate(verifyPaymentWebhookSchema),
     verifyPaymentWebhook,
 );
 
@@ -29,7 +30,8 @@ router.post(
     validate(createPaymentIntentSchema),
     createOnlinePaymentIntent,
 );
-router.post("/failure", handlePaymentFailure);
+router.post("/verify", validate(verifyPaymentSchema), verifyRazorpayPayment);
+router.post("/failure", validate(handlePaymentFailureSchema), handlePaymentFailure);
 router.post("/retry", validate(retryPaymentSchema), retryPayment);
 
 export default router;

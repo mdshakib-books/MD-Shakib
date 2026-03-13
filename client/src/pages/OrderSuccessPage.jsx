@@ -143,10 +143,18 @@ const OrderSuccessPage = () => {
 
                             {/* Total */}
                             <div className="flex justify-between font-bold text-sm text-white border-t border-[#2A2A2A] pt-3 mt-2">
-                                <span>Total Paid</span>
+                                <span>Total Amount</span>
                                 <span className="text-[var(--color-primary-gold)]">
                                     {formatPrice(totalAmount)}
                                 </span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-400 mt-2">
+                                <span>Payment Method</span>
+                                <span>{order.paymentMethod || "—"}</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                <span>Payment Status</span>
+                                <span>{order.paymentStatus || "Pending"}</span>
                             </div>
                         </div>
                     )}
