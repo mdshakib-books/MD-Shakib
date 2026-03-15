@@ -1,9 +1,23 @@
 import Joi from "joi";
 
+const STRONG_PASSWORD_REGEX =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
+
+const STRONG_PASSWORD_RULE =
+    "Password must be min 6 chars with uppercase, lowercase, number & special character";
+
+const strongPasswordSchema = Joi.string()
+    .required()
+    .pattern(STRONG_PASSWORD_REGEX)
+    .messages({
+        "string.empty": "Password is required",
+        "string.pattern.base": STRONG_PASSWORD_RULE,
+    });
+
 export const registerSchema = Joi.object({
     name: Joi.string().required().trim(),
     email: Joi.string().email().required().trim().lowercase(),
-    password: Joi.string().min(6).required(),
+    password: strongPasswordSchema,
     phone: Joi.string().optional().allow(""),
 });
 
@@ -19,7 +33,7 @@ export const updateProfileSchema = Joi.object({
 
 export const changePasswordSchema = Joi.object({
     oldPassword: Joi.string().required(),
-    newPassword: Joi.string().min(6).required(),
+    newPassword: strongPasswordSchema,
 });
 
 export const forgotPasswordSchema = Joi.object({
@@ -37,7 +51,7 @@ export const verifyOtpSchema = Joi.object({
 
 export const resetPasswordOtpSchema = Joi.object({
     email: Joi.string().email().required().trim().lowercase(),
-    newPassword: Joi.string().min(6).required(),
+    newPassword: strongPasswordSchema,
 });
 
 // Registration email OTP schemas (reuse same shape as password OTP)

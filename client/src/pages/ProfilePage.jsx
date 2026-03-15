@@ -18,7 +18,11 @@ import { authService } from "../services/authService";
 import { addressService } from "../services/addressService";
 import LogoutModal from "../components/LogoutModal";
 import { useToast } from "../context/ToastContext";
-import { validateField, inputBorder } from "../utils/validators";
+import {
+    validateField,
+    inputBorder,
+    validatePasswordMatch,
+} from "../utils/validators";
 
 // ── Reusable input style ──────────────────────────────────────────────────────
 const inputCls = (err) =>
@@ -31,7 +35,7 @@ const inputCls = (err) =>
 // ── Change Password Panel ─────────────────────────────────────────────────────
 const ChangePasswordPanel = () => {
     const dispatch = useDispatch();
-    const { showToast } = useToast();
+    const { addToast } = useToast();
     const { loading } = useSelector((s) => s.auth);
 
     const [form, setForm] = useState({
@@ -41,35 +45,50 @@ const ChangePasswordPanel = () => {
     });
     const [showPw, setShowPw] = useState(false);
     const [errors, setErrors] = useState({});
+    const [submitting, setSubmitting] = useState(false);
 
     const validate = () => {
         const e = {};
         if (!form.oldPassword) e.oldPassword = "Required";
-        if (!form.newPassword) e.newPassword = "Required";
-        else if (form.newPassword.length < 6)
-            e.newPassword = "Min 6 characters";
-        if (!form.confirmPassword) e.confirmPassword = "Required";
-        else if (form.newPassword !== form.confirmPassword)
-            e.confirmPassword = "Passwords do not match";
+        const passwordErr = validateField("password", form.newPassword);
+        if (passwordErr) e.newPassword = passwordErr;
+
+        const confirmErr = validatePasswordMatch(
+            form.newPassword,
+            form.confirmPassword,
+        );
+        if (confirmErr) e.confirmPassword = confirmErr;
+
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting || loading) return;
         if (!validate()) return;
-        const result = await dispatch(
-            changePassword({
-                oldPassword: form.oldPassword,
-                newPassword: form.newPassword,
-            }),
-        );
-        if (!result.error) {
-            showToast("Password changed successfully!", "success");
-            setForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
-            setErrors({});
-        } else {
-            showToast(result.payload || "Failed to change password", "error");
+
+        setSubmitting(true);
+        try {
+            const result = await dispatch(
+                changePassword({
+                    oldPassword: form.oldPassword,
+                    newPassword: form.newPassword,
+                }),
+            );
+
+            if (!result.error) {
+                addToast("Password changed successfully", "success");
+                setForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+                setErrors({});
+            } else {
+                addToast(
+                    result.payload || "Failed to change password",
+                    "error",
+                );
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -159,10 +178,10 @@ const ChangePasswordPanel = () => {
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="flex items-center gap-2 bg-[var(--color-primary-gold)] hover:bg-[var(--color-accent-gold)] text-black font-semibold px-6 py-2.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loading ? (
+                    {loading || submitting ? (
                         <svg
                             className="animate-spin w-4 h-4"
                             viewBox="0 0 24 24"
@@ -185,7 +204,7 @@ const ChangePasswordPanel = () => {
                     ) : (
                         <FiKey />
                     )}
-                    {loading ? "Updating..." : "Update Password"}
+                    {loading || submitting ? "Updating..." : "Update Password"}
                 </button>
             </form>
         </div>
@@ -194,7 +213,7 @@ const ChangePasswordPanel = () => {
 
 // ── Profile Panel ─────────────────────────────────────────────────────────────
 const ProfilePanel = ({ user, dispatch, navigate }) => {
-    const { showToast } = useToast();
+    const { addToast } = useToast();
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
@@ -239,10 +258,10 @@ const ProfilePanel = ({ user, dispatch, navigate }) => {
             });
             dispatch(setUser(updated));
             localStorage.setItem("user", JSON.stringify(updated));
-            showToast("Profile updated successfully!", "success");
+            addToast("Profile updated successfully!", "success");
             setEditing(false);
         } catch (err) {
-            showToast(
+            addToast(
                 err?.response?.data?.message || "Failed to update profile",
                 "error",
             );

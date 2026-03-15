@@ -13,6 +13,9 @@ import { setItems, clearGuestCart } from "../redux/slices/cartSlice";
 
 const PLATFORM_FEE = 10;
 const DELIVERY_FEE = 35;
+const ADDRESS_REQUIRED_MESSAGE = "Please select an address to proceed";
+const ADDRESS_HELPER_ID = "checkout-address-helper";
+const ADDRESS_TOOLTIP_ID = "checkout-address-tooltip";
 
 const CheckoutPage = () => {
     const navigate = useNavigate();
@@ -23,6 +26,13 @@ const CheckoutPage = () => {
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState("COD");
     const [placing, setPlacing] = useState(false);
+    const [addressSelectorState, setAddressSelectorState] = useState({
+        loading: true,
+        hasError: false,
+        hasAddresses: false,
+        selectedAddress: null,
+    });
+    const [showAddressTooltip, setShowAddressTooltip] = useState(false);
 
     // Idempotency key is generated once per component mount — prevents double-submit
     const idempotencyKey = useRef(crypto.randomUUID());
@@ -38,6 +48,14 @@ const CheckoutPage = () => {
         0,
     );
     const total = subtotal + PLATFORM_FEE + DELIVERY_FEE;
+    const isAddressMissing = !selectedAddress;
+    const disableOrderButton = placing || isAddressMissing;
+
+    useEffect(() => {
+        if (!isAddressMissing && showAddressTooltip) {
+            setShowAddressTooltip(false);
+        }
+    }, [isAddressMissing, showAddressTooltip]);
 
     const loadRazorpaySdk = () =>
         new Promise((resolve) => {
@@ -127,7 +145,7 @@ const CheckoutPage = () => {
 
     const handlePlaceOrder = async () => {
         if (!selectedAddress) {
-            addToast("Please select a delivery address", "error");
+            addToast(ADDRESS_REQUIRED_MESSAGE, "error");
             return;
         }
         if (items.length === 0) {
@@ -203,6 +221,19 @@ const CheckoutPage = () => {
         }
     };
 
+    const handleDisabledOrderAttempt = (event) => {
+        event.preventDefault();
+        if (!isAddressMissing || placing) return;
+
+        setShowAddressTooltip(true);
+        addToast(
+            addressSelectorState.hasError
+                ? "Unable to load addresses. Please retry and select an address."
+                : ADDRESS_REQUIRED_MESSAGE,
+            "error",
+        );
+    };
+
     if (items.length === 0) {
         return (
             <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
@@ -242,7 +273,16 @@ const CheckoutPage = () => {
                                 </h2>
                                 <AddressSelector
                                     onSelect={setSelectedAddress}
+                                    onStateChange={setAddressSelectorState}
                                 />
+                                {!addressSelectorState.loading &&
+                                    !addressSelectorState.hasError &&
+                                    !addressSelectorState.hasAddresses && (
+                                        <p className="text-xs text-gray-400">
+                                            Add a delivery address to enable
+                                            checkout.
+                                        </p>
+                                    )}
                             </div>
 
                             {/* Payment Method */}
@@ -378,17 +418,71 @@ const CheckoutPage = () => {
                             </div>
 
                             {/* Place Order CTA */}
-                            <button
-                                onClick={handlePlaceOrder}
-                                disabled={placing || !selectedAddress}
-                                className="w-full py-3.5 rounded-xl bg-[var(--color-primary-gold)] text-black font-bold text-base hover:bg-[var(--color-accent-gold)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-[1.01]"
-                            >
-                                {placing
-                                    ? "Placing Order…"
-                                    : paymentMethod === "COD"
-                                      ? "Place Order (Cash on Delivery)"
-                                      : "Proceed to Payment"}
-                            </button>
+                            <div className="relative">
+                                <button
+                                    onClick={handlePlaceOrder}
+                                    disabled={disableOrderButton}
+                                    aria-disabled={disableOrderButton}
+                                    aria-describedby={
+                                        isAddressMissing
+                                            ? ADDRESS_HELPER_ID
+                                            : undefined
+                                    }
+                                    className="w-full py-3.5 rounded-xl bg-[var(--color-primary-gold)] text-black font-bold text-base hover:bg-[var(--color-accent-gold)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-[1.01]"
+                                >
+                                    {placing
+                                        ? "Placing Order…"
+                                        : paymentMethod === "COD"
+                                          ? "Place Order (Cash on Delivery)"
+                                          : "Proceed to Payment"}
+                                </button>
+
+                                {isAddressMissing && !placing && (
+                                    <button
+                                        type="button"
+                                        onClick={handleDisabledOrderAttempt}
+                                        onMouseEnter={() =>
+                                            setShowAddressTooltip(true)
+                                        }
+                                        onMouseLeave={() =>
+                                            setShowAddressTooltip(false)
+                                        }
+                                        onFocus={() =>
+                                            setShowAddressTooltip(true)
+                                        }
+                                        onBlur={() =>
+                                            setShowAddressTooltip(false)
+                                        }
+                                        title={ADDRESS_REQUIRED_MESSAGE}
+                                        aria-label={ADDRESS_REQUIRED_MESSAGE}
+                                        aria-describedby={ADDRESS_HELPER_ID}
+                                        className="absolute inset-0 rounded-xl bg-transparent cursor-not-allowed"
+                                    >
+                                        <span className="sr-only">
+                                            {ADDRESS_REQUIRED_MESSAGE}
+                                        </span>
+                                    </button>
+                                )}
+
+                                {isAddressMissing && (
+                                    <span
+                                        id={ADDRESS_HELPER_ID}
+                                        className="sr-only"
+                                    >
+                                        {ADDRESS_REQUIRED_MESSAGE}
+                                    </span>
+                                )}
+
+                                {isAddressMissing && showAddressTooltip && (
+                                    <p
+                                        id={ADDRESS_TOOLTIP_ID}
+                                        role="tooltip"
+                                        className="absolute left-1/2 -translate-x-1/2 -top-11 text-xs bg-[#1a1a1a] border border-[#2A2A2A] text-gray-200 px-3 py-1.5 rounded-lg whitespace-nowrap z-10"
+                                    >
+                                        {ADDRESS_REQUIRED_MESSAGE}
+                                    </p>
+                                )}
+                            </div>
 
                             <p className="text-center text-xs text-gray-500">
                                 Estimated delivery: 5-7 business days.

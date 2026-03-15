@@ -477,8 +477,12 @@ ACCESS_TOKEN_EXPIRY=15m
 REFRESH_TOKEN_SECRET=refresh-secret
 REFRESH_TOKEN_EXPIRY=7d
 
+RAZORPAY_KEY_ID=rzp_test_xxxxx
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 RAZORPAY_WEBHOOK_SECRET=webhook-secret-from-razorpay
 ```
+
+For Render deployment, add all three Razorpay variables in the service settings and redeploy after saving environment variables.
 
 ---
 

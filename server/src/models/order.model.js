@@ -25,6 +25,12 @@ const addressSnapshotSchema = new mongoose.Schema(
         houseNo: { type: String, required: true, trim: true },
         area: { type: String, required: true, trim: true },
         landmark: { type: String, trim: true },
+        addressType: {
+            type: String,
+            enum: ["Home", "Office", "Other"],
+            default: "Home",
+            trim: true,
+        },
     },
     { _id: false },
 );

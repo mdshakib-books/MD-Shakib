@@ -60,6 +60,7 @@ class OrderService {
             houseNo: address.houseNo,
             area: address.area,
             landmark: address.landmark,
+            addressType: address.addressType || "Home",
         };
 
         // 3. Atomically Revalidate and Reduce Stock
