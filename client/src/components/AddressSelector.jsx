@@ -1,40 +1,67 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { addressService } from "../services/addressService";
 
-const AddressSelector = ({ onSelect, selectedId }) => {
+const getAddressType = (addressType) =>
+    ["Home", "Office", "Other"].includes(addressType) ? addressType : "Home";
+
+const AddressSelector = ({ onSelect, selectedId, onStateChange }) => {
     const [addresses, setAddresses] = useState([]);
     const [selected, setSelected] = useState(null);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
 
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const data = await addressService.getAddresses();
-                const list = Array.isArray(data) ? data : data?.items || [];
-                setAddresses(list);
+    const loadAddresses = useCallback(async () => {
+        setLoading(true);
+        setLoadError("");
+        try {
+            const data = await addressService.getAddresses();
+            const list = Array.isArray(data) ? data : data?.items || [];
+            setAddresses(list);
 
-                // Pick default, or first in list
-                const def = list.find((a) => a.isDefault) || list[0] || null;
-                setSelected(def);
-                if (def) onSelect?.(def);
-            } catch {
-                setAddresses([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, []);
-
-    // Sync if parent controlled selection changes
-    useEffect(() => {
-        if (selectedId && addresses.length) {
-            const match = addresses.find((a) => a._id === selectedId);
-            if (match) setSelected(match);
+            // Pick default, or first in list.
+            const def = list.find((a) => a.isDefault) || list[0] || null;
+            setSelected(def);
+            onSelect?.(def || null);
+        } catch {
+            setAddresses([]);
+            setSelected(null);
+            onSelect?.(null);
+            setLoadError("Unable to load addresses right now.");
+        } finally {
+            setLoading(false);
         }
-    }, [selectedId, addresses]);
+    }, [onSelect]);
+
+    useEffect(() => {
+        loadAddresses();
+    }, [loadAddresses]);
+
+    // Sync if parent controlled selection changes.
+    useEffect(() => {
+        if (typeof selectedId === "undefined") return;
+
+        if (!selectedId && selected) {
+            setSelected(null);
+            onSelect?.(null);
+            return;
+        }
+
+        if (selectedId && addresses.length) {
+            const match = addresses.find((a) => a._id === selectedId) || null;
+            setSelected(match);
+        }
+    }, [selectedId, addresses, selected, onSelect]);
+
+    useEffect(() => {
+        onStateChange?.({
+            loading,
+            hasError: Boolean(loadError),
+            hasAddresses: addresses.length > 0,
+            selectedAddress: selected || null,
+        });
+    }, [loading, loadError, addresses, selected, onStateChange]);
 
     const handleSelect = (addr) => {
         setSelected(addr);
@@ -46,6 +73,29 @@ const AddressSelector = ({ onSelect, selectedId }) => {
         return (
             <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-4 md:px-6">
                 <div className="h-4 w-48 bg-[#2A2A2A] rounded animate-pulse" />
+            </div>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-4 md:px-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-red-400 text-sm">{loadError}</p>
+                <div className="flex items-center gap-4 text-sm">
+                    <button
+                        type="button"
+                        onClick={loadAddresses}
+                        className="text-[var(--color-primary-gold)] hover:underline"
+                    >
+                        Retry
+                    </button>
+                    <Link
+                        to="/addresses"
+                        className="text-[var(--color-primary-gold)] hover:underline"
+                    >
+                        Manage Addresses
+                    </Link>
+                </div>
             </div>
         );
     }
@@ -74,14 +124,19 @@ const AddressSelector = ({ onSelect, selectedId }) => {
                     <p className="text-gray-400 text-xs mb-1">Deliver to:</p>
                     {selected ? (
                         <>
-                            <p className="font-semibold text-white">
-                                {selected.fullName}
+                            <div className="flex items-center flex-wrap gap-2">
+                                <p className="font-semibold text-white">
+                                    {selected.fullName}
+                                </p>
+                                <span className="text-[10px] bg-[#1a1a1a] text-gray-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+                                    {getAddressType(selected.addressType)}
+                                </span>
                                 {selected.isDefault && (
-                                    <span className="ml-2 text-[10px] bg-[var(--color-primary-gold)] text-black px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+                                    <span className="text-[10px] bg-[var(--color-primary-gold)] text-black px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
                                         Default
                                     </span>
                                 )}
-                            </p>
+                            </div>
                             <p className="text-gray-300 mt-0.5">
                                 {selected.houseNo}, {selected.area}
                                 {selected.landmark
@@ -103,6 +158,7 @@ const AddressSelector = ({ onSelect, selectedId }) => {
 
                 {/* Change button */}
                 <button
+                    type="button"
                     onClick={() => setOpen(!open)}
                     className="flex-shrink-0 flex items-center gap-1 text-[var(--color-primary-gold)] text-sm hover:text-[var(--color-accent-gold)] transition font-medium mt-1"
                 >
@@ -134,6 +190,7 @@ const AddressSelector = ({ onSelect, selectedId }) => {
                 <div className="absolute left-0 right-0 top-full mt-1 bg-[#111111] border border-[#2A2A2A] rounded-xl shadow-xl overflow-hidden z-40">
                     {addresses.map((addr) => (
                         <button
+                            type="button"
                             key={addr._id}
                             onClick={() => handleSelect(addr)}
                             className={`w-full text-left px-4 py-3 text-sm hover:bg-[#1a1a1a] transition border-b border-[#1e1e1e] last:border-0 ${
@@ -142,11 +199,16 @@ const AddressSelector = ({ onSelect, selectedId }) => {
                                     : "text-white"
                             }`}
                         >
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between gap-3">
                                 <div>
-                                    <p className="font-medium">
-                                        {addr.fullName}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium">
+                                            {addr.fullName}
+                                        </p>
+                                        <span className="text-[10px] bg-[#1a1a1a] text-gray-300 px-1.5 py-0.5 rounded font-bold uppercase">
+                                            {getAddressType(addr.addressType)}
+                                        </span>
+                                    </div>
                                     <p className="text-gray-400 text-xs mt-0.5">
                                         {addr.houseNo}, {addr.city},{" "}
                                         {addr.pincode}

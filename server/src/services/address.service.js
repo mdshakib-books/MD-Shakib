@@ -1,21 +1,36 @@
 import Address from "../models/address.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
+const ADDRESS_TYPE_VALUES = new Set(["Home", "Office", "Other"]);
+
+const normalizeAddressType = (value) =>
+    ADDRESS_TYPE_VALUES.has(value) ? value : "Home";
+
+const withAddressTypeFallback = (address = {}) => ({
+    ...address,
+    addressType: normalizeAddressType(address.addressType),
+});
+
 class AddressService {
     async addAddress(userId, addressData) {
+        const payload = {
+            ...addressData,
+            addressType: normalizeAddressType(addressData?.addressType),
+        };
+
         // If setting as default, unset others
-        if (addressData.isDefault) {
+        if (payload.isDefault) {
             await Address.updateMany({ userId }, { isDefault: false });
         } else {
             // If it's the first address, force it to be default
             const count = await Address.countDocuments({ userId });
             if (count === 0) {
-                addressData.isDefault = true;
+                payload.isDefault = true;
             }
         }
 
         const newAddress = await Address.create({
-            ...addressData,
+            ...payload,
             userId,
         });
 
@@ -23,9 +38,11 @@ class AddressService {
     }
 
     async getUserAddresses(userId) {
-        return await Address.find({ userId })
+        const addresses = await Address.find({ userId })
             .sort({ isDefault: -1, createdAt: -1 })
             .lean();
+
+        return addresses.map(withAddressTypeFallback);
     }
 
     async updateAddress(userId, addressId, updateData) {
@@ -42,7 +59,20 @@ class AddressService {
             );
         }
 
-        Object.assign(address, updateData);
+        const normalizedUpdateData = {
+            ...updateData,
+        };
+
+        if (Object.hasOwn(normalizedUpdateData, "addressType")) {
+            normalizedUpdateData.addressType = normalizeAddressType(
+                normalizedUpdateData.addressType,
+            );
+        }
+
+        Object.assign(address, normalizedUpdateData);
+        if (!address.addressType) {
+            address.addressType = "Home";
+        }
         await address.save();
         return address;
     }
@@ -83,6 +113,9 @@ class AddressService {
 
         // Set target
         address.isDefault = true;
+        if (!address.addressType) {
+            address.addressType = "Home";
+        }
         await address.save();
 
         return address;

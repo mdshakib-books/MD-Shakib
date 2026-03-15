@@ -2,12 +2,18 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { resetPasswordOtp } from "../redux/slices/authSlice";
+import {
+    validateField,
+    validatePasswordMatch,
+    inputBorder,
+} from "../utils/validators";
 
 const ResetPasswordPage = () => {
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({});
+    const [submitting, setSubmitting] = useState(false);
 
     const dispatch = useDispatch();
     const { loading, error } = useSelector((state) => state.auth);
@@ -22,28 +28,34 @@ const ResetPasswordPage = () => {
 
     const validate = () => {
         const newErrors = {};
-        if (!password) newErrors.password = "Password is required";
-        else if (password.length < 6)
-            newErrors.password = "Must be at least 6 characters";
-        if (!confirmPassword)
-            newErrors.confirmPassword = "Please confirm your password";
-        else if (password !== confirmPassword)
-            newErrors.confirmPassword = "Passwords do not match";
+
+        const passwordErr = validateField("password", password);
+        if (passwordErr) newErrors.password = passwordErr;
+
+        const confirmErr = validatePasswordMatch(password, confirmPassword);
+        if (confirmErr) newErrors.confirmPassword = confirmErr;
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading || submitting) return;
         if (!validate()) return;
 
-        const result = await dispatch(
-            resetPasswordOtp({ email, newPassword: password }),
-        );
-        if (!result.error) {
-            // Clear sessionStorage
-            sessionStorage.removeItem("otp_email");
-            navigate("/");
+        setSubmitting(true);
+        try {
+            const result = await dispatch(
+                resetPasswordOtp({ email, newPassword: password }),
+            );
+            if (!result.error) {
+                // Clear sessionStorage
+                sessionStorage.removeItem("otp_email");
+                navigate("/");
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -88,14 +100,18 @@ const ResetPasswordPage = () => {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     value={password}
-                                    onChange={(e) =>
-                                        setPassword(e.target.value)
-                                    }
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if (errors.password) {
+                                            setErrors((prev) => ({
+                                                ...prev,
+                                                password: "",
+                                            }));
+                                        }
+                                    }}
                                     placeholder="At least 6 characters"
                                     className={`w-full bg-[#0B0B0B] border text-white placeholder-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none transition pr-16 ${
-                                        errors.password
-                                            ? "border-red-600"
-                                            : "border-[#2A2A2A] focus:border-[var(--color-primary-gold)]"
+                                        inputBorder(errors.password)
                                     }`}
                                 />
                                 <button
@@ -113,6 +129,12 @@ const ResetPasswordPage = () => {
                                     {errors.password}
                                 </p>
                             )}
+                            {!errors.password && password && (
+                                <p className="text-gray-600 text-xs mt-1">
+                                    Must include uppercase, lowercase, digit &
+                                    special character
+                                </p>
+                            )}
                         </div>
 
                         {/* Confirm Password */}
@@ -123,9 +145,15 @@ const ResetPasswordPage = () => {
                             <input
                                 type={showPassword ? "text" : "password"}
                                 value={confirmPassword}
-                                onChange={(e) =>
-                                    setConfirmPassword(e.target.value)
-                                }
+                                onChange={(e) => {
+                                    setConfirmPassword(e.target.value);
+                                    if (errors.confirmPassword) {
+                                        setErrors((prev) => ({
+                                            ...prev,
+                                            confirmPassword: "",
+                                        }));
+                                    }
+                                }}
                                 placeholder="Repeat your password"
                                 className={`w-full bg-[#0B0B0B] border text-white placeholder-gray-600 rounded-lg px-4 py-3 text-sm focus:outline-none transition ${
                                     errors.confirmPassword
@@ -142,10 +170,10 @@ const ResetPasswordPage = () => {
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || submitting}
                             className="w-full flex items-center justify-center gap-2 bg-[var(--color-primary-gold)] hover:bg-[var(--color-accent-gold)] text-black font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? (
+                            {loading || submitting ? (
                                 <>
                                     <svg
                                         className="animate-spin w-4 h-4"

@@ -2,6 +2,9 @@ import React from "react";
 import { FiEdit, FiTrash2, FiCheck } from "react-icons/fi";
 import { addressService } from "../services/addressService";
 
+const getAddressType = (addressType) =>
+    ["Home", "Office", "Other"].includes(addressType) ? addressType : "Home";
+
 const AddressCard = ({ address, onEdit, onDelete }) => {
     const handleDelete = async () => {
         await addressService.deleteAddress(address._id);
@@ -17,7 +20,7 @@ const AddressCard = ({ address, onEdit, onDelete }) => {
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-6 hover:border-[var(--color-primary-gold)] transition">
             <div className="flex justify-between items-start">
                 <span className="text-xs bg-[#1a1a1a] px-2 py-1 rounded uppercase">
-                    Home
+                    {getAddressType(address.addressType)}
                 </span>
 
                 {address.isDefault && (

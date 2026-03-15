@@ -19,12 +19,24 @@ import {
     emitPaymentUpdated,
     emitOrderPaid,
 } from "../sockets/order.socket.js";
-import { getRazorpayInstance, isRazorpayConfigured } from "../config/razorpay.js";
+import {
+    getRazorpayConfigStatus,
+    getRazorpayInstance,
+    getRazorpayKeyId,
+    getRazorpayKeySecret,
+    isRazorpayConfigured,
+} from "../config/razorpay.js";
 
 const REUSABLE_INTENT_TTL_MS = 20 * 60 * 1000;
 class PaymentService {
     _assertGatewayReady() {
         if (!isRazorpayConfigured()) {
+            const status = getRazorpayConfigStatus();
+            if (!status.configured && status.missingKeys.length > 0) {
+                console.error(
+                    `[Razorpay] Missing configuration keys: ${status.missingKeys.join(", ")}`,
+                );
+            }
             throw new ApiError(
                 500,
                 "Payment gateway is not configured. Please contact support.",
@@ -292,7 +304,7 @@ class PaymentService {
                         duplicateAttempt.paymentId,
                     amount: Math.round(duplicateAttempt.amount * 100),
                     currency: duplicateAttempt.currency || "INR",
-                    keyId: process.env.RAZORPAY_KEY_ID,
+                    keyId: getRazorpayKeyId(),
                     reused: true,
                     paymentStatus: duplicateAttempt.status,
                 };
@@ -315,7 +327,7 @@ class PaymentService {
                     reusableIntent.paymentId,
                 amount: Math.round(reusableIntent.amount * 100),
                 currency: reusableIntent.currency || "INR",
-                keyId: process.env.RAZORPAY_KEY_ID,
+                keyId: getRazorpayKeyId(),
                 reused: true,
                 paymentStatus: reusableIntent.status,
             };
@@ -363,7 +375,7 @@ class PaymentService {
             razorpayOrderId: razorpayOrder.id,
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency || "INR",
-            keyId: process.env.RAZORPAY_KEY_ID,
+            keyId: getRazorpayKeyId(),
             reused: false,
             paymentStatus: paymentDoc.status,
         };
@@ -387,7 +399,7 @@ class PaymentService {
         }
 
         const expectedSignature = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .createHmac("sha256", getRazorpayKeySecret())
             .update(`${razorpay_order_id}|${razorpay_payment_id}`)
             .digest("hex");
 

@@ -18,7 +18,11 @@ import { authService } from "../services/authService";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout";
 import { useToast } from "../context/ToastContext";
-import { validateField, inputBorder } from "../utils/validators";
+import {
+    validateField,
+    inputBorder,
+    validatePasswordMatch,
+} from "../utils/validators";
 
 // ── inline spinner ─────────────────────────────────────────────────────────────
 const Spinner = () => (
@@ -51,7 +55,7 @@ const AdminProfilePage = () => {
     const { loading } = useSelector((s) => s.auth);
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { showToast } = useToast();
+    const { addToast } = useToast();
 
     // ── Profile edit state ─────────────────────────────────────────────────────
     const [editing, setEditing] = useState(false);
@@ -71,6 +75,7 @@ const AdminProfilePage = () => {
         confirmPassword: "",
     });
     const [cpwErrors, setCpwErrors] = useState({});
+    const [changingPassword, setChangingPassword] = useState(false);
 
     // ── Profile handlers ───────────────────────────────────────────────────────
     const handleSave = async () => {
@@ -95,10 +100,10 @@ const AdminProfilePage = () => {
             });
             dispatch(setUser(updated));
             localStorage.setItem("user", JSON.stringify(updated));
-            showToast("Profile updated successfully!", "success");
+            addToast("Profile updated successfully!", "success");
             setEditing(false);
         } catch (err) {
-            showToast(
+            addToast(
                 err?.response?.data?.message || "Failed to update profile",
                 "error",
             );
@@ -117,36 +122,49 @@ const AdminProfilePage = () => {
     const validateCpw = () => {
         const e = {};
         if (!cpwForm.oldPassword) e.oldPassword = "Required";
-        if (!cpwForm.newPassword) e.newPassword = "Required";
-        else if (cpwForm.newPassword.length < 6)
-            e.newPassword = "Min 6 characters";
-        if (!cpwForm.confirmPassword) e.confirmPassword = "Required";
-        else if (cpwForm.newPassword !== cpwForm.confirmPassword)
-            e.confirmPassword = "Passwords do not match";
+        const passwordErr = validateField("password", cpwForm.newPassword);
+        if (passwordErr) e.newPassword = passwordErr;
+
+        const confirmErr = validatePasswordMatch(
+            cpwForm.newPassword,
+            cpwForm.confirmPassword,
+        );
+        if (confirmErr) e.confirmPassword = confirmErr;
+
         setCpwErrors(e);
         return Object.keys(e).length === 0;
     };
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
+        if (loading || changingPassword) return;
         if (!validateCpw()) return;
-        const result = await dispatch(
-            changePassword({
-                oldPassword: cpwForm.oldPassword,
-                newPassword: cpwForm.newPassword,
-            }),
-        );
-        if (!result.error) {
-            showToast("Password changed successfully!", "success");
-            setCpwForm({
-                oldPassword: "",
-                newPassword: "",
-                confirmPassword: "",
-            });
-            setCpwErrors({});
-            setShowCpw(false);
-        } else {
-            showToast(result.payload || "Failed to change password", "error");
+
+        setChangingPassword(true);
+        try {
+            const result = await dispatch(
+                changePassword({
+                    oldPassword: cpwForm.oldPassword,
+                    newPassword: cpwForm.newPassword,
+                }),
+            );
+            if (!result.error) {
+                addToast("Password changed successfully", "success");
+                setCpwForm({
+                    oldPassword: "",
+                    newPassword: "",
+                    confirmPassword: "",
+                });
+                setCpwErrors({});
+                setShowCpw(false);
+            } else {
+                addToast(
+                    result.payload || "Failed to change password",
+                    "error",
+                );
+            }
+        } finally {
+            setChangingPassword(false);
         }
     };
 
@@ -412,11 +430,15 @@ const AdminProfilePage = () => {
 
                                 <button
                                     type="submit"
-                                    disabled={loading}
+                                    disabled={loading || changingPassword}
                                     className="flex items-center gap-2 bg-[var(--color-primary-gold)] hover:bg-[var(--color-accent-gold)] text-black font-semibold px-6 py-2.5 rounded-lg transition disabled:opacity-50"
                                 >
-                                    {loading ? <Spinner /> : <FiKey />}
-                                    {loading
+                                    {loading || changingPassword ? (
+                                        <Spinner />
+                                    ) : (
+                                        <FiKey />
+                                    )}
+                                    {loading || changingPassword
                                         ? "Updating..."
                                         : "Update Password"}
                                 </button>

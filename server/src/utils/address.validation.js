@@ -1,5 +1,7 @@
 import Joi from "joi";
 
+const ADDRESS_TYPE_VALUES = ["Home", "Office", "Other"];
+
 export const createAddressSchema = Joi.object({
     fullName: Joi.string().required().trim(),
     phone: Joi.string().required().trim(),
@@ -9,6 +11,10 @@ export const createAddressSchema = Joi.object({
     houseNo: Joi.string().required().trim(),
     area: Joi.string().required().trim(),
     landmark: Joi.string().optional().allow("").trim(),
+    addressType: Joi.string()
+        .valid(...ADDRESS_TYPE_VALUES)
+        .optional()
+        .default("Home"),
     isDefault: Joi.boolean().optional().default(false),
 });
 
@@ -21,5 +27,8 @@ export const updateAddressSchema = Joi.object({
     houseNo: Joi.string().optional().trim(),
     area: Joi.string().optional().trim(),
     landmark: Joi.string().optional().allow("").trim(),
+    addressType: Joi.string()
+        .valid(...ADDRESS_TYPE_VALUES)
+        .optional(),
     isDefault: Joi.boolean().optional(),
 });

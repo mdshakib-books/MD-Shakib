@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser } from "../redux/slices/authSlice";
 import { fetchCart } from "../redux/slices/cartSlice";
 import LogoutModal from "./LogoutModal";
-import { FiBell } from "react-icons/fi";
 
 const Navbar = () => {
     const { user } = useSelector((state) => state.auth);
@@ -13,8 +12,10 @@ const Navbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [menuOpenedOnPath, setMenuOpenedOnPath] = useState(location.pathname);
     const [scrolled, setScrolled] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const navbarRef = useRef(null);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -35,16 +36,31 @@ const Navbar = () => {
         }
     }, [user, dispatch]);
 
+    useEffect(() => {
+        const isMobileMenuVisible =
+            isMobileMenuOpen && menuOpenedOnPath === location.pathname;
+        if (!isMobileMenuVisible) return;
+
+        const handleOutsideInteraction = (event) => {
+            if (!navbarRef.current) return;
+            if (navbarRef.current.contains(event.target)) return;
+            setIsMobileMenuOpen(false);
+        };
+
+        document.addEventListener("mousedown", handleOutsideInteraction);
+        document.addEventListener("touchstart", handleOutsideInteraction);
+
+        return () => {
+            document.removeEventListener("mousedown", handleOutsideInteraction);
+            document.removeEventListener("touchstart", handleOutsideInteraction);
+        };
+    }, [isMobileMenuOpen, menuOpenedOnPath, location.pathname]);
+
     const cartCount = user
         ? cartItems?.reduce((total, item) => total + item.quantity, 0) || 0
         : guestItems?.reduce((total, item) => total + item.quantity, 0) || 0;
 
     const handleLogoutConfirm = () => {
-        dispatch(logoutUser());
-        navigate("/login");
-    };
-
-    const handleLogout = () => {
         dispatch(logoutUser());
         navigate("/login");
     };
@@ -57,6 +73,17 @@ const Navbar = () => {
     ];
 
     const isHomePage = location.pathname === "/";
+    const isMobileMenuVisible =
+        isMobileMenuOpen && menuOpenedOnPath === location.pathname;
+
+    const handleMobileMenuToggle = () => {
+        if (isMobileMenuVisible) {
+            setIsMobileMenuOpen(false);
+            return;
+        }
+        setMenuOpenedOnPath(location.pathname);
+        setIsMobileMenuOpen(true);
+    };
 
     // Dynamic Navbar classes based on route and scroll state
     const navClasses = isHomePage
@@ -69,12 +96,12 @@ const Navbar = () => {
 
     return (
         <React.Fragment>
-            <nav className={navClasses}>
+            <nav ref={navbarRef} className={navClasses}>
                 <div className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between">
                     {/* Mobile Hamburger Menu */}
                     <button
                         className="md:hidden text-[var(--color-primary-gold)] focus:outline-none"
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        onClick={handleMobileMenuToggle}
                     >
                         <svg
                             className="w-6 h-6"
@@ -82,7 +109,7 @@ const Navbar = () => {
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
-                            {isMobileMenuOpen ? (
+                            {isMobileMenuVisible ? (
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -267,7 +294,7 @@ const Navbar = () => {
                 </div>
 
                 {/* Mobile Menu Dropdown */}
-                {isMobileMenuOpen && (
+                {isMobileMenuVisible && (
                     <div className="md:hidden bg-[var(--color-secondary-dark)] border-t border-[var(--color-border-dark)] absolute w-full left-0 z-50">
                         <div className="px-4 pt-2 pb-4 space-y-1">
                             {navLinks.map((link) => (

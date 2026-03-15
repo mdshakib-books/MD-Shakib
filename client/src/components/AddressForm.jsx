@@ -5,6 +5,8 @@ import { validateField, inputBorder } from "../utils/validators";
 const inputCls = (err) =>
     `bg-[#0B0B0B] border rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:outline-none transition w-full ${inputBorder(err)}`;
 
+const ADDRESS_TYPES = ["Home", "Office", "Other"];
+
 const INITIAL = {
     fullName: "",
     phone: "",
@@ -14,6 +16,7 @@ const INITIAL = {
     houseNo: "",
     area: "",
     landmark: "",
+    addressType: "Home",
     isDefault: false,
 };
 
@@ -27,6 +30,9 @@ const AddressForm = ({ address, onClose, onSuccess }) => {
         houseNo: address?.houseNo || "",
         area: address?.area || "",
         landmark: address?.landmark || "",
+        addressType: ADDRESS_TYPES.includes(address?.addressType)
+            ? address.addressType
+            : INITIAL.addressType,
         isDefault: address?.isDefault || false,
     });
     const [errors, setErrors] = useState({});
@@ -66,6 +72,10 @@ const AddressForm = ({ address, onClose, onSuccess }) => {
                 e[key] = `${label} is required (min 2 characters)`;
         });
 
+        if (!ADDRESS_TYPES.includes(form.addressType)) {
+            e.addressType = "Please select a valid address type";
+        }
+
         setErrors(e);
         return Object.keys(e).length === 0;
     };
@@ -76,10 +86,17 @@ const AddressForm = ({ address, onClose, onSuccess }) => {
 
         setSubmitting(true);
         try {
+            const payload = {
+                ...form,
+                addressType: ADDRESS_TYPES.includes(form.addressType)
+                    ? form.addressType
+                    : INITIAL.addressType,
+            };
+
             if (address) {
-                await addressService.updateAddress(address._id, form);
+                await addressService.updateAddress(address._id, payload);
             } else {
-                await addressService.addAddress(form);
+                await addressService.addAddress(payload);
             }
             onSuccess();
         } catch (err) {
@@ -223,6 +240,41 @@ const AddressForm = ({ address, onClose, onSuccess }) => {
                         onChange={handleChange}
                         className={inputCls(false)}
                     />
+                </div>
+
+                {/* Address type */}
+                <div className="md:col-span-2">
+                    <p className="text-gray-300 text-sm mb-2">Address Type</p>
+                    <div className="flex flex-wrap gap-3">
+                        {ADDRESS_TYPES.map((type) => {
+                            const selected = form.addressType === type;
+                            return (
+                                <label
+                                    key={type}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition ${
+                                        selected
+                                            ? "border-[var(--color-primary-gold)] text-[var(--color-primary-gold)] bg-[#1a1a1a]"
+                                            : "border-[#2A2A2A] text-gray-300 hover:border-[#3a3a3a]"
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="addressType"
+                                        value={type}
+                                        checked={selected}
+                                        onChange={handleChange}
+                                        className="accent-[var(--color-primary-gold)]"
+                                    />
+                                    {type}
+                                </label>
+                            );
+                        })}
+                    </div>
+                    {errors.addressType && (
+                        <p className="text-red-400 text-xs mt-1">
+                            {errors.addressType}
+                        </p>
+                    )}
                 </div>
 
                 {/* Default checkbox */}
