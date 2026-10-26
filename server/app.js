@@ -5,6 +5,8 @@ import { errorHandler } from "./src/middlewares/error.middleware.js";
 import auditLog from "./src/middlewares/audit.middleware.js";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import compression from "compression";
+
 
 const app = express();
 
@@ -13,6 +15,7 @@ app.set("trust proxy", 1);
 
 // Security Headers
 app.use(helmet());
+app.use(compression());
 
 app.use(
     cors({
