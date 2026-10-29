@@ -123,6 +123,67 @@ export async function processRazorpayWebhook(rawBody: string, signature: string)
       return result;
     }
 
+    case "refund.processed":
+    case "refund.created":
+    case "refund.failed": {
+      const refundEntity = payload?.refund?.entity;
+      const paymentEntity = payload?.payment?.entity;
+      const rzpPaymentId = refundEntity?.payment_id || paymentEntity?.id;
+      const refundId = refundEntity?.id;
+
+      if (!rzpPaymentId || !refundId) {
+        return { status: "ignored", reason: "Missing payment_id or refund_id in refund webhook payload" };
+      }
+
+      // Look up order matching the payment
+      const { data: order } = await adminDb
+        .from("orders")
+        .select("id, total_amount, payment_status, razorpay_refund_id, refund_status")
+        .eq("razorpay_payment_id", rzpPaymentId)
+        .maybeSingle();
+
+      const refundStatus =
+        eventType === "refund.processed"
+          ? "processed"
+          : eventType === "refund.failed"
+          ? "failed"
+          : "pending";
+
+      let targetOrderId = order?.id;
+      let targetAmount = order ? Number(order.total_amount) : 0;
+
+      if (!targetOrderId) {
+        // Fallback: look up in payments table
+        const { data: payment } = await adminDb
+          .from("payments")
+          .select("order_id, amount")
+          .eq("provider_payment_id", rzpPaymentId)
+          .maybeSingle();
+
+        if (!payment) {
+          return { status: "ignored", reason: `Order for payment ${rzpPaymentId} not found` };
+        }
+        targetOrderId = payment.order_id;
+        targetAmount = Number(payment.amount);
+      }
+
+      const finalAmount = refundEntity?.amount ? Number(refundEntity.amount) / 100 : targetAmount;
+
+      const { data: rpcRes, error: rpcErr } = await adminDb.rpc("record_refund_atomic", {
+        p_order_id: targetOrderId,
+        p_refund_id: refundId,
+        p_refund_amount: finalAmount,
+        p_refund_status: refundStatus,
+        p_raw_response: payload,
+      });
+
+      if (rpcErr) {
+        throw new Error(`Atomic refund webhook recording failed: ${rpcErr.message}`);
+      }
+
+      return { status: "refund_recorded", orderId: targetOrderId, refundStatus };
+    }
+
     default:
       return { status: "unhandled_event", event: eventType };
   }

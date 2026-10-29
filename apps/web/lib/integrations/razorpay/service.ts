@@ -217,3 +217,169 @@ export async function verifyAndSettlePayment(params: VerifySignatureParams) {
   };
 }
 
+export interface InitiateRefundParams {
+  orderId: string;
+  reason?: string;
+  notes?: Record<string, string>;
+}
+
+export interface InitiateRefundResult {
+  success: boolean;
+  refundId?: string;
+  status: "processed" | "pending" | "failed" | "already_processed" | "not_eligible";
+  amount?: number;
+  error?: string;
+}
+
+/**
+ * Initiates an authoritative, idempotent refund via Razorpay for an online prepaid order.
+ * Strictly derives the payment ID and refundable amount from the database record.
+ * Never marks an order as 'Refunded' without verified gateway settlement.
+ */
+export async function initiateRazorpayRefund(
+  params: InitiateRefundParams
+): Promise<InitiateRefundResult> {
+  const { orderId, reason, notes } = params;
+  const adminDb = createAdminClient();
+  const { razorpay } = getIntegrationsConfig();
+
+  // 1. Fetch authoritative order
+  const { data: order, error: orderError } = await adminDb
+    .from("orders")
+    .select("id, user_id, payment_status, payment_method, razorpay_order_id, razorpay_payment_id, razorpay_refund_id, refund_status, total_amount, order_status")
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    throw new Error(`Order not found: ${orderId}`);
+  }
+
+  // 2. Validate eligibility
+  if (order.payment_method !== "ONLINE") {
+    return {
+      success: false,
+      status: "not_eligible",
+      error: "Only ONLINE prepaid orders are eligible for automated Razorpay refunds.",
+    };
+  }
+
+  // 3. Idempotency check: if already refunded or in progress
+  if (order.payment_status === "Refunded" || order.refund_status === "processed") {
+    return {
+      success: true,
+      status: "already_processed",
+      refundId: order.razorpay_refund_id || undefined,
+      amount: Number(order.total_amount),
+    };
+  }
+
+  if (order.payment_status === "Refund Pending" || order.refund_status === "pending") {
+    return {
+      success: true,
+      status: "pending",
+      refundId: order.razorpay_refund_id || undefined,
+      amount: Number(order.total_amount),
+    };
+  }
+
+  if (order.payment_status !== "Paid") {
+    return {
+      success: false,
+      status: "not_eligible",
+      error: `Order payment status is "${order.payment_status}", expected "Paid".`,
+    };
+  }
+
+  // 4. Fetch authoritative payment record
+  const { data: paymentRecord } = await adminDb
+    .from("payments")
+    .select("id, payment_id, provider_payment_id, amount, currency, status")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const paymentId = paymentRecord?.provider_payment_id || order.razorpay_payment_id;
+  if (!paymentId) {
+    return {
+      success: false,
+      status: "failed",
+      error: "Missing Razorpay payment ID (provider_payment_id). Cannot issue refund.",
+    };
+  }
+
+  const authoritativeAmount = paymentRecord?.amount ?? order.total_amount;
+  const amountInPaise = Math.round(Number(authoritativeAmount) * 100);
+
+  // 5. Execute gateway refund call
+  let refundId: string;
+  let gatewayStatus: "processed" | "pending" | "failed" = "processed";
+  let rawRefundResponse: any = {};
+
+  try {
+    const isMock = razorpay.keyId.startsWith("rzp_test_mock") || razorpay.keyId.startsWith("mock");
+    if (isMock) {
+      refundId = `rfnd_mock_${Date.now()}`;
+      gatewayStatus = "processed";
+      rawRefundResponse = {
+        id: refundId,
+        payment_id: paymentId,
+        amount: amountInPaise,
+        currency: "INR",
+        status: "processed",
+        notes: { order_id: orderId, reason: reason || "Admin order cancellation" },
+      };
+    } else {
+      const client = getRazorpayClient();
+      const res = await client.payments.refund(paymentId, {
+        amount: amountInPaise,
+        notes: {
+          order_id: orderId,
+          reason: reason || "Admin order cancellation",
+          ...(notes || {}),
+        },
+      });
+      refundId = res.id;
+      gatewayStatus = res.status === "processed" ? "processed" : "pending";
+      rawRefundResponse = res;
+    }
+  } catch (err: any) {
+    console.error("Razorpay refund API call failed:", err?.message || err);
+    // Mark refund as failed in database without updating order payment_status to Refunded
+    await adminDb.rpc("record_refund_atomic", {
+      p_order_id: orderId,
+      p_refund_id: `rfnd_err_${Date.now()}`,
+      p_refund_amount: Number(authoritativeAmount),
+      p_refund_status: "failed",
+      p_raw_response: { error: err?.message || String(err) },
+    });
+
+    return {
+      success: false,
+      status: "failed",
+      error: `Razorpay refund failed: ${err?.message || err}`,
+    };
+  }
+
+  // 6. Record verified refund atomically in PostgreSQL
+  const { error: rpcErr } = await adminDb.rpc("record_refund_atomic", {
+    p_order_id: orderId,
+    p_refund_id: refundId,
+    p_refund_amount: Number(authoritativeAmount),
+    p_refund_status: gatewayStatus,
+    p_raw_response: rawRefundResponse,
+  });
+
+  if (rpcErr) {
+    console.error("Failed to record refund atomically in database:", rpcErr.message);
+    throw new Error(`Refund issued at gateway (${refundId}) but database update failed: ${rpcErr.message}`);
+  }
+
+  return {
+    success: true,
+    refundId,
+    status: gatewayStatus,
+    amount: Number(authoritativeAmount),
+  };
+}
+
