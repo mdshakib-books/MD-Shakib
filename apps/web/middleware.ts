@@ -42,12 +42,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protected customer routes
+  // Protected customer & admin routes
   const isProtectedRoute =
     pathname.startsWith("/profile") ||
     pathname.startsWith("/addresses") ||
     pathname.startsWith("/orders") ||
-    pathname.startsWith("/checkout");
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/admin");
 
   // Guest-only auth routes
   const isGuestAuthRoute =

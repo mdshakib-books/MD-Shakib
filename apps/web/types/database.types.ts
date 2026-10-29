@@ -415,6 +415,10 @@ export type Database = {
           payment_status: string
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
+          razorpay_refund_id: string | null
+          refund_amount: number | null
+          refund_status: string | null
+          refunded_at: string | null
           replacement_reason: string | null
           replacement_rejected_at: string | null
           replacement_rejection_reason: string | null
@@ -444,6 +448,10 @@ export type Database = {
           payment_status?: string
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
+          razorpay_refund_id?: string | null
+          refund_amount?: number | null
+          refund_status?: string | null
+          refunded_at?: string | null
           replacement_reason?: string | null
           replacement_rejected_at?: string | null
           replacement_rejection_reason?: string | null
@@ -473,6 +481,10 @@ export type Database = {
           payment_status?: string
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
+          razorpay_refund_id?: string | null
+          refund_amount?: number | null
+          refund_status?: string | null
+          refunded_at?: string | null
           replacement_reason?: string | null
           replacement_rejected_at?: string | null
           replacement_rejection_reason?: string | null
@@ -512,6 +524,10 @@ export type Database = {
           provider_order_id: string
           provider_payment_id: string | null
           raw_response: Json | null
+          refund_id: string | null
+          refund_amount: number | null
+          refund_status: string | null
+          refunded_at: string | null
           signature: string | null
           status: string
           updated_at: string
@@ -529,6 +545,10 @@ export type Database = {
           provider_order_id: string
           provider_payment_id?: string | null
           raw_response?: Json | null
+          refund_id?: string | null
+          refund_amount?: number | null
+          refund_status?: string | null
+          refunded_at?: string | null
           signature?: string | null
           status?: string
           updated_at?: string
@@ -546,6 +566,10 @@ export type Database = {
           provider_order_id?: string
           provider_payment_id?: string | null
           raw_response?: Json | null
+          refund_id?: string | null
+          refund_amount?: number | null
+          refund_status?: string | null
+          refunded_at?: string | null
           signature?: string | null
           status?: string
           updated_at?: string
@@ -643,6 +667,16 @@ export type Database = {
       record_payment_failure_atomic: {
         Args: {
           p_razorpay_order_id: string
+          p_raw_response?: Json
+        }
+        Returns: Json
+      }
+      record_refund_atomic: {
+        Args: {
+          p_order_id: string
+          p_refund_id: string
+          p_refund_amount: number
+          p_refund_status: string
           p_raw_response?: Json
         }
         Returns: Json
