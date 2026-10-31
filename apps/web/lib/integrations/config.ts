@@ -37,7 +37,8 @@ export function getIntegrationsConfig() {
   const resendApiKey = process.env.RESEND_API_KEY || "";
   const emailFrom = process.env.EMAIL_FROM || "MD Shakib Books <orders@mdshakib.com>";
 
-  const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+  const cloudinaryCloudName =
+    process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
   const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY || "";
   const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET || "";
 

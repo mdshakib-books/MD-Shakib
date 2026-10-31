@@ -8,7 +8,11 @@ export interface DashboardMetrics {
   totalBooks: number;
   totalUsers: number;
   lowStockCount: number;
+  outOfStockCount: number;
   inactiveBooksCount: number;
+  pendingReviewsCount: number;
+  activeDiscountsCount: number;
+  categoriesCount: number;
   ordersByStatus: Record<string, number>;
   ordersByPaymentStatus: Record<string, number>;
   recentOrders: Array<{
@@ -81,10 +85,14 @@ export async function getAdminDashboardStats(): Promise<DashboardMetrics> {
   const allBooks = books || [];
   const totalBooks = allBooks.length;
   let lowStockCount = 0;
+  let outOfStockCount = 0;
   let inactiveBooksCount = 0;
 
   for (const book of allBooks) {
-    if (book.stock <= 5) {
+    if (book.stock === 0) {
+      outOfStockCount++;
+      lowStockCount++;
+    } else if (book.stock <= 5) {
       lowStockCount++;
     }
     if (!book.is_active) {
@@ -100,12 +108,43 @@ export async function getAdminDashboardStats(): Promise<DashboardMetrics> {
 
   if (usersError) {
     console.error("Error querying users for admin dashboard:", usersError.message);
-    throw new Error(`Failed to load users: ${usersError.message}`);
   }
 
   const totalUsers = usersCount ?? 0;
 
-  // 4. Extract recent 5 orders with customer names
+  // 4. Fetch Pending Reviews count
+  const { count: pendingReviews, error: revError } = await supabase
+    .from("reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  if (revError) {
+    console.error("Error querying reviews count:", revError.message);
+  }
+  const pendingReviewsCount = pendingReviews ?? 0;
+
+  // 5. Fetch Active Discounts count
+  const { count: activeDiscounts, error: discError } = await supabase
+    .from("discounts")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true);
+
+  if (discError) {
+    console.error("Error querying discounts count:", discError.message);
+  }
+  const activeDiscountsCount = activeDiscounts ?? 0;
+
+  // 6. Fetch Categories count
+  const { count: catCount, error: catError } = await supabase
+    .from("categories")
+    .select("id", { count: "exact", head: true });
+
+  if (catError) {
+    console.error("Error querying categories count:", catError.message);
+  }
+  const categoriesCount = catCount ?? 0;
+
+  // 7. Extract recent 5 orders with customer names
   const recentOrdersRaw = allOrders.slice(0, 5);
   const userIds = [...new Set(recentOrdersRaw.map((o) => o.user_id).filter(Boolean))];
 
@@ -144,13 +183,28 @@ export async function getAdminDashboardStats(): Promise<DashboardMetrics> {
     };
   });
 
-  // 5. Generate operational alerts
+  // 8. Generate operational alerts
   const alerts: Array<{ type: "warning" | "info" | "success"; message: string }> = [];
 
-  if (lowStockCount > 0) {
+  if (outOfStockCount > 0) {
     alerts.push({
       type: "warning",
-      message: `${lowStockCount} ${lowStockCount === 1 ? "book is" : "books are"} running low on stock (<= 5 remaining).`,
+      message: `${outOfStockCount} ${outOfStockCount === 1 ? "book is" : "books are"} completely out of stock.`,
+    });
+  }
+
+  if (lowStockCount > outOfStockCount) {
+    const lowOnly = lowStockCount - outOfStockCount;
+    alerts.push({
+      type: "warning",
+      message: `${lowOnly} ${lowOnly === 1 ? "book is" : "books are"} running low on stock (<= 5 remaining).`,
+    });
+  }
+
+  if (pendingReviewsCount > 0) {
+    alerts.push({
+      type: "info",
+      message: `${pendingReviewsCount} new customer ${pendingReviewsCount === 1 ? "review requires" : "reviews require"} moderation.`,
     });
   }
 
@@ -166,7 +220,7 @@ export async function getAdminDashboardStats(): Promise<DashboardMetrics> {
   if (pendingOrdersCount > 0) {
     alerts.push({
       type: "info",
-      message: `${pendingOrdersCount} new ${pendingOrdersCount === 1 ? "order is" : "orders are"} currently pending.`,
+      message: `${pendingOrdersCount} new ${pendingOrdersCount === 1 ? "order is" : "orders are"} currently pending fulfillment.`,
     });
   }
 
@@ -183,11 +237,14 @@ export async function getAdminDashboardStats(): Promise<DashboardMetrics> {
     totalBooks,
     totalUsers,
     lowStockCount,
+    outOfStockCount,
     inactiveBooksCount,
+    pendingReviewsCount,
+    activeDiscountsCount,
+    categoriesCount,
     ordersByStatus,
     ordersByPaymentStatus,
     recentOrders,
     alerts,
   };
 }
-

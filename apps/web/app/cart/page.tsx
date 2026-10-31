@@ -20,9 +20,9 @@ export default async function CartPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
+    <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white overflow-x-hidden">
       <Navbar />
-      <main className="flex-grow pb-16">
+      <main className="flex-grow pb-16 overflow-x-hidden">
         <CartClient initialCart={cart} isAuthenticated={Boolean(user)} />
       </main>
       <Footer />
