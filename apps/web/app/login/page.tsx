@@ -97,7 +97,10 @@ function LoginForm() {
 
       <div className="text-center text-xs text-neutral-400 mt-6 pt-6 border-t border-[#2A2A2A]">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="text-[#C9A24A] font-semibold hover:underline">
+        <Link
+          href={redirectParam !== "/profile" ? `/register?redirect=${encodeURIComponent(redirectParam)}` : "/register"}
+          className="text-[#C9A24A] font-semibold hover:underline"
+        >
           Create Account
         </Link>
       </div>

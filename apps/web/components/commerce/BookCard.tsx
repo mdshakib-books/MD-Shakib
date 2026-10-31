@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
+import { useCart } from "@/lib/commerce/cart-context";
 
 export interface BookItem {
   id: string;
@@ -25,11 +27,16 @@ export interface BookCardProps {
 
 export function BookCard({
   book,
-  inCart = false,
+  inCart: explicitInCart,
   onAddToCart,
   onGoToCart,
   onToggleWishlist,
 }: BookCardProps) {
+  const router = useRouter();
+  const cartContext = useCart();
+  const effectiveInCart =
+    explicitInCart !== undefined ? explicitInCart : cartContext.isInCart(book.id);
+
   const hasDiscount = Boolean(book.discount && book.discount > 0);
   const discountedPrice = hasDiscount
     ? Math.round(book.price * (1 - (book.discount || 0) / 100))
@@ -43,10 +50,18 @@ export function BookCard({
 
     if (isOutOfStock) return;
 
-    if (inCart) {
-      onGoToCart?.();
+    if (effectiveInCart) {
+      if (onGoToCart) {
+        onGoToCart();
+      } else {
+        router.push("/cart");
+      }
     } else {
-      onAddToCart?.(book);
+      if (onAddToCart) {
+        onAddToCart(book);
+      } else {
+        cartContext.addItem(book);
+      }
     }
   };
 
@@ -142,14 +157,14 @@ export function BookCard({
           ${
             isOutOfStock
               ? "bg-[#222222] text-neutral-500 cursor-not-allowed border border-[#2A2A2A]"
-              : inCart
+              : effectiveInCart
               ? "bg-transparent border border-[var(--color-primary-gold)] text-[var(--color-primary-gold)] hover:bg-[var(--color-primary-gold)] hover:text-black"
               : "bg-[var(--color-primary-gold)] hover:bg-[var(--color-accent-gold)] text-black"
           }`}
       >
         {isOutOfStock ? (
           "Out of Stock"
-        ) : inCart ? (
+        ) : effectiveInCart ? (
           <>
             <svg
               className="w-4 h-4"

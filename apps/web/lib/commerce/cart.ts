@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createPublicClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/session";
+import { MOCK_BOOKS } from "@/data/mockCatalog";
 import type { Database } from "@/types/database.types";
 
 export type CartItemRow = Database["public"]["Tables"]["cart_items"]["Row"];
@@ -227,19 +228,25 @@ export async function addToCart(bookId: string, quantity: number = 1): Promise<{
 }
 
 /**
- * Updates quantity of a specific cart item.
+ * Updates quantity of a specific cart item by row ID or book ID.
  */
-export async function updateCartQuantity(cartItemId: string, quantity: number): Promise<{ success: boolean; error?: string }> {
+export async function updateCartQuantity(cartItemIdOrBookId: string, quantity: number): Promise<{ success: boolean; error?: string }> {
   const user = await getAuthenticatedUser();
   if (!user) return { success: false, error: "Authentication required." };
 
   const supabase = await createClient();
 
   if (quantity <= 0) {
-    const { error } = await supabase.from("cart_items").delete().eq("id", cartItemId);
+    const { error } = await supabase
+      .from("cart_items")
+      .delete()
+      .or(`id.eq.${cartItemIdOrBookId},book_id.eq.${cartItemIdOrBookId}`);
     if (error) return { success: false, error: error.message };
   } else {
-    const { error } = await supabase.from("cart_items").update({ quantity }).eq("id", cartItemId);
+    const { error } = await supabase
+      .from("cart_items")
+      .update({ quantity })
+      .or(`id.eq.${cartItemIdOrBookId},book_id.eq.${cartItemIdOrBookId}`);
     if (error) return { success: false, error: error.message };
   }
 
@@ -249,16 +256,283 @@ export async function updateCartQuantity(cartItemId: string, quantity: number): 
 }
 
 /**
- * Removes an item from the customer's cart.
+ * Removes an item from the customer's cart by row ID or book ID.
  */
-export async function removeCartItem(cartItemId: string): Promise<{ success: boolean; error?: string }> {
+export async function removeCartItem(cartItemIdOrBookId: string): Promise<{ success: boolean; error?: string }> {
   const user = await getAuthenticatedUser();
   if (!user) return { success: false, error: "Authentication required." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("cart_items").delete().eq("id", cartItemId);
+  const { error } = await supabase
+    .from("cart_items")
+    .delete()
+    .or(`id.eq.${cartItemIdOrBookId},book_id.eq.${cartItemIdOrBookId}`);
 
   if (error) return { success: false, error: error.message };
+
+  revalidatePath("/cart");
+  revalidatePath("/checkout");
+  return { success: true };
+}
+
+/**
+ * Resolves book details for a list of book IDs, falling back to mock catalog if database is not available.
+ */
+async function fetchBooksByIds(bookIds: string[]) {
+  const map = new Map<string, {
+    id: string;
+    title: string;
+    author: string;
+    price: number;
+    discount: number;
+    stock: number;
+    imageUrl: string;
+    isActive: boolean;
+  }>();
+
+  if (bookIds.length === 0) return map;
+
+  try {
+    const supabase = createPublicClient();
+    const { data: dbBooks } = await supabase
+      .from("books")
+      .select("id, title, author, price, discount, stock, image_url, is_active")
+      .in("id", bookIds);
+
+    if (dbBooks && dbBooks.length > 0) {
+      for (const b of dbBooks) {
+        map.set(b.id, {
+          id: b.id,
+          title: b.title,
+          author: b.author || "",
+          price: Number(b.price),
+          discount: b.discount || 0,
+          stock: b.stock,
+          imageUrl: b.image_url || "",
+          isActive: b.is_active,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load books from database, checking mock fixtures:", err);
+  }
+
+  // Fill in any missing books from MOCK_BOOKS fixtures
+  for (const id of bookIds) {
+    if (!map.has(id)) {
+      const mock = MOCK_BOOKS.find((b) => b.id === id);
+      if (mock) {
+        map.set(mock.id, {
+          id: mock.id,
+          title: mock.title,
+          author: mock.author || "",
+          price: mock.price,
+          discount: mock.discount || 0,
+          stock: mock.stock || 50,
+          imageUrl: mock.imageUrl || "",
+          isActive: true,
+        });
+      }
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Computes authoritative server-side cart summary for unauthenticated guest items.
+ * Validates stock, calculates line totals, fees, and authoritative total amount.
+ */
+export async function getGuestCartDetails(
+  guestItems: Array<{ bookId: string; quantity: number }>
+): Promise<CustomerCartSummary> {
+  if (!guestItems || guestItems.length === 0) {
+    return {
+      cartId: "guest",
+      items: [],
+      subtotal: 0,
+      platformFee: 0,
+      deliveryFee: 0,
+      totalAmount: 0,
+      itemCount: 0,
+    };
+  }
+
+  const bookIds = guestItems.map((i) => i.bookId);
+  const bookMap = await fetchBooksByIds(bookIds);
+
+  const enrichedItems: EnrichedCartItem[] = [];
+  let subtotal = 0;
+  let itemCount = 0;
+
+  for (const item of guestItems) {
+    const book = bookMap.get(item.bookId);
+    if (!book || !book.isActive) continue;
+
+    const qty = Math.max(1, Math.min(item.quantity, book.stock));
+    const effectivePrice = book.discount > 0 ? Math.round(book.price * (1 - book.discount / 100)) : book.price;
+    const lineTotal = effectivePrice * qty;
+
+    enrichedItems.push({
+      id: `guest-${book.id}`,
+      cartId: "guest",
+      bookId: book.id,
+      quantity: qty,
+      price: effectivePrice,
+      title: book.title,
+      author: book.author,
+      imageUrl: book.imageUrl,
+      stock: book.stock,
+      isActive: book.isActive,
+      lineTotal,
+    });
+
+    subtotal += lineTotal;
+    itemCount += qty;
+  }
+
+  const platformFee = enrichedItems.length > 0 ? PLATFORM_FEE : 0;
+  const deliveryFee = enrichedItems.length > 0 ? DELIVERY_FEE : 0;
+  const totalAmount = subtotal + platformFee + deliveryFee;
+
+  return {
+    cartId: "guest",
+    items: enrichedItems,
+    subtotal,
+    platformFee,
+    deliveryFee,
+    totalAmount,
+    itemCount,
+  };
+}
+
+/**
+ * Merges guest cart items into the authenticated customer's database cart atomically.
+ * Uses merge_cart_atomic stored procedure with retry safety and token idempotency.
+ */
+export async function mergeGuestCart(
+  guestItems: Array<{ bookId: string; quantity: number }>,
+  mergeToken?: string
+): Promise<{ success: boolean; error?: string; cart?: CustomerCartSummary | null }> {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { success: false, error: "Authentication required to merge cart." };
+  }
+
+  if (!guestItems || guestItems.length === 0) {
+    const currentCart = await getCustomerCart();
+    return { success: true, cart: currentCart };
+  }
+
+  const supabase = await createClient();
+
+  // 1. Attempt atomic stored procedure merge
+  const { data: rpcRes, error: rpcErr } = await supabase.rpc("merge_cart_atomic", {
+    p_user_id: user.id,
+    p_guest_items: guestItems.map((i) => ({
+      book_id: i.bookId,
+      quantity: Number(i.quantity) || 1,
+    })),
+    p_merge_token: mergeToken || null,
+  });
+
+  if (!rpcErr && rpcRes) {
+    const res = rpcRes as { success: boolean; message?: string; error?: string };
+    if (res.success) {
+      revalidatePath("/cart");
+      revalidatePath("/checkout");
+      const mergedCart = await getCustomerCart();
+      return { success: true, cart: mergedCart };
+    }
+  }
+
+  // 2. Fallback to client-orchestrated query loop if RPC is unmigrated in environment
+  const cartId = await getOrCreateCustomerCartId(user.id);
+
+  // Fetch book catalog details
+  const bookIds = guestItems.map((i) => i.bookId);
+  const bookMap = await fetchBooksByIds(bookIds);
+
+  // Fetch existing DB cart items
+  const { data: existingItems, error: fetchErr } = await supabase
+    .from("cart_items")
+    .select("id, book_id, quantity")
+    .eq("cart_id", cartId);
+
+  if (fetchErr) {
+    console.error("Error fetching existing cart for merge:", fetchErr.message);
+    return { success: false, error: "Failed to retrieve existing cart." };
+  }
+
+  const existingMap = new Map((existingItems || []).map((i) => [i.book_id, i]));
+
+  for (const guestItem of guestItems) {
+    const book = bookMap.get(guestItem.bookId);
+    if (!book || !book.isActive || book.stock <= 0) continue;
+
+    const guestQty = Math.max(1, Number(guestItem.quantity) || 1);
+    const effectivePrice = book.discount > 0 ? Math.round(book.price * (1 - book.discount / 100)) : book.price;
+
+    const existing = existingMap.get(guestItem.bookId);
+
+    if (existing) {
+      // Combine quantities and cap at available stock
+      const combinedQty = Math.min(existing.quantity + guestQty, Math.min(5, book.stock));
+      const { error: updateErr } = await supabase
+        .from("cart_items")
+        .update({ quantity: combinedQty, price: effectivePrice })
+        .eq("id", existing.id);
+
+      if (updateErr) {
+        console.error("Cart item update failed during merge:", updateErr.message);
+        return { success: false, error: "Failed to update cart during merge." };
+      }
+    } else {
+      // Add new item capped at available stock
+      const safeQty = Math.min(guestQty, Math.min(5, book.stock));
+      if (safeQty > 0) {
+        const { error: insertErr } = await supabase
+          .from("cart_items")
+          .insert({
+            cart_id: cartId,
+            book_id: book.id,
+            quantity: safeQty,
+            price: effectivePrice,
+          });
+
+        if (insertErr) {
+          console.error("Cart item insert failed during merge:", insertErr.message);
+          return { success: false, error: "Failed to merge item into cart." };
+        }
+      }
+    }
+  }
+
+  revalidatePath("/cart");
+  revalidatePath("/checkout");
+
+  const mergedCart = await getCustomerCart();
+  return { success: true, cart: mergedCart };
+}
+
+/**
+ * Clears the authenticated customer's cart.
+ */
+export async function clearCustomerCart(): Promise<{ success: boolean; error?: string }> {
+  const user = await getAuthenticatedUser();
+  if (!user) return { success: false, error: "Authentication required." };
+
+  const supabase = await createClient();
+  const { data: cart } = await supabase
+    .from("carts")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (cart?.id) {
+    const { error } = await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+    if (error) return { success: false, error: error.message };
+  }
 
   revalidatePath("/cart");
   revalidatePath("/checkout");

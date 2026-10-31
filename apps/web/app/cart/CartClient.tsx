@@ -6,67 +6,51 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
-import { updateCartQuantity, removeCartItem, type CustomerCartSummary } from "@/lib/commerce/cart";
+import { useCart } from "@/lib/commerce/cart-context";
+import type { CustomerCartSummary } from "@/lib/commerce/cart";
 
 interface CartClientProps {
-  initialCart: CustomerCartSummary | null;
-  isAuthenticated: boolean;
+  initialCart?: CustomerCartSummary | null;
+  isAuthenticated?: boolean;
 }
 
-export function CartClient({ initialCart, isAuthenticated }: CartClientProps) {
+export function CartClient({ initialCart, isAuthenticated: initialAuth = false }: CartClientProps) {
+  const {
+    items,
+    subtotal,
+    platformFee,
+    deliveryFee,
+    totalAmount,
+    updateQuantity,
+    removeItem,
+    isAuthenticated,
+    isLoading,
+  } = useCart();
+
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const cart = initialCart;
-  const items = cart?.items || [];
-  const subtotal = cart?.subtotal || 0;
-  const platformFee = cart?.platformFee || 0;
-  const deliveryFee = cart?.deliveryFee || 0;
-  const total = cart?.totalAmount || 0;
-
-  const handleQuantity = (cartItemId: string, newQty: number) => {
+  const handleQuantity = (itemIdOrBookId: string, newQty: number) => {
     setErrorMsg(null);
     startTransition(async () => {
-      const res = await updateCartQuantity(cartItemId, newQty);
+      const res = await updateQuantity(itemIdOrBookId, newQty);
       if (!res.success && res.error) {
         setErrorMsg(res.error);
       }
     });
   };
 
-  const handleRemove = (cartItemId: string) => {
+  const handleRemove = (itemIdOrBookId: string) => {
     setErrorMsg(null);
     startTransition(async () => {
-      const res = await removeCartItem(cartItemId);
+      const res = await removeItem(itemIdOrBookId);
       if (!res.success && res.error) {
         setErrorMsg(res.error);
       }
     });
   };
 
-  if (!isAuthenticated) {
-    return (
-      <PageContainer size="md">
-        <div className="text-center py-20 px-4 bg-[#141414] border border-[#222] rounded-xl my-8">
-          <div className="text-4xl mb-4">🛒</div>
-          <h1 className="text-2xl font-serif text-neutral-200 uppercase font-bold">
-            Sign In to View Your Cart
-          </h1>
-          <p className="text-sm text-neutral-400 mt-2 max-w-sm mx-auto mb-6">
-            Log in to access your persistent shopping cart, saved addresses, and checkout.
-          </p>
-          <Link
-            href="/login?redirect=/cart"
-            className="inline-block px-8 py-3 rounded-xl bg-[var(--color-primary-gold)] text-black font-bold text-xs uppercase tracking-wider hover:bg-[var(--color-accent-gold)] transition-colors"
-          >
-            Log In Now
-          </Link>
-        </div>
-      </PageContainer>
-    );
-  }
-
-  if (items.length === 0) {
+  if (items.length === 0 && !isLoading) {
     return (
       <PageContainer size="md">
         <div className="text-center py-20 px-4 bg-[#141414] border border-[#222] rounded-xl my-8">
@@ -89,12 +73,27 @@ export function CartClient({ initialCart, isAuthenticated }: CartClientProps) {
   return (
     <PageContainer>
       <div className="py-6">
-        <h1 className="text-2xl md:text-3xl font-serif text-white uppercase tracking-wider mb-2">
-          Shopping Cart ({items.length} {items.length === 1 ? "Item" : "Items"})
-        </h1>
-        <p className="text-xs text-neutral-400 mb-8">
-          Review your authentic Islamic literature selection before proceeding to checkout.
-        </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-serif text-white uppercase tracking-wider mb-2">
+              Shopping Cart ({items.length} {items.length === 1 ? "Item" : "Items"})
+            </h1>
+            <p className="text-xs text-neutral-400">
+              Review your authentic Islamic literature selection before proceeding to checkout.
+            </p>
+          </div>
+          {!isAuthenticated && items.length > 0 && (
+            <div className="bg-[#181818] border border-[var(--color-primary-gold)]/30 rounded-lg px-4 py-2 text-xs text-neutral-300 flex items-center gap-3">
+              <span>Browsing as Guest. Log in to save cart to your account.</span>
+              <Link
+                href="/login?redirect=/cart"
+                className="text-[var(--color-primary-gold)] font-bold hover:underline whitespace-nowrap"
+              >
+                Log In
+              </Link>
+            </div>
+          )}
+        </div>
 
         {errorMsg && (
           <div className="mb-6 p-3 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
@@ -119,7 +118,7 @@ export function CartClient({ initialCart, isAuthenticated }: CartClientProps) {
                   <Link href={`/books/${item.bookId}`} className="hover:text-[#C9A24A]">
                     <h2 className="text-sm font-semibold text-neutral-200 truncate">{item.title}</h2>
                   </Link>
-                  <p className="text-xs text-neutral-500 mt-0.5 truncate">{item.author}</p>
+                  {item.author && <p className="text-xs text-neutral-500 mt-0.5 truncate">{item.author}</p>}
                   <div className="text-xs text-[var(--color-primary-gold)] font-bold mt-2">
                     {formatPrice(item.price)}
                   </div>
@@ -131,14 +130,16 @@ export function CartClient({ initialCart, isAuthenticated }: CartClientProps) {
                     disabled={isPending}
                     onClick={() => handleQuantity(item.id, item.quantity - 1)}
                     className="px-2.5 py-1 text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer"
+                    aria-label="Decrease quantity"
                   >
                     -
                   </button>
                   <span className="px-2 text-xs font-mono text-neutral-200">{item.quantity}</span>
                   <button
-                    disabled={isPending || item.quantity >= item.stock}
+                    disabled={isPending || (item.stock !== undefined && item.quantity >= item.stock)}
                     onClick={() => handleQuantity(item.id, item.quantity + 1)}
                     className="px-2.5 py-1 text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer"
+                    aria-label="Increase quantity"
                   >
                     +
                   </button>
@@ -150,6 +151,7 @@ export function CartClient({ initialCart, isAuthenticated }: CartClientProps) {
                   onClick={() => handleRemove(item.id)}
                   className="text-neutral-500 hover:text-red-400 text-xs px-2 py-1 transition cursor-pointer"
                   title="Remove item"
+                  aria-label="Remove item"
                 >
                   ✕
                 </button>
@@ -166,25 +168,28 @@ export function CartClient({ initialCart, isAuthenticated }: CartClientProps) {
             <div className="space-y-2 text-xs text-neutral-400">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="text-neutral-200">{formatPrice(subtotal)}</span>
+                <span className="text-neutral-200 font-mono">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Platform Fee</span>
-                <span className="text-neutral-200">{formatPrice(platformFee)}</span>
+                <span className="text-neutral-200 font-mono">{formatPrice(platformFee)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Delivery Charge</span>
-                <span className="text-neutral-200">{formatPrice(deliveryFee)}</span>
+                <span className="text-neutral-200 font-mono">{formatPrice(deliveryFee)}</span>
               </div>
               <div className="border-t border-[#262626] pt-3 flex justify-between font-bold text-sm text-[var(--color-primary-gold)]">
                 <span>Total Amount</span>
-                <span>{formatPrice(total)}</span>
+                <span className="font-mono">{formatPrice(totalAmount)}</span>
               </div>
             </div>
 
-            <Link href="/checkout" className="block w-full">
-              <Button variant="primary" className="w-full mt-2" disabled={isPending}>
-                Proceed to Checkout
+            <Link
+              href={isAuthenticated ? "/checkout" : "/login?redirect=/checkout"}
+              className="block w-full"
+            >
+              <Button variant="primary" className="w-full mt-2" disabled={isPending || items.length === 0}>
+                {isAuthenticated ? "Proceed to Checkout" : "Sign In to Checkout"}
               </Button>
             </Link>
 

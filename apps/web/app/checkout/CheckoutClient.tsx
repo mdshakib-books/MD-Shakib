@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -24,17 +24,29 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
   );
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "ONLINE">("COD");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const idempotencyKeyRef = useRef<string>("");
 
   const handlePlaceOrder = () => {
+    if (isPending) return;
+
     if (!selectedAddressId) {
       setErrorMsg("Please select or add a delivery address.");
       return;
     }
 
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `order-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    }
+
     setErrorMsg(null);
+    const key = idempotencyKeyRef.current;
+
     startTransition(async () => {
       if (paymentMethod === "COD") {
-        const res = await placeOrderCOD(selectedAddressId);
+        const res = await placeOrderCOD(selectedAddressId, key);
         if (!res.success && res.error) {
           setErrorMsg(res.error);
         } else if (res.orderId) {
@@ -44,7 +56,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
       }
 
       // Online payment via Razorpay
-      const res = await placeOrderOnline(selectedAddressId);
+      const res = await placeOrderOnline(selectedAddressId, key);
       if (!res.success && res.error) {
         setErrorMsg(res.error);
         return;

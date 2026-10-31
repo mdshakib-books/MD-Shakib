@@ -59,7 +59,9 @@ export async function signUpCustomer(
     redirect(`/verify-email?email=${encodeURIComponent(email)}`);
   }
 
-  redirect("/profile");
+  const redirectTarget = formData.get("redirect")?.toString();
+  const destination = sanitizeRedirectUrl(redirectTarget, "/profile");
+  redirect(destination);
 }
 
 /**
@@ -72,6 +74,7 @@ export async function loginCustomer(
   const email = formData.get("email")?.toString().trim().toLowerCase();
   const password = formData.get("password")?.toString();
   const redirectTarget = formData.get("redirect")?.toString();
+  const guestCartJson = formData.get("guestCart")?.toString();
 
   if (!email || !password) {
     return { success: false, error: "Please enter both your email address and password." };

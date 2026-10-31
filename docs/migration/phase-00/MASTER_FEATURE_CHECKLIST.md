@@ -68,19 +68,19 @@
 
 ---
 
-### - [ ] FEAT-05: Book Detail Page (`/books/:id`)
-- **Status:** **PARTIALLY MIGRATED**
+### - [x] FEAT-05: Book Detail Page (`/books/:id`)
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `client/src/pages/BookDetailsPage.jsx`, `server/src/controllers/book.controller.js:getBookById`
 - **New Location:** `apps/web/app/books/[id]/page.tsx`, `apps/web/app/books/[id]/BookDetailClient.tsx`, `apps/web/lib/data/catalog.ts:getBookById`
-- **Target Phase:** Phase 01 (Add to Cart Action) & Phase 05 (UI Polish)
+- **Target Phase:** Fully Migrated (Phase 01)
 - **Checklist:**
   - [x] Displays primary cover image, book title, author, price, and discount percentage.
   - [x] Clickable multi-image thumbnail strip updates active preview image.
   - [x] Renders publication metadata: language, publisher, pages, ISBN, publication date.
   - [x] Displays related books in the same category.
-  - [ ] Connect "Add to Cart" button to functional cart store and server action (currently a 2s timer stub).
-  - [ ] Quantity selector input (1 to 5 units) before adding to cart.
-  - [ ] Out-of-stock badge and button disabling when `stock <= 0`.
+  - [x] Connect "Add to Cart" button to functional cart store and server action (operational `useCart().addItem`).
+  - [x] Quantity selector input (1 to 5 units) before adding to cart.
+  - [x] Out-of-stock badge and button disabling when `stock <= 0`.
 
 ---
 
@@ -128,45 +128,45 @@
 
 ## Module 2: Cart & Checkout (FEAT-09 to FEAT-15)
 
-### - [ ] FEAT-09: Guest Shopping Cart (localStorage Persistence)
-- **Status:** **NOT MIGRATED**
+### - [x] FEAT-09: Guest Shopping Cart (localStorage Persistence)
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `client/src/redux/slices/cartSlice.js` (`guest_cart` in localStorage)
-- **New Location:** `apps/web/app/cart/CartClient.tsx` (lines 47–67)
-- **Target Phase:** Phase 01 (Critical Functional Restoration)
+- **New Location:** `apps/web/lib/commerce/cart-context.tsx`, `apps/web/app/cart/CartClient.tsx`
+- **Target Phase:** Fully Migrated (Phase 01)
 - **Checklist:**
-  - [ ] Implement client-side `GuestCartStore` backed by `localStorage`.
-  - [ ] Allow unauthenticated visitors to add books to cart without login wall.
-  - [ ] Display guest items, item quantities, and subtotal on `/cart`.
-  - [ ] Retain guest cart across page reloads and browser restarts.
-  - [ ] Enforce max 5 units per item in guest cart.
+  - [x] Implement client-side `GuestCartStore` backed by `localStorage`.
+  - [x] Allow unauthenticated visitors to add books to cart without login wall.
+  - [x] Display guest items, item quantities, and subtotal on `/cart`.
+  - [x] Retain guest cart across page reloads and browser restarts.
+  - [x] Enforce max 5 units per item in guest cart.
 
 ---
 
-### - [ ] FEAT-10: Storefront "Add to Cart" Action (BookCard & Details)
-- **Status:** **NOT MIGRATED (CRITICAL DEFECT)**
+### - [x] FEAT-10: Storefront "Add to Cart" Action (BookCard & Details)
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `client/src/components/BookCard.jsx:handleCartClick`, `client/src/pages/BookDetailsPage.jsx:handleAddToCart`
 - **New Location:** `apps/web/components/commerce/BookCard.tsx`, `apps/web/app/books/[id]/BookDetailClient.tsx`
-- **Target Phase:** Phase 01 (Critical Functional Restoration)
+- **Target Phase:** Fully Migrated (Phase 01)
 - **Checklist:**
-  - [ ] Pass operational `onAddToCart` callback in `apps/web/app/page.tsx` and `BooksCatalogClient.tsx`.
-  - [ ] Replace timer stub in `BookDetailClient.tsx` with call to `addToCart(bookId, quantity)`.
-  - [ ] Show immediate feedback (loading spinner on button, followed by success state).
-  - [ ] Increment cart badge count in global navbar immediately upon adding.
-  - [ ] Dispatch success toast notification with book title and view cart action.
+  - [x] Pass operational `onAddToCart` callback in `apps/web/app/page.tsx` and `BooksCatalogClient.tsx`.
+  - [x] Replace timer stub in `BookDetailClient.tsx` with call to `addToCart(bookId, quantity)`.
+  - [x] Show immediate feedback (loading spinner on button, followed by success state).
+  - [x] Increment cart badge count in global navbar immediately upon adding.
+  - [x] Dispatch success toast notification with book title and view cart action.
 
 ---
 
-### - [ ] FEAT-11: Authenticated Cart Synchronization (`/cart`)
-- **Status:** **PARTIALLY MIGRATED**
+### - [x] FEAT-11: Authenticated Cart Synchronization (`/cart`)
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `client/src/pages/CartPage.jsx`, `client/src/redux/slices/cartSlice.js`, `server/src/controllers/cart.controller.js:getCart`
 - **New Location:** `apps/web/app/cart/page.tsx`, `apps/web/app/cart/CartClient.tsx`, `apps/web/lib/commerce/cart.ts:getCart`
-- **Target Phase:** Phase 01 (Critical Functional Restoration)
+- **Target Phase:** Fully Migrated (Phase 01)
 - **Checklist:**
   - [x] Server Component queries `carts` and joins `cart_items` with `books`.
-  - [x] Calculates subtotal, estimated shipping (free over ₹500, else ₹50), and total.
-  - [ ] Handle unauthenticated state gracefully by rendering guest cart rather than blocking.
-  - [ ] Validate book stock availability on cart load; flag items with insufficient stock.
-  - [ ] Empty state renders luxury illustration with "Continue Shopping" CTA.
+  - [x] Calculates subtotal, estimated shipping (free over ₹500, else ₹35), and total.
+  - [x] Handle unauthenticated state gracefully by rendering guest cart rather than blocking.
+  - [x] Validate book stock availability on cart load; flag items with insufficient stock.
+  - [x] Empty state renders luxury illustration with "Continue Shopping" CTA.
 
 ---
 
@@ -184,17 +184,17 @@
 
 ---
 
-### - [ ] FEAT-13: Guest Cart Merge on Authentication
-- **Status:** **NOT MIGRATED**
+### - [x] FEAT-13: Guest Cart Merge on Authentication
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `server/src/controllers/cart.controller.js:mergeCart`, `client/src/redux/slices/cartSlice.js`
-- **New Location:** `apps/web/lib/commerce/cart.ts` (Missing `mergeGuestCart`)
-- **Target Phase:** Phase 03 (Customer Account & Commerce)
+- **New Location:** `apps/web/lib/commerce/cart.ts:mergeGuestCart`, `apps/web/lib/commerce/cart-context.tsx`
+- **Target Phase:** Fully Migrated (Phase 01)
 - **Checklist:**
-  - [ ] Implement `mergeGuestCart(guestItems)` Server Action.
-  - [ ] When guest logs in or registers, read `localStorage` guest cart.
-  - [ ] For each guest item: if already in DB cart, add quantities (capped at 5 and stock); if not in DB cart, insert item.
-  - [ ] Clear `localStorage` guest cart upon successful merge.
-  - [ ] Show toast notification informing user that guest items were added to their account cart.
+  - [x] Implement `mergeGuestCart(guestItems)` Server Action.
+  - [x] When guest logs in or registers, read `localStorage` guest cart.
+  - [x] For each guest item: if already in DB cart, add quantities (capped at 5 and stock); if not in DB cart, insert item.
+  - [x] Clear `localStorage` guest cart upon successful merge.
+  - [x] Show toast notification informing user that guest items were added to their account cart.
 
 ---
 
@@ -628,14 +628,14 @@
 
 ---
 
-### - [ ] FEAT-44: Global Navigation Shell & Dynamic State Synchronization
-- **Status:** **PARTIALLY MIGRATED**
+### - [x] FEAT-44: Global Navigation Shell & Dynamic State Synchronization
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `client/src/components/Navbar.jsx` (Redux-connected)
-- **New Location:** `apps/web/components/layout/Navbar.tsx`, `apps/web/app/page.tsx`, `apps/web/app/books/page.tsx`
-- **Target Phase:** Phase 01 (Critical Functional Restoration)
+- **New Location:** `apps/web/components/layout/Navbar.tsx`
+- **Target Phase:** Fully Migrated (Phase 01)
 - **Checklist:**
-  - [ ] Pass authenticated user session and live cart count to `<Navbar />` on all public pages (`page.tsx`, `books/page.tsx`).
-  - [ ] Navbar dynamically switches between "Login" and user profile dropdown based on active session.
-  - [ ] Cart icon badge reflects real-time item count from persistent cart.
-  - [ ] Mobile hamburger drawer displays authenticated user status and links.
+  - [x] Pass authenticated user session and live cart count to `<Navbar />` on all public pages (`page.tsx`, `books/page.tsx`).
+  - [x] Navbar dynamically switches between "Login" and user profile dropdown based on active session.
+  - [x] Cart icon badge reflects real-time item count from persistent cart.
+  - [x] Mobile hamburger drawer displays authenticated user status and links.
 

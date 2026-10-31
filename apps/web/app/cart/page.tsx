@@ -21,7 +21,7 @@ export default async function CartPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
-      <Navbar cartCount={cart?.itemCount || 0} />
+      <Navbar />
       <main className="flex-grow pb-16">
         <CartClient initialCart={cart} isAuthenticated={Boolean(user)} />
       </main>
