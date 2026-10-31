@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { AccountNav } from "@/components/account/AccountNav";
 import { formatPrice } from "@/lib/utils";
 import { getCustomerOrders } from "@/lib/commerce/orders";
 import { getAuthenticatedUser } from "@/lib/auth/session";
@@ -57,6 +58,8 @@ export default async function OrdersPage() {
               Browse Catalogue →
             </Link>
           </div>
+
+          <AccountNav />
 
           {orders.length === 0 ? (
             <div className="text-center py-20 px-4 bg-[#141414] border border-[#222] rounded-xl">

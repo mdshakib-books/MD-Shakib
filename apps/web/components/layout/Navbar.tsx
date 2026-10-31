@@ -231,7 +231,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             {effectiveUser ? (
               <div className="flex items-center gap-3">
                 <Link
-                  href={effectiveUser.role === "admin" ? "/admin/dashboard" : "/profile"}
+                  href={effectiveUser.role === "admin" ? "/admin" : "/account"}
                   className="text-xs uppercase font-medium text-[var(--color-primary-gold)] hover:underline"
                 >
                   {effectiveUser.name || "Account"}

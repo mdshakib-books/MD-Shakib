@@ -4,6 +4,7 @@ import * as React from "react";
 import { useActionState } from "react";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { AccountNav } from "@/components/account/AccountNav";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { updateCustomerProfile, logoutCustomer, type AuthActionResult } from "@/lib/auth/actions";
@@ -46,6 +47,8 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
           </button>
         </div>
       </div>
+
+      <AccountNav />
 
       <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-6 md:p-8 shadow-xl">
         {state?.error && (

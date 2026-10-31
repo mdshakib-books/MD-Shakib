@@ -29,6 +29,30 @@ export function sanitizeRedirectUrl(url: string | null | undefined, fallback: st
 }
 
 /**
+ * Resolves the canonical site base URL for auth redirects, password recovery, and emails.
+ * Precedence: NEXT_PUBLIC_SITE_URL > NEXT_PUBLIC_APP_URL > (development fallback: http://localhost:3000).
+ * Validates protocol and fails closed in production if neither variable is set.
+ */
+export function getCanonicalSiteUrl(): string {
+  const candidate = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (candidate) {
+    const trimmed = candidate.trim().replace(/\/+$/, "");
+    if (/^https?:\/\/[a-zA-Z0-9.-]+(?::[0-9]+)?/i.test(trimmed)) {
+      return trimmed;
+    }
+    throw new Error(`Invalid site URL configuration: "${candidate}". Must be a valid HTTP/HTTPS URL.`);
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Production configuration error: NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL must be configured in production."
+    );
+  }
+
+  return "http://localhost:3000";
+}
+
+/**
  * Retrieves the currently authenticated Supabase user on the server.
  * Never trusts client headers; verifies identity with Supabase Auth.
  */

@@ -930,6 +930,14 @@ export type Database = {
         }
         Returns: Json
       }
+      request_replacement_atomic: {
+        Args: {
+          p_order_id: string
+          p_user_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
