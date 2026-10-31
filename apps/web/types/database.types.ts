@@ -257,18 +257,21 @@ export type Database = {
           id: string
           updated_at: string
           user_id: string
+          last_merge_token: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           updated_at?: string
           user_id: string
+          last_merge_token?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           updated_at?: string
           user_id?: string
+          last_merge_token?: string | null
         }
         Relationships: [
           {
@@ -434,6 +437,7 @@ export type Database = {
           total_amount: number
           updated_at: string
           user_id: string
+          idempotency_key?: string | null
         }
         Insert: {
           address_snapshot: Json
@@ -441,6 +445,7 @@ export type Database = {
           created_at?: string
           delivered_at?: string | null
           id?: string
+          idempotency_key?: string | null
           is_paid?: boolean
           order_status?: string
           paid_at?: string | null
@@ -500,6 +505,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           user_id?: string
+          idempotency_key?: string | null
         }
         Relationships: [
           {
@@ -652,8 +658,17 @@ export type Database = {
           p_payment_method: string
           p_total_amount: number
           p_user_id: string
+          p_idempotency_key?: string | null
         }
         Returns: string
+      }
+      merge_cart_atomic: {
+        Args: {
+          p_user_id: string
+          p_guest_items: Json
+          p_merge_token?: string | null
+        }
+        Returns: Json
       }
       settle_payment_atomic: {
         Args: {

@@ -18,14 +18,32 @@ export interface EnrichedOrder extends OrderRow {
 
 /**
  * Places a Cash on Delivery (COD) order atomically.
+ * Prevents duplicate orders via server-side validation and idempotency keys.
  */
-export async function placeOrderCOD(addressId: string): Promise<{ success: boolean; error?: string; orderId?: string }> {
+export async function placeOrderCOD(
+  addressId: string,
+  idempotencyKey?: string
+): Promise<{ success: boolean; error?: string; orderId?: string }> {
   const user = await getAuthenticatedUser();
   if (!user) {
     return { success: false, error: "Authentication required to place order." };
   }
 
   const supabase = await createClient();
+
+  // 0. Check for existing order with same idempotency key
+  if (idempotencyKey) {
+    const { data: existingOrder } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+
+    if (existingOrder?.id) {
+      return { success: true, orderId: existingOrder.id };
+    }
+  }
 
   // 1. Fetch and validate selected address
   const { data: address, error: addrErr } = await supabase
@@ -74,13 +92,36 @@ export async function placeOrderCOD(addressId: string): Promise<{ success: boole
   }));
 
   // 3. Call atomic RPC: locks rows, validates stock, reduces inventory, clears cart
-  const { data: orderId, error: rpcErr } = await supabase.rpc("create_order_atomic", {
+  const rpcParams: any = {
     p_user_id: user.id,
     p_items: orderItemsPayload,
     p_address_snapshot: addressSnapshot,
     p_payment_method: "COD",
     p_total_amount: cart.totalAmount,
-  });
+  };
+  if (idempotencyKey) {
+    rpcParams.p_idempotency_key = idempotencyKey;
+  }
+
+  let { data: orderId, error: rpcErr } = await supabase.rpc("create_order_atomic", rpcParams);
+
+  // Backward compatibility fallback if database procedure doesn't yet have p_idempotency_key
+  if (rpcErr && rpcErr.message.includes("p_idempotency_key")) {
+    const fallbackParams = {
+      p_user_id: user.id,
+      p_items: orderItemsPayload,
+      p_address_snapshot: addressSnapshot,
+      p_payment_method: "COD",
+      p_total_amount: cart.totalAmount,
+    };
+    const fallbackRes = await supabase.rpc("create_order_atomic", fallbackParams);
+    orderId = fallbackRes.data;
+    rpcErr = fallbackRes.error;
+    if (orderId && idempotencyKey) {
+      // Record idempotency key directly on order
+      await supabase.from("orders").update({ idempotency_key: idempotencyKey }).eq("id", orderId as string);
+    }
+  }
 
   if (rpcErr || !orderId) {
     console.error("Atomic order creation failed:", rpcErr?.message);
@@ -103,8 +144,12 @@ export async function placeOrderCOD(addressId: string): Promise<{ success: boole
 
 /**
  * Places an Online order atomically and initializes the Razorpay payment session.
+ * Prevents duplicate orders via server-side validation and idempotency keys.
  */
-export async function placeOrderOnline(addressId: string): Promise<{
+export async function placeOrderOnline(
+  addressId: string,
+  idempotencyKey?: string
+): Promise<{
   success: boolean;
   error?: string;
   orderId?: string;
@@ -116,6 +161,33 @@ export async function placeOrderOnline(addressId: string): Promise<{
   }
 
   const supabase = await createClient();
+
+  // 0. Check for existing order with same idempotency key
+  if (idempotencyKey) {
+    const { data: existingOrder } = await supabase
+      .from("orders")
+      .select("id, razorpay_order_id, total_amount")
+      .eq("user_id", user.id)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+
+    if (existingOrder?.id) {
+      if (existingOrder.razorpay_order_id) {
+        return {
+          success: true,
+          orderId: existingOrder.id,
+          razorpayOrder: {
+            razorpayOrderId: existingOrder.razorpay_order_id,
+            amount: Math.round(Number(existingOrder.total_amount) * 100),
+            currency: "INR",
+            keyId: process.env.RAZORPAY_KEY_ID || "",
+            orderId: existingOrder.id,
+          },
+        };
+      }
+      return { success: true, orderId: existingOrder.id };
+    }
+  }
 
   // 1. Fetch and validate selected address
   const { data: address, error: addrErr } = await supabase
@@ -164,13 +236,35 @@ export async function placeOrderOnline(addressId: string): Promise<{
   }));
 
   // 3. Call atomic RPC with ONLINE payment method
-  const { data: orderId, error: rpcErr } = await supabase.rpc("create_order_atomic", {
+  const rpcParams: any = {
     p_user_id: user.id,
     p_items: orderItemsPayload,
     p_address_snapshot: addressSnapshot,
     p_payment_method: "ONLINE",
     p_total_amount: cart.totalAmount,
-  });
+  };
+  if (idempotencyKey) {
+    rpcParams.p_idempotency_key = idempotencyKey;
+  }
+
+  let { data: orderId, error: rpcErr } = await supabase.rpc("create_order_atomic", rpcParams);
+
+  // Backward compatibility fallback if database procedure doesn't yet have p_idempotency_key
+  if (rpcErr && rpcErr.message.includes("p_idempotency_key")) {
+    const fallbackParams = {
+      p_user_id: user.id,
+      p_items: orderItemsPayload,
+      p_address_snapshot: addressSnapshot,
+      p_payment_method: "ONLINE",
+      p_total_amount: cart.totalAmount,
+    };
+    const fallbackRes = await supabase.rpc("create_order_atomic", fallbackParams);
+    orderId = fallbackRes.data;
+    rpcErr = fallbackRes.error;
+    if (orderId && idempotencyKey) {
+      await supabase.from("orders").update({ idempotency_key: idempotencyKey }).eq("id", orderId as string);
+    }
+  }
 
   if (rpcErr || !orderId) {
     console.error("Atomic online order creation failed:", rpcErr?.message);

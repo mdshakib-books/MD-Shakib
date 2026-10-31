@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -18,6 +19,10 @@
 :root {
   --background: #0B0B0B;
   --foreground: #F5F5F5;
+  --color-primary-gold: #C9A24A;
+  --color-accent-gold: #B89139;
+  --color-gold: #C9A24A;
+  --color-gold-hover: #B89139;
 }
 
 body {

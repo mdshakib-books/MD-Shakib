@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { formatPrice } from "@/lib/utils";
 import { ProductGrid } from "@/components/commerce/ProductGrid";
+import { useCart } from "@/lib/commerce/cart-context";
 import type { CatalogBook } from "@/lib/data/catalog";
 
 interface BookDetailClientProps {
@@ -14,11 +15,15 @@ interface BookDetailClientProps {
 }
 
 export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) {
+  const { addItem, isInCart } = useCart();
+  const inCart = isInCart(book.id);
+
   const [selectedImage, setSelectedImage] = useState<string>(
     book.images?.[0] || book.imageUrl || ""
   );
   const [quantity, setQuantity] = useState<number>(1);
   const [added, setAdded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hasDiscount = Boolean(book.discount && book.discount > 0);
   const discountedPrice = hasDiscount
@@ -26,10 +31,28 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
     : book.price;
   const isOutOfStock = book.stock !== undefined && book.stock <= 0;
 
-  const handleAddToCart = () => {
-    // Phase 5A: Client-side feedback. Persistent cart is integrated in Phase 5C.
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+  const handleAddToCart = async () => {
+    if (isOutOfStock || isSubmitting) return;
+    setIsSubmitting(true);
+    const res = await addItem(
+      {
+        id: book.id,
+        title: book.title,
+        price: book.price,
+        discount: book.discount,
+        stock: book.stock,
+        imageUrl: book.imageUrl,
+        category: book.category,
+        author: book.author,
+      },
+      quantity
+    );
+    setIsSubmitting(false);
+
+    if (res.success) {
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2500);
+    }
   };
 
   return (
@@ -190,7 +213,7 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
 
               <button
                 type="button"
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || isSubmitting}
                 onClick={handleAddToCart}
                 className={`w-full sm:flex-1 py-3 px-6 rounded-lg font-semibold text-sm transition-all shadow-lg ${
                   isOutOfStock
@@ -200,8 +223,25 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                     : "bg-[#C9A24A] text-black hover:bg-[#b89139] cursor-pointer"
                 }`}
               >
-                {isOutOfStock ? "Out of Stock" : added ? "Added to Cart ✓" : "Add to Cart"}
+                {isOutOfStock
+                  ? "Out of Stock"
+                  : isSubmitting
+                  ? "Adding to Cart..."
+                  : added
+                  ? "Added to Cart ✓"
+                  : inCart
+                  ? `Add More to Cart (${quantity})`
+                  : `Add to Cart (${quantity})`}
               </button>
+
+              {inCart && (
+                <Link
+                  href="/cart"
+                  className="w-full sm:w-auto py-3 px-6 rounded-lg border border-[var(--color-primary-gold)] text-[var(--color-primary-gold)] hover:bg-[var(--color-primary-gold)] hover:text-black font-semibold text-sm transition text-center"
+                >
+                  View Cart →
+                </Link>
+              )}
             </div>
           </div>
         </div>

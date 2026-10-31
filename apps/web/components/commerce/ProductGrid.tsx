@@ -14,7 +14,7 @@ export interface ProductGridProps {
 
 export function ProductGrid({
   books,
-  cartBookIds = [],
+  cartBookIds,
   onAddToCart,
   onGoToCart,
   isLoading = false,
@@ -54,7 +54,7 @@ export function ProductGrid({
         <BookCard
           key={book.id}
           book={book}
-          inCart={cartBookIds.includes(book.id)}
+          inCart={cartBookIds !== undefined ? cartBookIds.includes(book.id) : undefined}
           onAddToCart={onAddToCart}
           onGoToCart={onGoToCart}
         />

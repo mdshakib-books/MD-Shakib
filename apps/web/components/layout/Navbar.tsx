@@ -3,8 +3,10 @@
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/ui/Modal";
+import { useCart } from "@/lib/commerce/cart-context";
+import { createClient } from "@/lib/supabase/client";
 
 export interface NavbarProps {
   cartCount?: number;
@@ -16,12 +18,18 @@ export interface NavbarProps {
   onLogout?: () => void;
 }
 
-export function Navbar({ cartCount = 0, user = null, onLogout }: NavbarProps) {
+export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLogout }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const cartContext = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [clientUser, setClientUser] = useState<NavbarProps["user"]>(explicitUser ?? null);
   const navbarRef = useRef<HTMLElement>(null);
+
+  const effectiveCartCount = explicitCartCount !== undefined ? explicitCartCount : cartContext.itemCount;
+  const effectiveUser = explicitUser !== undefined ? explicitUser : clientUser;
 
   const [prevPathname, setPrevPathname] = useState(pathname);
 
@@ -31,6 +39,41 @@ export function Navbar({ cartCount = 0, user = null, onLogout }: NavbarProps) {
   }
 
   useEffect(() => {
+    if (explicitUser !== undefined) {
+      return;
+    }
+
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setClientUser({
+          name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0],
+          email: user.email,
+          role: (user.user_metadata?.role as "user" | "admin") || "user",
+        });
+      } else {
+        setClientUser(null);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setClientUser({
+          name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
+          email: session.user.email,
+          role: (session.user.user_metadata?.role as "user" | "admin") || "user",
+        });
+      } else {
+        setClientUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [explicitUser]);
+
+  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 80);
     };
@@ -38,6 +81,20 @@ export function Navbar({ cartCount = 0, user = null, onLogout }: NavbarProps) {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const handleLogoutConfirm = async () => {
+    setShowLogoutModal(false);
+    if (onLogout) {
+      onLogout();
+      return;
+    }
+
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setClientUser(null);
+    router.refresh();
+    router.push("/");
+  };
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -163,21 +220,21 @@ export function Navbar({ cartCount = 0, user = null, onLogout }: NavbarProps) {
                 />
               </svg>
 
-              {cartCount > 0 && (
+              {effectiveCartCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-[var(--color-primary-gold)] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {cartCount > 9 ? "9+" : cartCount}
+                  {effectiveCartCount > 9 ? "9+" : effectiveCartCount}
                 </span>
               )}
             </Link>
 
             {/* Profile / Auth */}
-            {user ? (
+            {effectiveUser ? (
               <div className="flex items-center gap-3">
                 <Link
-                  href={user.role === "admin" ? "/admin/dashboard" : "/profile"}
+                  href={effectiveUser.role === "admin" ? "/admin/dashboard" : "/profile"}
                   className="text-xs uppercase font-medium text-[var(--color-primary-gold)] hover:underline"
                 >
-                  {user.name || "Account"}
+                  {effectiveUser.name || "Account"}
                 </Link>
                 <button
                   type="button"
@@ -216,7 +273,7 @@ export function Navbar({ cartCount = 0, user = null, onLogout }: NavbarProps) {
                   {link.name}
                 </Link>
               ))}
-              {user ? (
+              {effectiveUser ? (
                 <button
                   onClick={() => {
                     setShowLogoutModal(true);
@@ -244,7 +301,7 @@ export function Navbar({ cartCount = 0, user = null, onLogout }: NavbarProps) {
       <ConfirmModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        onConfirm={() => onLogout?.()}
+        onConfirm={handleLogoutConfirm}
         title="Confirm Logout"
         description="Are you sure you want to log out of your account?"
         confirmText="Logout"
