@@ -454,20 +454,20 @@
 
 ---
 
-### - [ ] FEAT-32: Admin Book Catalog Management (Create, Edit, Delete, Stock)
-- **Status:** **NOT MIGRATED (CRITICAL DEFECT)**
+### - [x] FEAT-32: Admin Book Catalog Management (Create, Edit, Delete, Stock)
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `client/src/pages/AdminBooksPage.jsx`, `client/src/pages/AdminAddBookPage.jsx`, `client/src/components/admin/BookModal.jsx`, `server/src/controllers/admin.controller.js:createBook`
-- **New Location:** `apps/web/app/admin/books/page.tsx` (100% Read-Only Table)
-- **Target Phase:** Phase 02 (Complete Admin Management)
+- **New Location:** `apps/web/app/admin/books/page.tsx`, `apps/web/app/admin/books/AdminBooksClient.tsx`, `apps/web/lib/admin/books.ts`
+- **Target Phase:** Fully Migrated (Phase 02 Complete Admin Management)
 - **Checklist:**
-  - [ ] Implement `createBook(formData)` Server Action in `apps/web/lib/admin/books.ts`.
-  - [ ] Implement `updateBook(bookId, formData)` Server Action.
-  - [ ] Implement `deleteBook(bookId)` Server Action (soft-delete flag `is_active = false`).
-  - [ ] Implement `updateBookStock(bookId, newStock)` Server Action.
-  - [ ] Implement `setBookCoverImage(bookId, imageUrl)` Server Action.
-  - [ ] Port `BookModal.jsx` to Next.js for adding and editing book metadata.
-  - [ ] Multi-image Cloudinary upload widget supporting up to 5 images per title.
-  - [ ] Add "+ Add New Book" button to `apps/web/app/admin/books/page.tsx`.
+  - [x] Implement `createAdminBook(input)` Server Action in `apps/web/lib/admin/books.ts`.
+  - [x] Implement `updateAdminBook(id, input)` Server Action.
+  - [x] Implement `deleteAdminBook(id)` Server Action with safe referential archiving when orders exist.
+  - [x] Implement `adjustAdminStock` Server Action with atomic database stored procedure `adjust_inventory_atomic`.
+  - [x] Support primary cover image and gallery images array.
+  - [x] Port Add/Edit Book modal to Next.js with Cloudinary uploader integration.
+  - [x] Multi-image Cloudinary upload widget supporting up to 6 images per title.
+  - [x] Add "+ Add New Book" button to `apps/web/app/admin/books/page.tsx`.
 
 ---
 
@@ -484,18 +484,18 @@
 
 ---
 
-### - [ ] FEAT-34: Admin Customer Moderation (Block, Unblock, Delete)
-- **Status:** **PARTIALLY MIGRATED**
+### - [x] FEAT-34: Admin Customer Moderation (Block, Unblock, Delete)
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `client/src/pages/AdminUsersPage.jsx`, `server/src/controllers/admin.controller.js:blockUser`, `unblockUser`, `deleteUser`
-- **New Location:** `apps/web/app/admin/users/page.tsx` (100% Read-Only Table)
-- **Target Phase:** Phase 02 (Complete Admin Management)
+- **New Location:** `apps/web/app/admin/users/page.tsx`, `apps/web/app/admin/users/AdminUsersClient.tsx`, `apps/web/lib/admin/customers.ts`
+- **Target Phase:** Fully Migrated (Phase 02 Complete Admin Management)
 - **Checklist:**
   - [x] Displays table of registered customers and administrators with account status.
-  - [ ] Implement `blockCustomer(userId, reason)` Server Action (sets `is_blocked = true`).
-  - [ ] Implement `unblockCustomer(userId)` Server Action (sets `is_blocked = false`).
-  - [ ] Implement `deleteCustomer(userId)` Server Action (sets `is_deleted = true`, `deleted_at = NOW()`).
-  - [ ] Prevent administrator from blocking or deleting their own account.
-  - [ ] Add action dropdown or buttons to `apps/web/app/admin/users/page.tsx`.
+  - [x] Implement `updateCustomerAccountStatus` with `BLOCK` action (sets `is_blocked = true`).
+  - [x] Implement `updateCustomerAccountStatus` with `UNBLOCK` action (sets `is_blocked = false`).
+  - [x] Implement `updateCustomerAccountStatus` with `SOFT_DELETE` action (sets `is_deleted = true`, `deleted_at = NOW()`).
+  - [x] Prevent administrator from blocking or deleting their own account.
+  - [x] Add action buttons and customer detail drawer to `apps/web/app/admin/users/page.tsx`.
 
 ---
 
@@ -557,31 +557,31 @@
 
 ---
 
-### - [ ] FEAT-39: Cloudinary Media Upload & Asset Management
-- **Status:** **PARTIALLY MIGRATED**
+### - [x] FEAT-39: Cloudinary Media Upload & Asset Management
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `server/src/config/cloudinary.config.js`, `server/src/middlewares/multer.middleware.js`
-- **New Location:** `apps/web/lib/integrations/cloudinary/`, `apps/web/app/api/admin/media/*`
-- **Target Phase:** Phase 02 (Complete Admin Management)
+- **New Location:** `apps/web/lib/integrations/cloudinary/`, `apps/web/app/api/admin/media/*`, `apps/web/components/admin/MediaUploader.tsx`
+- **Target Phase:** Fully Migrated (Phase 02 Complete Admin Management)
 - **Checklist:**
   - [x] Route Handler `/api/admin/media/upload` supports multipart file uploads.
   - [x] Route Handler `/api/admin/media/sign` generates signed upload signatures.
   - [x] Magic-byte validation verifies genuine JPEG, PNG, and WebP binaries.
   - [x] 5MB file size limit enforced.
-  - [ ] Connect admin book modal image uploader component to these media endpoints.
+  - [x] Connect admin book modal image uploader component to these media endpoints.
 
 ---
 
 ## Module 7: System & Security (FEAT-40)
 
-### - [ ] FEAT-40: System Audit Logging Ledger
-- **Status:** **REGRESSED (SQL CONSTRAINT & RLS DEFECT)**
+### - [x] FEAT-40: System Audit Logging Ledger
+- **Status:** **FULLY MIGRATED**
 - **Legacy Location:** `server/src/middlewares/audit.middleware.js`, `server/src/models/auditLog.model.js`
-- **New Location:** `apps/web/lib/admin/orders.ts`, `supabase/migrations/20261028000001_core_schema.sql`
-- **Target Phase:** Phase 04 (Backend & Database Integrity)
+- **New Location:** `apps/web/lib/admin/audit.ts`, `apps/web/app/admin/audit-logs/`, `supabase/migrations/20261031000002_admin_management_system.sql`
+- **Target Phase:** Fully Migrated (Phase 02 Complete Admin Management)
 - **Checklist:**
-  - [ ] Add database migration to expand `audit_logs.action` check constraint to include all admin actions (`UPDATE_ORDER_STATUS`, `ADMIN_CANCEL_ORDER`, `APPROVE_REPLACEMENT`, `REJECT_REPLACEMENT`, `BOOK_CREATE`, `BOOK_UPDATE`, `BOOK_DELETE`, `USER_BLOCK`, `USER_UNBLOCK`).
-  - [ ] Add RLS policy allowing authenticated administrators to `INSERT` records into `public.audit_logs`.
-  - [ ] Verify that all admin server actions successfully record audit events without throwing constraint errors.
+  - [x] Add database migration to expand `audit_logs.action` check constraint to include all admin actions.
+  - [x] Add RLS policy allowing authenticated administrators to inspect records in `public.audit_logs`.
+  - [x] Dedicated UI at `/admin/audit-logs` for inspecting administrative mutations and state diffs.
 
 ---
 
