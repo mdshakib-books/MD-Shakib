@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { sanitizeRedirectUrl, getAuthenticatedUser } from "./session";
+import { sanitizeRedirectUrl, getAuthenticatedUser, getCanonicalSiteUrl } from "./session";
 import type { Database } from "@/types/database.types";
 
 export interface AuthActionResult {
@@ -126,8 +126,9 @@ export async function sendPasswordReset(
   const supabase = await createClient();
 
   // Always return success message to prevent user enumeration attacks
+  const siteUrl = getCanonicalSiteUrl();
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://127.0.0.1:3000"}/reset-password`,
+    redirectTo: `${siteUrl}/reset-password`,
   });
 
   return {
@@ -238,4 +239,56 @@ export async function updateCustomerProfile(
   }
 
   return { success: true, message: "Profile successfully updated." };
+}
+
+/**
+ * Changes an authenticated customer's password after verifying their current password.
+ */
+export async function changeCustomerPassword(
+  prevState: AuthActionResult | null,
+  formData: FormData
+): Promise<AuthActionResult> {
+  const user = await getAuthenticatedUser();
+  if (!user || !user.email) {
+    return { success: false, error: "Authentication required to change password." };
+  }
+
+  const currentPassword = formData.get("currentPassword")?.toString();
+  const newPassword = formData.get("newPassword")?.toString();
+  const confirmPassword = formData.get("confirmPassword")?.toString();
+
+  if (!currentPassword) {
+    return { success: false, error: "Please enter your current password." };
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return { success: false, error: "New password must be at least 6 characters long." };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { success: false, error: "New passwords do not match." };
+  }
+
+  const supabase = await createClient();
+
+  // 1. Verify current credentials by attempting authentication
+  const { error: verifyErr } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+
+  if (verifyErr) {
+    return { success: false, error: "Current password is incorrect." };
+  }
+
+  // 2. Apply new password
+  const { error: updateErr } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (updateErr) {
+    return { success: false, error: updateErr.message };
+  }
+
+  return { success: true, message: "Your password has been changed successfully." };
 }

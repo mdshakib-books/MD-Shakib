@@ -101,6 +101,70 @@ export async function createAddress(
 }
 
 /**
+ * Updates an existing delivery address belonging to the customer.
+ */
+export async function updateAddress(
+  addressId: string,
+  formData: FormData
+): Promise<AddressActionResult> {
+  const user = await getAuthenticatedUser();
+  if (!user) return { success: false, error: "Authentication required to update address." };
+
+  const fullName = formData.get("fullName")?.toString().trim();
+  const phone = formData.get("phone")?.toString().trim();
+  const houseNo = formData.get("houseNo")?.toString().trim();
+  const area = formData.get("area")?.toString().trim();
+  const city = formData.get("city")?.toString().trim();
+  const state = formData.get("state")?.toString().trim();
+  const pincode = formData.get("pincode")?.toString().trim();
+  const landmark = formData.get("landmark")?.toString().trim() || null;
+  const addressType = (formData.get("addressType")?.toString() || "Home") as "Home" | "Office" | "Other";
+  const isDefault = formData.get("isDefault") === "on" || formData.get("isDefault") === "true";
+
+  if (!fullName || !phone || !houseNo || !area || !city || !state || !pincode) {
+    return { success: false, error: "Please fill in all required address fields." };
+  }
+
+  if (pincode.length !== 6 || !/^\d{6}$/.test(pincode)) {
+    return { success: false, error: "Pincode must be exactly 6 digits." };
+  }
+
+  if (phone.length < 10) {
+    return { success: false, error: "Please provide a valid 10-digit mobile number." };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("addresses")
+    .update({
+      full_name: fullName,
+      phone,
+      house_no: houseNo,
+      area,
+      city,
+      state,
+      pincode,
+      landmark,
+      address_type: addressType,
+      is_default: isDefault,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", addressId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error updating address:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/addresses");
+  revalidatePath("/account/addresses");
+  revalidatePath("/checkout");
+  return { success: true, message: "Address updated successfully.", addressId };
+}
+
+/**
  * Deletes an address belonging to the customer.
  */
 export async function deleteAddress(addressId: string): Promise<{ success: boolean; error?: string }> {

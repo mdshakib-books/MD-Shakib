@@ -391,3 +391,162 @@ export async function cancelOrder(orderId: string, reason: string): Promise<{ su
   return { success: true };
 }
 
+/**
+ * Requests an order replacement under the strict 7-day post-delivery policy.
+ */
+export async function requestOrderReplacement(
+  orderId: string,
+  reason: string,
+  description?: string
+): Promise<{ success: boolean; error?: string; message?: string }> {
+  const user = await getAuthenticatedUser();
+  if (!user) return { success: false, error: "Authentication required." };
+
+  const trimmedReason = String(reason || "").trim();
+  if (!trimmedReason) {
+    return { success: false, error: "Please specify a reason for the replacement request." };
+  }
+
+  const combinedReason = description && description.trim()
+    ? `${trimmedReason}: ${description.trim()}`
+    : trimmedReason;
+
+  const supabase = await createClient();
+
+  // 1. Attempt atomic RPC execution first
+  const { data: rpcRes, error: rpcErr } = await (supabase.rpc as any)("request_replacement_atomic", {
+    p_order_id: orderId,
+    p_user_id: user.id,
+    p_reason: combinedReason,
+  });
+
+  if (!rpcErr && rpcRes && rpcRes.success) {
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/orders");
+    revalidatePath("/account/orders");
+    revalidatePath("/account/replacements");
+    return { success: true, message: "Replacement request submitted successfully." };
+  }
+
+  // If RPC returned a validation exception (not a missing-procedure error), return that error directly
+  if (rpcErr && !rpcErr.message.includes("function") && !rpcErr.message.includes("does not exist")) {
+    return { success: false, error: rpcErr.message };
+  }
+
+  // 2. Server-side authoritative validation fallback
+  const { data: order, error: orderErr } = await supabase
+    .from("orders")
+    .select("id, user_id, order_status, delivered_at, shipping_delivered_at, replacement_requested")
+    .eq("id", orderId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (orderErr || !order) {
+    return { success: false, error: "Order not found or unauthorized." };
+  }
+
+  if (order.replacement_requested) {
+    return { success: false, error: "A replacement has already been requested for this order." };
+  }
+
+  if (order.order_status !== "Delivered") {
+    return {
+      success: false,
+      error: `Only delivered orders are eligible for replacement. Current status: ${order.order_status}`,
+    };
+  }
+
+  const deliveryTimestamp = order.delivered_at || order.shipping_delivered_at;
+  if (!deliveryTimestamp) {
+    return { success: false, error: "Replacement ineligible: Missing verified delivery timestamp." };
+  }
+
+  const deliveryTime = new Date(deliveryTimestamp).getTime();
+  const now = Date.now();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  if (deliveryTime > now) {
+    return {
+      success: false,
+      error: "Replacement ineligible: Delivery timestamp cannot be in the future.",
+    };
+  }
+
+  if (now - deliveryTime > sevenDaysMs) {
+    return {
+      success: false,
+      error: "Replacement window expired: Replacements must be requested within 7 days of verified delivery.",
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const { error: updateErr } = await supabase
+    .from("orders")
+    .update({
+      replacement_requested: true,
+      replacement_status: "Requested",
+      replacement_reason: combinedReason,
+      replacement_requested_at: nowIso,
+      order_status: "Replacement Requested",
+      updated_at: nowIso,
+    })
+    .eq("id", orderId)
+    .eq("user_id", user.id);
+
+  if (updateErr) {
+    return { success: false, error: updateErr.message };
+  }
+
+  // Insert audit log
+  await supabase.from("audit_logs").insert({
+    user_id: user.id,
+    action: "UPDATE",
+    model_name: "orders",
+    model_id: orderId,
+    new_values: { order_status: "Replacement Requested", replacement_status: "Requested" },
+  });
+
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/orders");
+  revalidatePath("/account/orders");
+  revalidatePath("/account/replacements");
+
+  return { success: true, message: "Replacement request submitted successfully." };
+}
+
+/**
+ * Retrieves all replacement requests initiated by the authenticated customer.
+ */
+export async function getCustomerReplacements(): Promise<EnrichedOrder[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) return [];
+
+  const supabase = await createClient();
+  const { data: orders, error: ordersErr } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("replacement_requested", true)
+    .order("replacement_requested_at", { ascending: false });
+
+  if (ordersErr || !orders) {
+    console.error("Error fetching customer replacements:", ordersErr?.message);
+    return [];
+  }
+
+  const enriched: EnrichedOrder[] = [];
+  for (const order of orders) {
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("*")
+      .eq("order_id", order.id);
+
+    enriched.push({
+      ...order,
+      items: items || [],
+    });
+  }
+
+  return enriched;
+}
+

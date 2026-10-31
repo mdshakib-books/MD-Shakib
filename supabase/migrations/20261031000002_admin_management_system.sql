@@ -534,9 +534,14 @@ DECLARE
     v_actual_is_admin BOOLEAN := FALSE;
     v_item RECORD;
 BEGIN
-    -- Verify caller identity if auth.uid() is present (prevent user spoofing)
-    IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
-        RAISE EXCEPTION 'Security violation: Caller identity does not match specified user ID.';
+    -- Strict caller identity validation: anonymous callers are rejected; non-service_role callers must match p_user_id
+    IF current_user <> 'service_role' AND (auth.role() IS NULL OR auth.role() <> 'service_role') THEN
+        IF auth.uid() IS NULL THEN
+            RAISE EXCEPTION 'Authentication required: Anonymous callers cannot cancel orders.';
+        END IF;
+        IF auth.uid() <> p_user_id THEN
+            RAISE EXCEPTION 'Security violation: Caller identity does not match specified user ID.';
+        END IF;
     END IF;
 
     -- Validate admin claim against actual database role
@@ -567,7 +572,7 @@ BEGIN
     END IF;
 
     -- Invariant check based on ORDER_STATUS_TRANSITIONS: only pre-delivery orders can be cancelled
-    IF v_order_status IN ('Delivered', 'Cancelled', 'Returned') THEN
+    IF v_order_status IN ('Delivered', 'Cancelled', 'Returned') OR v_order_status LIKE 'Replacement%' THEN
         RAISE EXCEPTION 'Order cannot be cancelled in % status', v_order_status;
     END IF;
 
