@@ -143,6 +143,205 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      discounts: {
+        Row: {
+          code: string
+          created_at: string
+          discount_type: "percentage" | "fixed"
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_discount_amount: number | null
+          min_order_amount: number
+          updated_at: string
+          usage_limit: number | null
+          used_count: number
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_type: "percentage" | "fixed"
+          discount_value: number
+          id?: string
+          is_active?: boolean
+          max_discount_amount?: number | null
+          min_order_amount?: number
+          updated_at?: string
+          usage_limit?: number | null
+          used_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_type?: "percentage" | "fixed"
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount_amount?: number | null
+          min_order_amount?: number
+          updated_at?: string
+          usage_limit?: number | null
+          used_count?: number
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      inventory_adjustments: {
+        Row: {
+          adjustment_type: "INCREASE" | "DECREASE" | "SET"
+          admin_id: string
+          book_id: string
+          created_at: string
+          id: string
+          new_stock: number
+          previous_stock: number
+          quantity_change: number
+          reason: string
+        }
+        Insert: {
+          adjustment_type: "INCREASE" | "DECREASE" | "SET"
+          admin_id: string
+          book_id: string
+          created_at?: string
+          id?: string
+          new_stock: number
+          previous_stock: number
+          quantity_change: number
+          reason: string
+        }
+        Update: {
+          adjustment_type?: "INCREASE" | "DECREASE" | "SET"
+          admin_id?: string
+          book_id?: string
+          created_at?: string
+          id?: string
+          new_stock?: number
+          previous_stock?: number
+          quantity_change?: number
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_adjustments_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_adjustments_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          book_id: string
+          comment: string
+          created_at: string
+          id: string
+          moderated_at: string | null
+          moderated_by: string | null
+          rating: number
+          status: "pending" | "approved" | "rejected" | "hidden"
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          comment: string
+          created_at?: string
+          id?: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          rating: number
+          status?: "pending" | "approved" | "rejected" | "hidden"
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          rating?: number
+          status?: "pending" | "approved" | "rejected" | "hidden"
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_moderated_by_fkey"
+            columns: ["moderated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author: string
@@ -698,6 +897,39 @@ export type Database = {
       }
       is_active_user: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      adjust_inventory_atomic: {
+        Args: {
+          p_book_id: string
+          p_admin_id: string
+          p_type: string
+          p_quantity: number
+          p_reason: string
+        }
+        Returns: Json
+      }
+      moderate_review_atomic: {
+        Args: {
+          p_review_id: string
+          p_admin_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      validate_discount_coupon: {
+        Args: {
+          p_code: string
+          p_subtotal: number
+        }
+        Returns: Json
+      }
+      update_customer_status: {
+        Args: {
+          p_customer_id: string
+          p_admin_id: string
+          p_action: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

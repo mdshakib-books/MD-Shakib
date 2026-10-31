@@ -83,7 +83,7 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
             </p>
           </div>
           {!isAuthenticated && items.length > 0 && (
-            <div className="bg-[#181818] border border-[var(--color-primary-gold)]/30 rounded-lg px-4 py-2 text-xs text-neutral-300 flex items-center gap-3">
+            <div className="bg-[#181818] border border-[var(--color-primary-gold)]/30 rounded-lg px-4 py-2 text-xs text-neutral-300 flex flex-wrap items-center gap-2 sm:gap-3">
               <span>Browsing as Guest. Log in to save cart to your account.</span>
               <Link
                 href="/login?redirect=/cart"
@@ -101,60 +101,61 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-8 min-w-0">
           {/* Left 2 Cols: Cart Item List */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-4 min-w-0">
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-4 bg-[#141414] border border-[#262626] rounded-xl p-4 transition hover:border-[#383838]"
+                className="flex items-center gap-3 sm:gap-4 bg-[#141414] border border-[#262626] rounded-xl p-3 sm:p-4 transition hover:border-[#383838] min-w-0"
               >
-                <div className="w-16 h-22 flex-shrink-0 bg-[#0B0B0B] border border-[#222] rounded-md overflow-hidden p-1 flex items-center justify-center">
+                <div className="w-14 h-20 sm:w-16 sm:h-22 flex-shrink-0 bg-[#0B0B0B] border border-[#222] rounded-md overflow-hidden p-1 flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.imageUrl} alt={item.title} className="w-full h-full object-contain" />
                 </div>
 
                 <div className="flex-grow min-w-0">
-                  <Link href={`/books/${item.bookId}`} className="hover:text-[#C9A24A]">
-                    <h2 className="text-sm font-semibold text-neutral-200 truncate">{item.title}</h2>
+                  <Link href={`/books/${item.bookId}`} className="block hover:text-[#C9A24A]">
+                    <h2 className="text-xs sm:text-sm font-semibold text-neutral-200 truncate">{item.title}</h2>
                   </Link>
-                  {item.author && <p className="text-xs text-neutral-500 mt-0.5 truncate">{item.author}</p>}
-                  <div className="text-xs text-[var(--color-primary-gold)] font-bold mt-2">
+                  {item.author && <p className="text-[11px] sm:text-xs text-neutral-500 mt-0.5 truncate">{item.author}</p>}
+                  <div className="text-xs text-[var(--color-primary-gold)] font-bold mt-1.5 sm:mt-2">
                     {formatPrice(item.price)}
                   </div>
                 </div>
 
-                {/* Quantity Controls */}
-                <div className="flex items-center border border-[#333] rounded-md bg-[#0B0B0B]">
+                {/* Quantity Controls & Remove */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center border border-[#333] rounded-md bg-[#0B0B0B]">
+                    <button
+                      disabled={isPending}
+                      onClick={() => handleQuantity(item.id, item.quantity - 1)}
+                      className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer"
+                      aria-label="Decrease quantity"
+                    >
+                      -
+                    </button>
+                    <span className="px-1.5 sm:px-2 text-xs font-mono text-neutral-200">{item.quantity}</span>
+                    <button
+                      disabled={isPending || (item.stock !== undefined && item.quantity >= item.stock)}
+                      onClick={() => handleQuantity(item.id, item.quantity + 1)}
+                      className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer"
+                      aria-label="Increase quantity"
+                    >
+                      +
+                    </button>
+                  </div>
+
                   <button
                     disabled={isPending}
-                    onClick={() => handleQuantity(item.id, item.quantity - 1)}
-                    className="px-2.5 py-1 text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer"
-                    aria-label="Decrease quantity"
+                    onClick={() => handleRemove(item.id)}
+                    className="text-neutral-500 hover:text-red-400 text-xs p-1 sm:px-2 sm:py-1 transition cursor-pointer"
+                    title="Remove item"
+                    aria-label="Remove item"
                   >
-                    -
-                  </button>
-                  <span className="px-2 text-xs font-mono text-neutral-200">{item.quantity}</span>
-                  <button
-                    disabled={isPending || (item.stock !== undefined && item.quantity >= item.stock)}
-                    onClick={() => handleQuantity(item.id, item.quantity + 1)}
-                    className="px-2.5 py-1 text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer"
-                    aria-label="Increase quantity"
-                  >
-                    +
+                    ✕
                   </button>
                 </div>
-
-                {/* Remove Item Button */}
-                <button
-                  disabled={isPending}
-                  onClick={() => handleRemove(item.id)}
-                  className="text-neutral-500 hover:text-red-400 text-xs px-2 py-1 transition cursor-pointer"
-                  title="Remove item"
-                  aria-label="Remove item"
-                >
-                  ✕
-                </button>
               </div>
             ))}
           </div>
