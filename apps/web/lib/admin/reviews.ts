@@ -183,3 +183,56 @@ export async function getBookRatingSummary(bookId: string): Promise<{
   };
 }
 
+/**
+ * Submits a new customer product review via atomic database procedure.
+ * Enforces authentication, rating bounds, duplicate prevention, and logs audit trail.
+ */
+export async function submitCustomerReview(payload: {
+  bookId: string;
+  rating: number;
+  title: string;
+  comment: string;
+}): Promise<{ success: boolean; error?: string; reviewId?: string; message?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authErr,
+  } = await supabase.auth.getUser();
+
+  if (authErr || !user) {
+    return { success: false, error: "Authentication required to submit a review." };
+  }
+
+  const { data, error } = await supabase.rpc("submit_review_atomic", {
+    p_book_id: payload.bookId,
+    p_user_id: user.id,
+    p_rating: payload.rating,
+    p_title: payload.title,
+    p_comment: payload.comment,
+  });
+
+  if (error || !data) {
+    return {
+      success: false,
+      error: error?.message || "Failed to submit review.",
+    };
+  }
+
+  const result = data as any;
+  if (!result.success) {
+    return {
+      success: false,
+      error: result.error || "Failed to submit review.",
+    };
+  }
+
+  revalidatePath(`/books/${payload.bookId}`);
+  revalidatePath("/admin/reviews");
+
+  return {
+    success: true,
+    reviewId: result.review_id,
+    message: result.message || "Review submitted successfully and is awaiting moderation.",
+  };
+}
+

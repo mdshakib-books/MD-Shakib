@@ -938,6 +938,16 @@ export type Database = {
         }
         Returns: Json
       }
+      submit_review_atomic: {
+        Args: {
+          p_book_id: string
+          p_user_id: string
+          p_rating: number
+          p_title: string
+          p_comment: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
