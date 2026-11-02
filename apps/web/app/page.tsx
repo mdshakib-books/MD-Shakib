@@ -37,26 +37,26 @@ export default async function HomePage() {
       <PageContainer>
         <SectionHeading
           title="Featured Collection"
-          subtitle="Discover authentic scholarly literature and classical Islamic books"
+          subtitle="Discover authentic scholarly literature, Quran editions, and classical Islamic treatises"
         />
 
         {fetchError ? (
-          <div className="bg-[#1A1A1A] border border-red-900/40 text-neutral-300 rounded-xl p-8 text-center my-8">
-            <p className="text-base font-serif text-red-400 mb-2">Notice</p>
-            <p className="text-sm text-neutral-400">
+          <div className="bg-[#141414] border border-red-900/40 text-neutral-300 rounded-2xl p-8 text-center my-8 max-w-xl mx-auto">
+            <p className="text-base font-serif text-red-400 mb-2 uppercase">Notice</p>
+            <p className="text-sm text-neutral-400 leading-relaxed font-light">
               The featured collection is momentarily unavailable. Please explore our full catalogue below.
             </p>
             <Link
               href="/books"
-              className="inline-block mt-4 px-6 py-2 rounded-lg bg-[var(--color-primary-gold)] text-black font-semibold text-sm hover:opacity-95 transition"
+              className="inline-block mt-5 px-6 py-2.5 rounded-lg bg-[#C9A24A] text-black font-semibold text-xs uppercase tracking-wider hover:bg-[#B89139] transition shadow-sm"
             >
               Browse All Books
             </Link>
           </div>
         ) : featuredBooks.length === 0 ? (
-          <div className="bg-[#141414] border border-[#222] rounded-xl p-12 text-center my-8">
-            <p className="text-neutral-400 font-serif text-lg">No books currently in stock</p>
-            <p className="text-xs text-neutral-500 mt-2">
+          <div className="bg-[#141414] border border-[#222222] rounded-2xl p-12 text-center my-8 max-w-xl mx-auto">
+            <p className="text-white font-serif text-lg uppercase tracking-wide">No books currently in stock</p>
+            <p className="text-xs text-neutral-400 mt-2 font-light">
               Our catalogue is being updated with authentic collections soon.
             </p>
           </div>
@@ -66,13 +66,13 @@ export default async function HomePage() {
           </div>
         )}
 
-        <div className="text-center mt-12 mb-6">
+        <div className="text-center mt-14 mb-4">
           <Link
             href="/books"
-            className="inline-flex items-center space-x-2 px-8 py-3 rounded-lg border border-[var(--color-primary-gold)] text-[var(--color-primary-gold)] hover:bg-[var(--color-primary-gold)] hover:text-black font-medium text-sm transition-all shadow-sm"
+            className="inline-flex items-center space-x-2.5 px-8 py-3.5 rounded-xl border border-[#C9A24A] text-[#C9A24A] hover:bg-[#C9A24A] hover:text-black font-semibold text-xs uppercase tracking-wider transition-all duration-200 shadow-sm"
           >
             <span>View Full Collection</span>
-            <span>&rarr;</span>
+            <span aria-hidden="true">&rarr;</span>
           </Link>
         </div>
       </PageContainer>

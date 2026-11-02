@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { AccountNav } from "@/components/account/AccountNav";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import type { CustomerPaymentItem } from "@/lib/commerce/payments";
 
@@ -12,17 +14,17 @@ interface AccountPaymentsClientProps {
 }
 
 export function AccountPaymentsClient({ payments }: AccountPaymentsClientProps) {
-  const getPaymentStatusBadge = (status: string) => {
+  const renderPaymentBadge = (status: string) => {
     switch (status) {
       case "Paid":
-        return "bg-emerald-950/20 text-emerald-400 border-emerald-800/40";
+        return <Badge variant="success">Paid</Badge>;
       case "Failed":
-        return "bg-red-950/20 text-red-400 border-red-800/40";
+        return <Badge variant="danger">Failed</Badge>;
       case "Refunded":
-        return "bg-purple-950/20 text-purple-400 border-purple-800/40";
+        return <Badge variant="info">Refunded</Badge>;
       case "Pending":
       default:
-        return "bg-amber-950/20 text-[var(--color-primary-gold)] border-amber-800/40";
+        return <Badge variant="warning">{status}</Badge>;
     }
   };
 
@@ -40,26 +42,29 @@ export function AccountPaymentsClient({ payments }: AccountPaymentsClientProps) 
 
         <Link
           href="/account/orders"
-          className="text-xs uppercase tracking-wider text-[var(--color-primary-gold)] hover:underline font-semibold"
+          className="text-xs uppercase tracking-wider text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] font-semibold inline-flex items-center gap-1"
         >
-          View Orders →
+          View Orders &rarr;
         </Link>
       </div>
 
       <AccountNav />
 
       {payments.length === 0 ? (
-        <div className="text-center py-16 px-4 bg-[#141414] border border-[#222] rounded-xl">
-          <div className="text-4xl mb-3">💳</div>
-          <h2 className="text-base font-serif text-neutral-200 uppercase">No online payment records found</h2>
-          <p className="text-xs text-neutral-400 mt-2 max-w-sm mx-auto mb-6">
+        <div className="text-center py-16 px-4 bg-dark-surface border border-dark-border rounded-xl shadow-luxury">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full border border-[var(--color-primary-gold)]/20 bg-dark-card flex items-center justify-center text-[var(--color-primary-gold)]">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          </div>
+          <h2 className="text-base font-serif text-neutral-200 uppercase font-semibold">No online payment records found</h2>
+          <p className="text-xs text-neutral-400 mt-2 max-w-sm mx-auto mb-6 leading-relaxed">
             If you placed orders using Cash on Delivery (COD), payment transactions are settled upon parcel handover and not processed online.
           </p>
-          <Link
-            href="/books"
-            className="inline-block px-5 py-2 rounded-lg bg-[var(--color-primary-gold)] text-black font-semibold text-xs hover:bg-[var(--color-accent-gold)] transition shadow"
-          >
-            Browse Books
+          <Link href="/books">
+            <Button variant="primary" size="md">
+              Browse Books
+            </Button>
           </Link>
         </div>
       ) : (
@@ -67,22 +72,16 @@ export function AccountPaymentsClient({ payments }: AccountPaymentsClientProps) 
           {payments.map((p) => (
             <div
               key={p.id}
-              className="bg-[#141414] border border-[#262626] rounded-xl p-5 hover:border-[#383838] transition"
+              className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-neutral-700 transition shadow-luxury"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#222] pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-dark-border pb-4">
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="font-mono text-xs text-neutral-200 font-bold">
                       Order #{p.orderId ? p.orderId.slice(0, 8).toUpperCase() : "N/A"}
                     </span>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full border uppercase font-medium ${getPaymentStatusBadge(
-                        p.status
-                      )}`}
-                    >
-                      {p.status}
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#222] text-neutral-400">
+                    {renderPaymentBadge(p.status)}
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-card border border-dark-border text-neutral-400">
                       {p.provider}
                     </span>
                   </div>
@@ -106,11 +105,10 @@ export function AccountPaymentsClient({ payments }: AccountPaymentsClientProps) 
                   </div>
 
                   {p.orderId && (
-                    <Link
-                      href={`/orders/${p.orderId}`}
-                      className="px-3 py-1.5 rounded-lg bg-[#222] hover:bg-[#2c2c2c] text-xs font-semibold text-neutral-200 transition"
-                    >
-                      Order Details
+                    <Link href={`/orders/${p.orderId}`}>
+                      <Button variant="secondary" size="sm">
+                        Order Details
+                      </Button>
                     </Link>
                   )}
                 </div>
@@ -135,4 +133,3 @@ export function AccountPaymentsClient({ payments }: AccountPaymentsClientProps) 
     </PageContainer>
   );
 }
-

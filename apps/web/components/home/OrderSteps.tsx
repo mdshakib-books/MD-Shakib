@@ -3,6 +3,7 @@ import * as React from "react";
 interface Step {
   id: number;
   title: string;
+  description: string;
   icon: React.ReactNode;
 }
 
@@ -10,9 +11,10 @@ const steps: Step[] = [
   {
     id: 1,
     title: "Browse Books",
+    description: "Explore authentic Quran, Hadith, and classical scholarly volumes",
     icon: (
       <svg
-        className="w-8 h-8"
+        className="w-7 h-7"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -29,9 +31,10 @@ const steps: Step[] = [
   {
     id: 2,
     title: "Add To Cart",
+    description: "Select desired volumes and quantities with immediate cart review",
     icon: (
       <svg
-        className="w-8 h-8"
+        className="w-7 h-7"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -48,9 +51,10 @@ const steps: Step[] = [
   {
     id: 3,
     title: "Secure Checkout",
+    description: "Save delivery address and complete payment via COD or online",
     icon: (
       <svg
-        className="w-8 h-8"
+        className="w-7 h-7"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -67,9 +71,10 @@ const steps: Step[] = [
   {
     id: 4,
     title: "Fast Delivery",
+    description: "Receive high-quality editions carefully packed within 3–5 days",
     icon: (
       <svg
-        className="w-8 h-8"
+        className="w-7 h-7"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -78,7 +83,7 @@ const steps: Step[] = [
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="1.5"
-          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+          d="M8 7h12m0 0l1 1v6a2 2 0 01-2 2h-1M5 7h2m-2 4h2m-4 8a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4z"
         />
       </svg>
     ),
@@ -87,32 +92,37 @@ const steps: Step[] = [
 
 export function OrderSteps() {
   return (
-    <section className="py-20 w-full bg-[#0B0B0B]">
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-6">
+    <section className="py-20 w-full bg-[#0E0E0E] border-t border-[#222222]">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
-          <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#F5F5F5] mb-4 tracking-wide uppercase">
+          <p className="text-[#C9A24A] text-xs uppercase tracking-[0.25em] font-semibold font-sans mb-2">
+            Seamless Ordering
+          </p>
+          <h2 className="text-2xl md:text-3xl font-serif font-bold text-white tracking-wide uppercase">
             How To Order
           </h2>
-          <div className="w-24 h-1 bg-[var(--color-primary-gold)] mx-auto rounded-full opacity-80" />
+          <div className="w-16 h-0.5 bg-[#C9A24A]/70 mx-auto rounded-full mt-4" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {steps.map((step) => (
             <div
               key={step.id}
-              className="relative z-10 flex flex-col items-center text-center group"
+              className="flex flex-col items-center text-center p-6 rounded-2xl bg-[#141414] border border-[#262626] hover:border-[#C9A24A]/50 transition-all duration-300 group"
             >
-              <div className="w-20 h-20 rounded-full bg-[#111111] border border-[var(--color-primary-gold)] flex items-center justify-center text-[var(--color-primary-gold)] mb-6 shadow-[0_0_15px_rgba(201,162,74,0.15)] transition-transform duration-300 group-hover:scale-110 group-hover:bg-[var(--color-primary-gold)] group-hover:text-black relative">
-                {/* Step Number Badge */}
-                <div className="absolute -top-1 -right-1 w-7 h-7 bg-[#111111] text-[var(--color-primary-gold)] font-bold text-xs rounded-full flex items-center justify-center border border-[var(--color-primary-gold)] group-hover:border-black group-hover:text-black group-hover:bg-[var(--color-primary-gold)]">
+              <div className="w-16 h-16 rounded-2xl bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#C9A24A] mb-5 shadow-inner transition-transform duration-300 group-hover:scale-105 group-hover:border-[#C9A24A]/60 relative">
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#C9A24A] text-black font-bold text-xs rounded-full flex items-center justify-center shadow-md">
                   {step.id}
                 </div>
                 {step.icon}
               </div>
 
-              <h3 className="text-lg font-serif font-medium text-[#F5F5F5]">
+              <h3 className="text-base font-serif font-semibold text-white tracking-wide mb-2">
                 {step.title}
               </h3>
+              <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                {step.description}
+              </p>
             </div>
           ))}
         </div>
@@ -120,4 +130,3 @@ export function OrderSteps() {
     </section>
   );
 }
-

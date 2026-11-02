@@ -3,6 +3,7 @@
 import * as React from "react";
 import { BookCard, BookItem } from "./BookCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { cn } from "@/lib/utils";
 
 export interface ProductGridProps {
   books: BookItem[];
@@ -25,13 +26,13 @@ export function ProductGrid({
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            className="flex flex-col bg-[#111111] border border-[#2A2A2A] rounded-[12px] p-4 animate-pulse"
+            className="flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 animate-pulse"
           >
-            <div className="w-full aspect-[3/4] mb-4 rounded-md bg-[#1f1f1f]" />
-            <div className="h-4 bg-[#1f1f1f] rounded mb-2 w-3/4" />
-            <div className="h-3 bg-[#1f1f1f] rounded mb-4 w-1/2" />
-            <div className="h-5 bg-[#1f1f1f] rounded w-1/3 mb-4" />
-            <div className="h-10 bg-[#1f1f1f] rounded mt-auto" />
+            <div className="w-full aspect-[3/4] mb-4 rounded-lg bg-[#1F1F1F]" />
+            <div className="h-4 bg-[#1F1F1F] rounded mb-2 w-3/4" />
+            <div className="h-3 bg-[#1F1F1F] rounded mb-4 w-1/2" />
+            <div className="h-5 bg-[#1F1F1F] rounded w-1/3 mb-4" />
+            <div className="h-10 bg-[#1F1F1F] rounded-lg mt-auto" />
           </div>
         ))}
       </div>
@@ -41,8 +42,9 @@ export function ProductGrid({
   if (!books || books.length === 0) {
     return (
       <EmptyState
-        message="No books found matching this selection."
-        actionText="View All Books"
+        title="No Books Found"
+        description="We couldn't find any titles matching this selection. Try adjusting your filters or browse our full catalogue."
+        actionText="Browse All Books"
         actionUrl="/books"
       />
     );
@@ -75,28 +77,31 @@ export function CategoryTabs({
   onSelectCategory,
 }: CategoryTabsProps) {
   return (
-    <div className="flex justify-start md:justify-center space-x-3 overflow-x-auto py-4 hide-scrollbar">
+    <div className="flex justify-start md:justify-center items-center space-x-2.5 overflow-x-auto py-3 scrollbar-none px-1">
       <button
         type="button"
         onClick={() => onSelectCategory("")}
-        className={`px-6 py-2 rounded-[20px] whitespace-nowrap text-sm font-medium transition-all duration-200 cursor-pointer ${
+        className={cn(
+          "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer",
           !activeCategory
-            ? "bg-[var(--color-primary-gold)] text-black shadow-[0_0_15px_rgba(201,162,74,0.3)]"
-            : "bg-[#111111] border border-[#2A2A2A] text-neutral-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)]"
-        }`}
+            ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20 font-bold"
+            : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#C9A24A]/50 hover:bg-[#1A1A1A]"
+        )}
       >
         All Books
       </button>
+
       {categories.map((cat) => (
         <button
           key={cat}
           type="button"
           onClick={() => onSelectCategory(cat)}
-          className={`px-6 py-2 rounded-[20px] whitespace-nowrap text-sm font-medium transition-all duration-200 cursor-pointer ${
+          className={cn(
+            "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer",
             activeCategory === cat
-              ? "bg-[var(--color-primary-gold)] text-black shadow-[0_0_15px_rgba(201,162,74,0.3)]"
-              : "bg-[#111111] border border-[#2A2A2A] text-neutral-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)]"
-          }`}
+              ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20 font-bold"
+              : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#C9A24A]/50 hover:bg-[#1A1A1A]"
+          )}
         >
           {cat}
         </button>
@@ -104,4 +109,3 @@ export function CategoryTabs({
     </div>
   );
 }
-

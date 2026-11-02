@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { AccountNav } from "@/components/account/AccountNav";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import { ConfirmModal } from "@/components/ui/Modal";
 import { changeCustomerPassword, logoutCustomer, type AuthActionResult } from "@/lib/auth/actions";
 import type { ProfileRow } from "@/lib/auth/session";
@@ -36,21 +37,22 @@ export function AccountSecurityClient({ profile }: AccountSecurityClientProps) {
           </p>
         </div>
 
-        <button
+        <Button
+          variant="danger"
+          size="sm"
           onClick={() => setShowLogoutModal(true)}
-          className="px-3.5 py-1.5 rounded-lg border border-red-900/60 bg-red-950/20 text-red-400 hover:bg-red-950/40 text-xs font-semibold transition cursor-pointer"
         >
           Sign Out
-        </button>
+        </Button>
       </div>
 
       <AccountNav />
 
       <div className="space-y-8">
         {/* Account Details & Status Card */}
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-4 pb-2 border-b border-[#222]">
-            Active Identity & Status
+        <div className="bg-dark-surface border border-dark-border rounded-xl p-6 shadow-luxury">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-4 pb-2 border-b border-dark-border">
+            Active Identity &amp; Status
           </h2>
 
           <div className="grid sm:grid-cols-2 gap-4 text-xs">
@@ -68,13 +70,13 @@ export function AccountSecurityClient({ profile }: AccountSecurityClientProps) {
             </div>
             <div>
               <span className="text-neutral-500 block text-[10px] uppercase">Account Standing</span>
-              <span className="text-emerald-400 font-semibold">Active & Verified</span>
+              <Badge variant="success">Active &amp; Verified</Badge>
             </div>
           </div>
         </div>
 
         {/* Change Password Card */}
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 md:p-8">
+        <div className="bg-dark-surface border border-dark-border rounded-xl p-6 md:p-8 shadow-luxury">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-2">
             Change Password
           </h2>
@@ -83,14 +85,20 @@ export function AccountSecurityClient({ profile }: AccountSecurityClientProps) {
           </p>
 
           {state?.error && (
-            <div className="mb-6 p-3 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
-              {state.error}
+            <div className="mb-6 p-4 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center gap-2">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{state.error}</span>
             </div>
           )}
 
           {state?.success && (
-            <div className="mb-6 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-              ✓ {state.message}
+            <div className="mb-6 p-4 rounded-lg bg-emerald-950/20 border border-emerald-800/40 text-emerald-400 text-xs font-medium flex items-center gap-2">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{state.message}</span>
             </div>
           )}
 
@@ -107,7 +115,7 @@ export function AccountSecurityClient({ profile }: AccountSecurityClientProps) {
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer"
+                className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer select-none"
               >
                 {showCurrentPassword ? "Hide" : "Show"}
               </button>
@@ -125,7 +133,7 @@ export function AccountSecurityClient({ profile }: AccountSecurityClientProps) {
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer"
+                className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer select-none"
               >
                 {showNewPassword ? "Hide" : "Show"}
               </button>
@@ -141,7 +149,7 @@ export function AccountSecurityClient({ profile }: AccountSecurityClientProps) {
             />
 
             <div className="pt-2">
-              <Button type="submit" variant="primary" disabled={isPending}>
+              <Button type="submit" variant="primary" size="md" disabled={isPending}>
                 {isPending ? "Updating Password..." : "Change Password"}
               </Button>
             </div>
@@ -165,4 +173,3 @@ export function AccountSecurityClient({ profile }: AccountSecurityClientProps) {
     </PageContainer>
   );
 }
-

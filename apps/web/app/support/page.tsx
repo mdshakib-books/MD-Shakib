@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PageContainer, SectionHeading } from "@/components/layout/PageContainer";
+import { Button } from "@/components/ui/Button";
 
 const SUPPORT_CATEGORIES = [
   "Order Information",
@@ -61,14 +62,14 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-[#F5F5F5]">
+    <div className="min-h-screen flex flex-col bg-dark-bg text-[#F5F5F5]">
       <Navbar />
 
       <main className="flex-grow">
         {/* HERO */}
-        <section className="py-16 md:py-24 text-center border-b border-[#2A2A2A]">
+        <section className="py-16 md:py-24 text-center border-b border-dark-border">
           <div className="max-w-[900px] mx-auto px-6">
-            <h1 className="text-3xl md:text-5xl font-serif text-[#C9A24A] mb-4 uppercase">
+            <h1 className="text-3xl md:text-5xl font-serif text-[var(--color-primary-gold)] mb-4 uppercase">
               Support Center
             </h1>
             <p className="text-neutral-400 text-sm md:text-base max-w-lg mx-auto font-light">
@@ -88,7 +89,7 @@ export default function SupportPage() {
               {SUPPORT_CATEGORIES.map((item, index) => (
                 <div
                   key={index}
-                  className="p-4 border border-[#2A2A2A] rounded-lg bg-[#111111] hover:border-[#C9A24A] hover:text-[#C9A24A] transition-all cursor-pointer text-sm font-medium"
+                  className="p-4 border border-dark-border rounded-lg bg-dark-surface hover:border-[var(--color-primary-gold)] hover:text-[var(--color-primary-gold)] transition-all cursor-pointer text-sm font-medium"
                 >
                   {item}
                 </div>
@@ -107,23 +108,23 @@ export default function SupportPage() {
                 {FAQ_DATA.map((faq, index) => (
                   <div
                     key={index}
-                    className="border border-[#2A2A2A] rounded-lg overflow-hidden bg-[#111111]"
+                    className="border border-dark-border rounded-lg overflow-hidden bg-dark-surface"
                   >
                     <button
                       type="button"
                       onClick={() => toggleFAQ(index)}
-                      className="w-full text-left p-5 flex justify-between items-center hover:bg-[#161616] transition-colors cursor-pointer"
+                      className="w-full text-left p-5 flex justify-between items-center hover:bg-dark-card transition-colors cursor-pointer"
                     >
                       <span className="text-sm md:text-base font-medium text-neutral-200">
                         {faq.question}
                       </span>
-                      <span className="text-[#C9A24A] text-lg font-bold ml-4">
+                      <span className="text-[var(--color-primary-gold)] text-lg font-bold ml-4">
                         {activeIndex === index ? "−" : "+"}
                       </span>
                     </button>
 
                     {activeIndex === index && (
-                      <div className="p-5 text-neutral-400 text-sm border-t border-[#2A2A2A] bg-[#0E0E0E] leading-relaxed">
+                      <div className="p-5 text-neutral-400 text-sm border-t border-dark-border bg-dark-bg leading-relaxed">
                         {faq.answer}
                       </div>
                     )}
@@ -135,9 +136,9 @@ export default function SupportPage() {
         </PageContainer>
 
         {/* CONTACT HELP BANNER */}
-        <section className="py-16 text-center border-t border-[#2A2A2A] bg-[#111111]">
+        <section className="py-16 text-center border-t border-dark-border bg-dark-surface">
           <div className="max-w-[700px] mx-auto px-6">
-            <h2 className="text-2xl md:text-3xl font-serif text-[#C9A24A] mb-4 uppercase">
+            <h2 className="text-2xl md:text-3xl font-serif text-[var(--color-primary-gold)] mb-4 uppercase">
               Still Need Help?
             </h2>
 
@@ -145,11 +146,10 @@ export default function SupportPage() {
               If you cannot find the answer to your question, feel free to contact our support team.
             </p>
 
-            <Link
-              href="/contact"
-              className="inline-block px-8 py-3 bg-[#C9A24A] text-black rounded-lg font-semibold hover:bg-[#E5C87B] transition-all shadow-md"
-            >
-              Contact Support
+            <Link href="/contact">
+              <Button variant="primary" size="lg">
+                Contact Support Desk
+              </Button>
             </Link>
           </div>
         </section>

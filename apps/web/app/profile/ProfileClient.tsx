@@ -35,31 +35,38 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
         <div className="flex items-center space-x-4">
           <Link
             href="/addresses"
-            className="text-xs uppercase tracking-wider text-[#C9A24A] hover:underline font-semibold"
+            className="text-xs uppercase tracking-wider text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] font-semibold"
           >
-            Saved Addresses →
+            Saved Addresses &rarr;
           </Link>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => logoutCustomer()}
-            className="px-3 py-1.5 rounded-md border border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500 text-xs transition cursor-pointer"
           >
             Sign Out
-          </button>
+          </Button>
         </div>
       </div>
 
       <AccountNav />
 
-      <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-6 md:p-8 shadow-xl">
+      <div className="bg-dark-surface border border-dark-border rounded-xl p-6 md:p-8 shadow-luxury">
         {state?.error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
-            {state.error}
+          <div className="mb-6 p-4 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{state.error}</span>
           </div>
         )}
 
         {state?.success && (
-          <div className="mb-6 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-            ✓ {state.message}
+          <div className="mb-6 p-4 rounded-lg bg-emerald-950/20 border border-emerald-800/40 text-emerald-400 text-xs font-medium flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{state.message}</span>
           </div>
         )}
 
@@ -103,4 +110,3 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
     </PageContainer>
   );
 }
-

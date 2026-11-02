@@ -7,6 +7,10 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { AccountNav } from "@/components/account/AccountNav";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
+import { Badge } from "@/components/ui/Badge";
 import { formatPrice } from "@/lib/utils";
 import { cancelOrder, requestOrderReplacement, type EnrichedOrder } from "@/lib/commerce/orders";
 
@@ -80,14 +84,6 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
 
   const currentStepIndex = ORDER_STEPS.indexOf(order.order_status);
 
-  // Subtotal calculation from items
-  const itemsSubtotal = order.items.reduce(
-    (sum, item) => sum + Number(item.price) * item.quantity,
-    0
-  );
-  const totalAmount = Number(order.total_amount);
-  const discountAmount = Math.max(0, itemsSubtotal - totalAmount);
-
   const handleCancelSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalReason = cancelReasonDetails.trim()
@@ -133,36 +129,39 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
       {/* Header and Back Link */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <Link href="/orders" className="text-xs text-[var(--color-primary-gold)] hover:underline mb-2 inline-block">
-            ← Back to All Orders
+          <Link href="/orders" className="text-xs text-[#C9A24A] hover:underline mb-2 inline-flex items-center gap-1 font-semibold">
+            <span>&larr;</span>
+            <span>Back to All Orders</span>
           </Link>
-          <h1 className="font-serif text-2xl md:text-3xl text-white uppercase font-bold">
+          <h1 className="font-serif text-2xl md:text-3xl text-white uppercase font-bold tracking-wide">
             Order #{order.id.slice(0, 8).toUpperCase()}
           </h1>
-          <p className="text-xs text-neutral-400 mt-1 font-mono">
+          <p className="text-xs text-neutral-400 mt-1 font-mono font-light">
             Placed on {new Date(order.created_at).toLocaleString("en-IN")}
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
           {canCancel && (
-            <button
+            <Button
+              variant="danger"
+              size="sm"
               onClick={() => setShowCancelModal(true)}
               disabled={isPending}
-              className="px-4 py-2 rounded-lg border border-red-900/60 bg-red-950/20 text-red-400 hover:bg-red-950/40 text-xs font-semibold transition cursor-pointer"
             >
               Cancel Order
-            </button>
+            </Button>
           )}
 
           {canRequestReplacement && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setShowReplacementModal(true)}
               disabled={isPending}
-              className="px-4 py-2 rounded-lg border border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)]/10 text-[var(--color-primary-gold)] hover:bg-[var(--color-primary-gold)]/20 text-xs font-semibold transition cursor-pointer"
             >
               Request Replacement
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -170,55 +169,61 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
       <AccountNav />
 
       {errorMsg && (
-        <div className="mb-6 p-3 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
+        <div className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
           {errorMsg}
         </div>
       )}
 
       {successMsg && (
-        <div className="mb-6 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
-          ✓ {successMsg}
+        <div className="mb-6 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span>{successMsg}</span>
         </div>
       )}
 
       {/* Replacement Status Card (If already requested) */}
       {order.replacement_requested && (
-        <div className="bg-[#141414] border border-[#2E2E2E] rounded-xl p-6 mb-8 shadow-md">
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#222]">
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8 shadow-luxury">
+          <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-[#222222]">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200">
               Replacement Request Status
             </h2>
-            <span
-              className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded ${
+            <Badge
+              variant={
                 order.replacement_status === "Approved"
-                  ? "bg-emerald-950/40 border border-emerald-800/40 text-emerald-400"
+                  ? "success"
                   : order.replacement_status === "Rejected"
-                  ? "bg-red-950/40 border border-red-800/40 text-red-400"
-                  : "bg-amber-950/40 border border-amber-800/40 text-[var(--color-primary-gold)]"
-              }`}
+                  ? "danger"
+                  : "gold"
+              }
             >
               {order.replacement_status}
-            </span>
+            </Badge>
           </div>
 
-          <div className="text-xs space-y-1.5 text-neutral-400">
+          <div className="text-xs space-y-1.5 text-neutral-400 font-light">
             <p>
-              <strong className="text-neutral-300">Reason:</strong> {order.replacement_reason}
+              <strong className="text-neutral-300 font-medium">Reason:</strong> {order.replacement_reason}
             </p>
             {order.replacement_requested_at && (
               <p>
-                <strong className="text-neutral-300">Requested On:</strong>{" "}
+                <strong className="text-neutral-300 font-medium">Requested On:</strong>{" "}
                 {new Date(order.replacement_requested_at).toLocaleString("en-IN")}
               </p>
             )}
             {order.replacement_status === "Rejected" && order.replacement_rejection_reason && (
-              <div className="mt-3 p-3 rounded bg-red-950/30 border border-red-900/50 text-red-300">
+              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-900/50 text-red-300">
                 <strong>Rejection Reason:</strong> {order.replacement_rejection_reason}
               </div>
             )}
             {order.replacement_status === "Approved" && (
-              <div className="mt-3 p-3 rounded bg-emerald-950/30 border border-emerald-900/50 text-emerald-300">
-                ✓ Replacement approved. Our logistics team will dispatch your replacement copy.
+              <div className="mt-3 p-3 rounded-lg bg-emerald-950/30 border border-emerald-900/50 text-emerald-300 flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Replacement approved. Our logistics team will dispatch your replacement copy.</span>
               </div>
             )}
           </div>
@@ -226,37 +231,46 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
       )}
 
       {/* Visual Tracking Progress Bar */}
-      <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8">
-        <h2 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-6">
-          Order Status:{" "}
-          <span className={isCancelled ? "text-red-400 font-bold" : "text-[var(--color-primary-gold)] font-bold"}>
+      <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8 shadow-luxury">
+        <h2 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-6 flex items-center gap-2">
+          <span>Order Status:</span>
+          <span className={isCancelled ? "text-red-400 font-bold" : "text-[#C9A24A] font-bold"}>
             {order.order_status}
           </span>
         </h2>
 
         {isCancelled ? (
-          <div className="p-4 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
-            ⚠️ This order was cancelled. Reason: {order.cancel_reason || "Customer requested cancellation."}
+          <div className="p-4 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center gap-3">
+            <svg className="w-5 h-5 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p>This order was cancelled. Reason: {order.cancel_reason || "Customer requested cancellation."}</p>
           </div>
         ) : (
-          <div className="relative flex items-center justify-between">
+          <div className="relative flex items-center justify-between py-2">
             <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-[#2A2A2A] -translate-y-1/2 z-0" />
             {ORDER_STEPS.map((step, idx) => {
               const isDone = currentStepIndex >= idx;
               return (
                 <div key={step} className="relative z-10 flex flex-col items-center">
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm ${
                       isDone
-                        ? "bg-[var(--color-primary-gold)] text-black"
-                        : "bg-[#222] border border-[#333] text-neutral-500"
+                        ? "bg-[#C9A24A] text-black shadow-[#C9A24A]/20"
+                        : "bg-[#222222] border border-[#333333] text-neutral-500"
                     }`}
                   >
-                    {isDone ? "✓" : idx + 1}
+                    {isDone ? (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      idx + 1
+                    )}
                   </div>
                   <span
                     className={`text-[10px] mt-2 text-center whitespace-nowrap hidden sm:block ${
-                      isDone ? "text-neutral-200 font-semibold" : "text-neutral-500"
+                      isDone ? "text-neutral-200 font-semibold" : "text-neutral-500 font-light"
                     }`}
                   >
                     {step}
@@ -271,27 +285,27 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
       <div className="grid md:grid-cols-3 gap-8">
         {/* Left 2 Cols: Order Items */}
         <div className="md:col-span-2 space-y-4">
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-            <h2 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-4 pb-2 border-b border-[#222]">
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-luxury">
+            <h2 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-4 pb-2.5 border-b border-[#222222]">
               Items in this Order ({order.items.length})
             </h2>
 
             <div className="space-y-4">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4">
-                  <div className="w-14 h-18 bg-[#0B0B0B] border border-[#222] rounded overflow-hidden p-1 flex-shrink-0 flex items-center justify-center">
+                  <div className="w-14 h-18 bg-[#0E0E0E] border border-[#222222] rounded-lg overflow-hidden p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.image_url} alt={item.title} className="w-full h-full object-contain" />
                   </div>
 
                   <div className="flex-grow min-w-0 text-xs">
                     <h3 className="font-semibold text-neutral-200 truncate">{item.title}</h3>
-                    <p className="text-neutral-500 mt-0.5 font-mono">
+                    <p className="text-neutral-400 mt-0.5 font-mono font-light">
                       Quantity: {item.quantity} × {formatPrice(Number(item.price))}
                     </p>
                   </div>
 
-                  <div className="text-xs font-bold text-[var(--color-primary-gold)] font-mono">
+                  <div className="text-xs font-bold text-[#C9A24A] font-mono">
                     {formatPrice(Number(item.price) * item.quantity)}
                   </div>
                 </div>
@@ -303,12 +317,12 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
         {/* Right Col: Delivery Address & Summary */}
         <div className="space-y-6">
           {/* Shipping Address Card */}
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 text-xs">
-            <h2 className="font-semibold text-neutral-300 uppercase tracking-wider mb-3 pb-2 border-b border-[#222]">
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 text-xs shadow-luxury">
+            <h2 className="font-semibold text-neutral-300 uppercase tracking-wider mb-3 pb-2 border-b border-[#222222]">
               Delivery Address
             </h2>
             {address ? (
-              <div className="space-y-1 text-neutral-400">
+              <div className="space-y-1 text-neutral-400 font-light">
                 <p className="font-bold text-neutral-200">{address.full_name}</p>
                 <p>{address.house_no}, {address.area}</p>
                 {address.landmark && <p>Near {address.landmark}</p>}
@@ -320,199 +334,121 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
             )}
           </div>
 
-          {/* Delhivery Shipment Tracking Card */}
-          {order.shipping_awb && (
-            <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 text-xs space-y-2">
-              <h2 className="font-semibold text-neutral-300 uppercase tracking-wider mb-3 pb-2 border-b border-[#222]">
-                Shipment Tracking
-              </h2>
-              <div className="flex justify-between text-neutral-400">
-                <span>Courier:</span>
-                <span className="text-neutral-200 font-semibold">{order.shipping_courier || "Delhivery"}</span>
-              </div>
-              <div className="flex justify-between text-neutral-400">
-                <span>AWB Number:</span>
-                <span className="text-neutral-200 font-mono font-semibold">{order.shipping_awb}</span>
-              </div>
-              {order.shipping_tracking_url && (
-                <div className="pt-2">
-                  <a
-                    href={order.shipping_tracking_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-center py-2 px-3 rounded bg-[#064e3b] hover:bg-[#047857] text-[#fef3c7] font-semibold border border-[#047857] transition"
-                  >
-                    Track Package on Delhivery ↗
-                  </a>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Payment & Invoice Card */}
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 text-xs space-y-2">
-            <h2 className="font-semibold text-neutral-300 uppercase tracking-wider mb-3 pb-2 border-b border-[#222]">
+          {/* Payment & Price Summary */}
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 text-xs space-y-3 shadow-luxury">
+            <h2 className="font-semibold text-neutral-300 uppercase tracking-wider pb-2 border-b border-[#222222]">
               Payment Summary
             </h2>
-            <div className="flex justify-between text-neutral-400">
-              <span>Items Subtotal:</span>
-              <span className="font-mono text-neutral-200">{formatPrice(itemsSubtotal)}</span>
+            <div className="flex justify-between text-neutral-400 font-light">
+              <span>Payment Method</span>
+              <span className="text-neutral-200 font-medium">{order.payment_method}</span>
             </div>
-            {discountAmount > 0 && (
-              <div className="flex justify-between text-emerald-400">
-                <span>Coupon Discount:</span>
-                <span className="font-mono">-{formatPrice(discountAmount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-neutral-400">
-              <span>Delivery Charges:</span>
-              <span className="text-emerald-400 font-medium">Free</span>
+            <div className="flex justify-between text-neutral-400 font-light">
+              <span>Payment Status</span>
+              <Badge variant={order.payment_status === "Paid" ? "success" : "muted"} size="sm">
+                {order.payment_status}
+              </Badge>
             </div>
-            <div className="flex justify-between text-neutral-400">
-              <span>Payment Mode:</span>
-              <span className="text-neutral-200 font-semibold">{order.payment_method}</span>
-            </div>
-            <div className="flex justify-between text-neutral-400">
-              <span>Payment Status:</span>
-              <span className="text-neutral-200 font-semibold">{order.payment_status}</span>
-            </div>
-            <div className="border-t border-[#222] pt-2 flex justify-between font-bold text-sm text-[var(--color-primary-gold)]">
-              <span>Total Payable:</span>
-              <span className="font-mono">{formatPrice(totalAmount)}</span>
+            <div className="border-t border-[#222222] pt-3 flex justify-between font-bold text-sm text-[#C9A24A]">
+              <span>Total Paid</span>
+              <span className="font-mono">{formatPrice(Number(order.total_amount))}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Cancellation Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#141414] border border-[#2E2E2E] rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="font-serif text-lg font-bold text-white mb-2">Cancel Order</h3>
-            <p className="text-xs text-neutral-400 mb-4">
-              Are you sure you want to cancel order #{order.id.slice(0, 8).toUpperCase()}? Inventory will be immediately restored.
-            </p>
+      {/* Cancel Order Modal */}
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        title="Cancel Order"
+        description="Please select a reason for cancelling this order. Once cancelled, inventory will be restored."
+        size="md"
+      >
+        <form onSubmit={handleCancelSubmit} className="space-y-4">
+          <Select
+            label="Reason for Cancellation"
+            value={cancelReasonSelect}
+            onChange={(e) => setCancelReasonSelect(e.target.value)}
+            options={CANCEL_REASONS.map((r) => ({ label: r, value: r }))}
+          />
 
-            <form onSubmit={handleCancelSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1">
-                  Reason for Cancellation
-                </label>
-                <select
-                  value={cancelReasonSelect}
-                  onChange={(e) => setCancelReasonSelect(e.target.value)}
-                  className="w-full bg-[#1C1C1C] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[var(--color-primary-gold)]"
-                >
-                  {CANCEL_REASONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <Textarea
+            label="Additional Notes (Optional)"
+            value={cancelReasonDetails}
+            onChange={(e) => setCancelReasonDetails(e.target.value)}
+            placeholder="Provide any additional context for cancellation..."
+            rows={3}
+          />
 
-              <div>
-                <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1">
-                  Additional Notes (Optional)
-                </label>
-                <textarea
-                  value={cancelReasonDetails}
-                  onChange={(e) => setCancelReasonDetails(e.target.value)}
-                  placeholder="Provide more details..."
-                  rows={3}
-                  className="w-full bg-[#1C1C1C] border border-[#333] rounded-lg p-2.5 text-xs text-neutral-200 focus:outline-none focus:border-[var(--color-primary-gold)]"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCancelModal(false)}
-                  disabled={isPending}
-                >
-                  Keep Order
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  className="!bg-red-600 hover:!bg-red-700 !text-white"
-                  disabled={isPending}
-                >
-                  {isPending ? "Cancelling..." : "Confirm Cancellation"}
-                </Button>
-              </div>
-            </form>
+          <div className="flex justify-end gap-3 pt-3">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowCancelModal(false)}
+              disabled={isPending}
+            >
+              Keep Order
+            </Button>
+            <Button
+              type="submit"
+              variant="danger"
+              size="sm"
+              disabled={isPending}
+            >
+              {isPending ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
 
       {/* Replacement Request Modal */}
-      {showReplacementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#141414] border border-[#2E2E2E] rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="font-serif text-lg font-bold text-white mb-1">Request Replacement</h3>
-            <p className="text-xs text-neutral-400 mb-4">
-              Under our 7-day replacement guarantee, eligible damaged or defective books can be replaced free of charge.
-            </p>
+      <Modal
+        isOpen={showReplacementModal}
+        onClose={() => setShowReplacementModal(false)}
+        title="Request Replacement"
+        description="Under our 7-day replacement guarantee, eligible damaged or defective books can be replaced free of charge."
+        size="md"
+      >
+        <form onSubmit={handleReplacementSubmit} className="space-y-4">
+          <Select
+            label="Reason for Replacement"
+            value={replacementReasonSelect}
+            onChange={(e) => setReplacementReasonSelect(e.target.value)}
+            options={REPLACEMENT_REASONS.map((r) => ({ label: r, value: r }))}
+          />
 
-            <form onSubmit={handleReplacementSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1">
-                  Reason for Replacement
-                </label>
-                <select
-                  value={replacementReasonSelect}
-                  onChange={(e) => setReplacementReasonSelect(e.target.value)}
-                  className="w-full bg-[#1C1C1C] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[var(--color-primary-gold)]"
-                >
-                  {REPLACEMENT_REASONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <Textarea
+            label="Describe Defect or Damage"
+            value={replacementDetails}
+            onChange={(e) => setReplacementDetails(e.target.value)}
+            placeholder="Describe the issue in detail (e.g. printing defect, cover damage)..."
+            rows={3}
+            required
+          />
 
-              <div>
-                <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1">
-                  Describe Defect or Damage
-                </label>
-                <textarea
-                  value={replacementDetails}
-                  onChange={(e) => setReplacementDetails(e.target.value)}
-                  placeholder="Describe the issue in detail..."
-                  rows={3}
-                  required
-                  className="w-full bg-[#1C1C1C] border border-[#333] rounded-lg p-2.5 text-xs text-neutral-200 focus:outline-none focus:border-[var(--color-primary-gold)]"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowReplacementModal(false)}
-                  disabled={isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  disabled={isPending}
-                >
-                  {isPending ? "Submitting..." : "Submit Request"}
-                </Button>
-              </div>
-            </form>
+          <div className="flex justify-end gap-3 pt-3">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowReplacementModal(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={isPending}
+            >
+              {isPending ? "Submitting..." : "Submit Request"}
+            </Button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </PageContainer>
   );
 }

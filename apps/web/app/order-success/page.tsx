@@ -34,38 +34,40 @@ export default async function OrderSuccessPage({ searchParams }: OrderSuccessPag
 
       <main className="flex-grow flex items-center justify-center py-16 px-4">
         <PageContainer size="sm">
-          <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-8 md:p-12 shadow-2xl max-w-lg mx-auto text-center">
+          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 md:p-12 shadow-2xl max-w-lg mx-auto text-center">
             {/* Celebration Icon */}
-            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center text-4xl mx-auto mb-6">
-              ✓
+            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
             </div>
 
-            <h1 className="font-serif text-2xl md:text-3xl font-bold uppercase text-[var(--color-primary-gold)] mb-2">
+            <h1 className="font-serif text-2xl md:text-3xl font-bold uppercase tracking-wide text-[#C9A24A] mb-2">
               Order Confirmed!
             </h1>
 
-            <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-6">
-              JazakAllah Khair! Your authentic Islamic books order has been successfully placed.
+            <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-8 font-light">
+              JazakAllah Khair! Your authentic Islamic books order has been successfully placed and recorded.
             </p>
 
             {/* Order Metadata Card */}
-            <div className="bg-[#161616] border border-[#262626] rounded-xl p-5 mb-8 text-left space-y-3">
-              <div className="flex justify-between items-center text-xs border-b border-[#262626] pb-2">
-                <span className="text-neutral-400">Order ID:</span>
-                <span className="font-mono text-neutral-200 truncate max-w-[200px]" title={orderId}>
-                  {orderId}
+            <div className="bg-[#1C1C1C] border border-[#282828] rounded-xl p-5 mb-8 text-left space-y-3">
+              <div className="flex justify-between items-center text-xs border-b border-[#282828] pb-2.5">
+                <span className="text-neutral-400 font-light">Order ID:</span>
+                <span className="font-mono text-white font-medium truncate max-w-[200px]" title={orderId}>
+                  #{orderId.slice(0, 8).toUpperCase()}...
                 </span>
               </div>
 
               {order && (
                 <>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-neutral-400">Payment Method:</span>
+                    <span className="text-neutral-400 font-light">Payment Method:</span>
                     <span className="text-neutral-200 font-semibold">{order.payment_method}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-neutral-400">Total Amount:</span>
-                    <span className="text-[var(--color-primary-gold)] font-bold font-mono">
+                    <span className="text-neutral-400 font-light">Total Amount:</span>
+                    <span className="text-[#C9A24A] font-bold font-mono">
                       {formatPrice(Number(order.total_amount))}
                     </span>
                   </div>
@@ -73,23 +75,23 @@ export default async function OrderSuccessPage({ searchParams }: OrderSuccessPag
               )}
 
               <div className="flex justify-between items-center text-xs">
-                <span className="text-neutral-400">Estimated Delivery:</span>
-                <span className="text-neutral-200">3 - 5 Business Days</span>
+                <span className="text-neutral-400 font-light">Estimated Delivery:</span>
+                <span className="text-neutral-200 font-medium">3 – 5 Business Days</span>
               </div>
             </div>
 
             {/* Actions */}
             <div className="space-y-3">
               <Link href={`/orders/${orderId}`} className="block w-full">
-                <Button variant="primary" className="w-full">
+                <Button variant="primary" className="w-full uppercase tracking-wider text-xs font-bold">
                   Track Your Order
                 </Button>
               </Link>
 
               <Link href="/books" className="block w-full">
-                <button className="w-full py-2.5 rounded-lg border border-[#333] text-neutral-300 hover:text-white hover:border-[#555] text-xs font-semibold transition cursor-pointer">
+                <Button variant="secondary" className="w-full uppercase tracking-wider text-xs">
                   Continue Shopping
-                </button>
+                </Button>
               </Link>
             </div>
           </div>

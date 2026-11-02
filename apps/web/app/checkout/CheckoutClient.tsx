@@ -84,7 +84,6 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
       const isLoaded = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
 
       if (!isLoaded || !(window as any).Razorpay) {
-        // Fallback for sandboxed or offline environments
         console.warn("Razorpay checkout SDK unavailable or blocked. Redirecting to order details.");
         router.push(`/orders/${orderId}`);
         return;
@@ -120,7 +119,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
           },
         },
         theme: {
-          color: "#064e3b",
+          color: "#C9A24A",
         },
       };
 
@@ -132,15 +131,15 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
   return (
     <PageContainer>
       <div className="py-6">
-        <h1 className="text-2xl md:text-3xl font-serif text-white uppercase tracking-wider mb-2">
+        <h1 className="text-2xl md:text-3xl font-serif text-white uppercase tracking-wide mb-1 font-bold">
           Secure Checkout
         </h1>
-        <p className="text-xs text-neutral-400 mb-8">
+        <p className="text-xs text-neutral-400 mb-8 font-light">
           Complete your authentic Islamic books order with verified shipping and payment.
         </p>
 
         {errorMsg && (
-          <div className="mb-6 p-3 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
+          <div className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
             {errorMsg}
           </div>
         )}
@@ -149,19 +148,19 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
           {/* Left 2 Cols: Shipping Address & Payment Selection */}
           <div className="lg:col-span-2 space-y-6">
             {/* Step 1: Select Shipping Address */}
-            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-              <div className="flex items-center justify-between pb-3 border-b border-[#262626] mb-4">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-200">
+            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-luxury">
+              <div className="flex items-center justify-between pb-3.5 border-b border-[#262626] mb-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200">
                   1. Delivery Destination
                 </h2>
-                <Link href="/addresses" className="text-xs text-[var(--color-primary-gold)] hover:underline">
+                <Link href="/addresses" className="text-xs text-[#C9A24A] hover:underline font-medium">
                   + Manage Addresses
                 </Link>
               </div>
 
               {addresses.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-xs text-neutral-400 mb-3">No delivery address found.</p>
+                <div className="text-center py-8">
+                  <p className="text-xs text-neutral-400 mb-4 font-light">No delivery address found.</p>
                   <Link href="/addresses">
                     <Button variant="primary" size="sm">Add Shipping Address</Button>
                   </Link>
@@ -171,9 +170,9 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                   {addresses.map((addr) => (
                     <label
                       key={addr.id}
-                      className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition ${
+                      className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
                         selectedAddressId === addr.id
-                          ? "border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)]/5"
+                          ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-sm"
                           : "border-[#262626] hover:border-[#383838]"
                       }`}
                     >
@@ -183,24 +182,24 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                         value={addr.id}
                         checked={selectedAddressId === addr.id}
                         onChange={() => setSelectedAddressId(addr.id)}
-                        className="mt-1 accent-[var(--color-primary-gold)]"
+                        className="mt-1 accent-[#C9A24A]"
                       />
                       <div className="text-xs flex-grow">
                         <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-neutral-200">{addr.full_name}</span>
-                          <span className="text-[10px] bg-[#222] text-neutral-400 px-1.5 py-0.5 rounded uppercase">
+                          <span className="font-semibold text-neutral-100">{addr.full_name}</span>
+                          <span className="text-[10px] bg-[#1F1F1F] text-neutral-400 px-2 py-0.5 rounded uppercase font-semibold">
                             {addr.address_type}
                           </span>
                           {addr.is_default && (
-                            <span className="text-[10px] text-black bg-[var(--color-primary-gold)] px-1.5 py-0.5 rounded font-bold">
+                            <span className="text-[10px] text-black bg-[#C9A24A] px-2 py-0.5 rounded font-bold uppercase">
                               Default
                             </span>
                           )}
                         </div>
-                        <p className="text-neutral-400 mt-1">
+                        <p className="text-neutral-400 mt-1 font-light leading-relaxed">
                           {addr.house_no}, {addr.area}, {addr.city}, {addr.state} - {addr.pincode}
                         </p>
-                        <p className="text-neutral-500 mt-0.5">Phone: {addr.phone}</p>
+                        <p className="text-neutral-500 mt-1">Phone: {addr.phone}</p>
                       </div>
                     </label>
                   ))}
@@ -209,16 +208,16 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
             </div>
 
             {/* Step 2: Payment Method */}
-            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-200 pb-3 border-b border-[#262626] mb-4">
+            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-luxury">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200 pb-3.5 border-b border-[#262626] mb-5">
                 2. Payment Method
               </h2>
 
               <div className="space-y-3">
                 <label
-                  className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
                     paymentMethod === "COD"
-                      ? "border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)]/5"
+                      ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-sm"
                       : "border-[#262626] hover:border-[#383838]"
                   }`}
                 >
@@ -228,20 +227,20 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                     value="COD"
                     checked={paymentMethod === "COD"}
                     onChange={() => setPaymentMethod("COD")}
-                    className="mt-1 accent-[var(--color-primary-gold)]"
+                    className="mt-1 accent-[#C9A24A]"
                   />
                   <div className="text-xs">
-                    <span className="font-semibold text-neutral-200">Cash on Delivery (COD)</span>
-                    <p className="text-neutral-400 mt-1">
+                    <span className="font-semibold text-neutral-100">Cash on Delivery (COD)</span>
+                    <p className="text-neutral-400 mt-1 font-light">
                       Pay cash upon doorstep delivery anywhere in India.
                     </p>
                   </div>
                 </label>
 
                 <label
-                  className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
                     paymentMethod === "ONLINE"
-                      ? "border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)]/5"
+                      ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-sm"
                       : "border-[#262626] hover:border-[#383838]"
                   }`}
                 >
@@ -251,12 +250,12 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                     value="ONLINE"
                     checked={paymentMethod === "ONLINE"}
                     onChange={() => setPaymentMethod("ONLINE")}
-                    className="mt-1 accent-[var(--color-primary-gold)]"
+                    className="mt-1 accent-[#C9A24A]"
                   />
                   <div className="text-xs">
-                    <span className="font-semibold text-neutral-200">Online Payment (UPI, Cards, NetBanking)</span>
-                    <p className="text-neutral-400 mt-1">
-                      Fast, secure payment processing via Razorpay gateway.
+                    <span className="font-semibold text-neutral-100">Online Payment (UPI, Cards, NetBanking)</span>
+                    <p className="text-neutral-400 mt-1 font-light">
+                      Fast, 100% encrypted payment processing via Razorpay gateway.
                     </p>
                   </div>
                 </label>
@@ -265,36 +264,36 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
           </div>
 
           {/* Right Col: Price Breakdown & Place Order CTA */}
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 h-fit space-y-4">
-            <h2 className="text-sm font-semibold text-neutral-200 uppercase tracking-wider pb-3 border-b border-[#262626]">
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 h-fit space-y-5 shadow-luxury">
+            <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-wider pb-3 border-b border-[#262626]">
               Order Summary ({cart.items.length} items)
             </h2>
 
-            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+            <div className="max-h-48 overflow-y-auto space-y-2 pr-1 scrollbar-none">
               {cart.items.map((item) => (
                 <div key={item.id} className="flex justify-between text-xs">
-                  <span className="text-neutral-400 truncate max-w-[160px]">
+                  <span className="text-neutral-400 truncate max-w-[160px] font-light">
                     {item.quantity}x {item.title}
                   </span>
-                  <span className="text-neutral-200 font-mono">{formatPrice(item.lineTotal)}</span>
+                  <span className="text-neutral-200 font-mono font-medium">{formatPrice(item.lineTotal)}</span>
                 </div>
               ))}
             </div>
 
-            <div className="border-t border-[#262626] pt-3 space-y-2 text-xs text-neutral-400">
+            <div className="border-t border-[#262626] pt-3.5 space-y-2 text-xs text-neutral-400">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="text-neutral-200 font-mono">{formatPrice(cart.subtotal)}</span>
+                <span className="text-neutral-200 font-mono font-medium">{formatPrice(cart.subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Platform Fee</span>
-                <span className="text-neutral-200 font-mono">{formatPrice(cart.platformFee)}</span>
+                <span className="text-neutral-200 font-mono font-medium">{formatPrice(cart.platformFee)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Delivery Charge</span>
-                <span className="text-neutral-200 font-mono">{formatPrice(cart.deliveryFee)}</span>
+                <span className="text-neutral-200 font-mono font-medium">{formatPrice(cart.deliveryFee)}</span>
               </div>
-              <div className="border-t border-[#262626] pt-3 flex justify-between font-bold text-sm text-[var(--color-primary-gold)]">
+              <div className="border-t border-[#262626] pt-3.5 flex justify-between font-bold text-base text-[#C9A24A]">
                 <span>Total Payable</span>
                 <span className="font-mono">{formatPrice(cart.totalAmount)}</span>
               </div>
@@ -302,7 +301,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
 
             <Button
               variant="primary"
-              className="w-full mt-4"
+              className="w-full mt-4 uppercase tracking-wider text-xs font-bold"
               onClick={handlePlaceOrder}
               disabled={isPending || addresses.length === 0}
             >
@@ -318,4 +317,3 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
     </PageContainer>
   );
 }
-
