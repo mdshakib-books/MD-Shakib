@@ -24,7 +24,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-8 md:p-10 shadow-2xl max-w-md mx-auto">
+    <div className="bg-dark-surface border border-dark-border rounded-2xl p-8 md:p-10 shadow-luxury max-w-md mx-auto">
       <div className="text-center mb-8">
         <h1 className="font-serif text-2xl md:text-3xl font-bold uppercase text-[var(--color-primary-gold)]">
           Welcome Back
@@ -35,14 +35,20 @@ function LoginForm() {
       </div>
 
       {messageParam === "password_updated" && (
-        <div className="mb-5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center">
-          ✓ Password updated successfully. Please log in with your new credentials.
+        <div className="mb-5 p-3.5 rounded-lg bg-emerald-950/20 border border-emerald-800/40 text-emerald-400 text-xs text-center flex items-center justify-center gap-2">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>Password updated successfully. Please log in with your new credentials.</span>
         </div>
       )}
 
       {state?.error && (
-        <div className="mb-5 p-3 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs text-center">
-          {state.error}
+        <div className="mb-5 p-3.5 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs text-center flex items-center justify-center gap-2">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{state.error}</span>
         </div>
       )}
 
@@ -70,7 +76,7 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer"
+            className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer select-none"
           >
             {showPassword ? "Hide" : "Show"}
           </button>
@@ -79,7 +85,7 @@ function LoginForm() {
         <div className="flex justify-end">
           <Link
             href="/forgot-password"
-            className="text-xs text-[#C9A24A] hover:underline"
+            className="text-xs text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] transition-colors"
           >
             Forgot Password?
           </Link>
@@ -95,11 +101,11 @@ function LoginForm() {
         </Button>
       </form>
 
-      <div className="text-center text-xs text-neutral-400 mt-6 pt-6 border-t border-[#2A2A2A]">
+      <div className="text-center text-xs text-neutral-400 mt-6 pt-6 border-t border-dark-border">
         Don&apos;t have an account?{" "}
         <Link
           href={redirectParam !== "/profile" ? `/register?redirect=${encodeURIComponent(redirectParam)}` : "/register"}
-          className="text-[#C9A24A] font-semibold hover:underline"
+          className="text-[var(--color-primary-gold)] font-semibold hover:text-[var(--color-accent-gold)] transition-colors"
         >
           Create Account
         </Link>
@@ -110,7 +116,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
+    <div className="min-h-screen flex flex-col bg-dark-bg text-white">
       <Navbar />
 
       <main className="flex-grow flex items-center justify-center py-16 px-4">

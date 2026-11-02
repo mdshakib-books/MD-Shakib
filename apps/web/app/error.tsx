@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 export default function GlobalError({
   error,
@@ -17,34 +18,37 @@ export default function GlobalError({
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center max-w-lg mx-auto">
-      <div className="w-14 h-14 mb-4 rounded-full border border-red-500/30 bg-red-950/20 flex items-center justify-center">
-        <span className="text-xl text-red-400">⚠️</span>
+      <div className="w-14 h-14 mb-4 rounded-full border border-red-500/30 bg-red-950/20 flex items-center justify-center text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
       </div>
 
-      <h2 className="text-2xl font-bold tracking-wider text-neutral-100 uppercase mb-3">
+      <h2 className="text-2xl font-serif font-bold tracking-wider text-neutral-100 uppercase mb-3">
         Something went wrong
       </h2>
 
-      <p className="text-sm text-[#888888] mb-8 font-sans">
-        An unexpected error occurred while processing this page.
+      <p className="text-sm text-neutral-400 mb-8 font-sans max-w-sm">
+        An unexpected error occurred while processing this request. Our team has been notified.
       </p>
 
       <div className="flex gap-4">
-        <button
+        <Button
           onClick={() => reset()}
-          type="button"
-          className="px-6 py-2.5 rounded-lg border border-[#C9A24A] bg-[#C9A24A] text-black text-xs font-semibold tracking-wider uppercase hover:bg-[#b89139] transition-colors cursor-pointer"
+          variant="primary"
+          size="md"
         >
           Try Again
-        </button>
-        <Link
-          href="/"
-          className="px-6 py-2.5 rounded-lg border border-[#2A2A2A] bg-[#161616] text-neutral-300 text-xs font-medium tracking-wider uppercase hover:border-[#C9A24A] hover:text-[#C9A24A] transition-colors flex items-center"
-        >
-          Return Home
+        </Button>
+        <Link href="/">
+          <Button
+            variant="outline"
+            size="md"
+          >
+            Return Home
+          </Button>
         </Link>
       </div>
     </div>
   );
 }
-

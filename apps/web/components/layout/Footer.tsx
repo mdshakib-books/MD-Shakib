@@ -5,18 +5,18 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#111111] border-t border-[#2A2A2A] pt-16 pb-8 text-center text-[#F5F5F5] mt-auto">
+    <footer className="bg-[#0E0E0E] border-t border-[#2A2A2A] pt-16 pb-12 text-center text-[#F5F5F5] mt-auto">
       <div className="max-w-[1200px] mx-auto px-4 lg:px-6 flex flex-col items-center">
         {/* Logo & Tagline */}
         <div className="mb-8">
           <Link
             href="/"
-            className="font-serif text-2xl md:text-3xl font-bold text-[var(--color-primary-gold)] tracking-wider uppercase"
+            className="font-serif text-2xl md:text-3xl font-bold text-[#C9A24A] hover:text-[#E5C87B] tracking-wider uppercase transition-colors"
           >
             MD SHAKIB
           </Link>
-          <p className="text-neutral-400 mt-2 text-sm md:text-base font-light">
-            Your trusted Islamic book store
+          <p className="text-neutral-400 mt-2 text-xs sm:text-sm font-light tracking-wide">
+            Authentic Islamic Bookstore &amp; Scholarly Literature
           </p>
         </div>
 
@@ -24,51 +24,57 @@ export function Footer() {
         <div className="flex flex-wrap justify-center gap-6 md:gap-8 mb-8">
           <Link
             href="/about"
-            className="text-sm font-medium text-neutral-300 hover:text-[var(--color-primary-gold)] transition-colors"
+            className="text-xs uppercase tracking-wider font-semibold text-neutral-300 hover:text-[#C9A24A] transition-colors"
           >
             About
           </Link>
           <Link
+            href="/books"
+            className="text-xs uppercase tracking-wider font-semibold text-neutral-300 hover:text-[#C9A24A] transition-colors"
+          >
+            Catalogue
+          </Link>
+          <Link
             href="/contact"
-            className="text-sm font-medium text-neutral-300 hover:text-[var(--color-primary-gold)] transition-colors"
+            className="text-xs uppercase tracking-wider font-semibold text-neutral-300 hover:text-[#C9A24A] transition-colors"
           >
             Contact
           </Link>
           <Link
             href="/support"
-            className="text-sm font-medium text-neutral-300 hover:text-[var(--color-primary-gold)] transition-colors"
+            className="text-xs uppercase tracking-wider font-semibold text-neutral-300 hover:text-[#C9A24A] transition-colors"
           >
             Support
           </Link>
           <Link
             href="/privacy-policy"
-            className="text-sm font-medium text-neutral-300 hover:text-[var(--color-primary-gold)] transition-colors"
+            className="text-xs uppercase tracking-wider font-semibold text-neutral-300 hover:text-[#C9A24A] transition-colors"
           >
             Privacy Policy
           </Link>
           <Link
             href="/terms"
-            className="text-sm font-medium text-neutral-300 hover:text-[var(--color-primary-gold)] transition-colors"
+            className="text-xs uppercase tracking-wider font-semibold text-neutral-300 hover:text-[#C9A24A] transition-colors"
           >
-            Terms
+            Terms of Service
           </Link>
         </div>
 
         {/* Social Icons */}
-        <div className="flex space-x-6 mb-12">
+        <div className="flex space-x-4 mb-10">
           <a
             href="https://twitter.com"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Twitter / X"
-            className="flex items-center justify-center w-10 h-10 rounded-full border border-[#2A2A2A] text-neutral-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)] transition-all"
+            className="flex items-center justify-center w-10 h-10 rounded-full border border-[#2A2A2A] bg-[#141414] text-neutral-400 hover:text-[#C9A24A] hover:border-[#C9A24A] hover:bg-[#1A1A1A] transition-all"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4"
               fill="currentColor"
               viewBox="0 0 24 24"
             >
-              <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
           </a>
           <a
@@ -76,10 +82,10 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram"
-            className="flex items-center justify-center w-10 h-10 rounded-full border border-[#2A2A2A] text-neutral-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)] transition-all"
+            className="flex items-center justify-center w-10 h-10 rounded-full border border-[#2A2A2A] bg-[#141414] text-neutral-400 hover:text-[#C9A24A] hover:border-[#C9A24A] hover:bg-[#1A1A1A] transition-all"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4"
               fill="currentColor"
               viewBox="0 0 24 24"
             >
@@ -92,7 +98,7 @@ export function Footer() {
         <div className="w-full border-t border-[#2A2A2A] pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-neutral-500">
           <p>© {currentYear} MD Shakib. All rights reserved.</p>
           <p className="mt-2 md:mt-0 opacity-70">
-            Authentic Islamic Literature &amp; Scholarship
+            Dedicated to Authentic Islamic Scholarship &amp; Preservation
           </p>
         </div>
       </div>

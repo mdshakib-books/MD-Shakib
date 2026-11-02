@@ -53,16 +53,15 @@ export function SectionHeading({
 
   return (
     <div className={cn("flex flex-col mb-8 md:mb-12", alignClasses[align], className)}>
-      <h2 className="font-serif text-2xl md:text-3xl lg:text-4xl font-bold tracking-wider text-[var(--color-primary-gold)] uppercase">
+      <h2 className="font-serif text-2xl md:text-3xl lg:text-4xl font-bold tracking-wide text-[#C9A24A] uppercase">
         {title}
       </h2>
       {subtitle && (
-        <p className="mt-2 text-sm md:text-base text-neutral-400 font-light max-w-xl">
+        <p className="mt-2 text-sm md:text-base text-neutral-400 font-light max-w-xl leading-relaxed">
           {subtitle}
         </p>
       )}
-      <div className="mt-4 w-12 h-0.5 bg-[var(--color-primary-gold)]/60 rounded-full" />
+      <div className="mt-4 w-12 h-0.5 bg-[#C9A24A]/60 rounded-full" />
     </div>
   );
 }
-

@@ -89,7 +89,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 80);
+      setScrolled(window.scrollY > 40);
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -122,18 +122,18 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
   const navClasses = isHomePage
     ? `fixed w-full top-0 left-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-[#111111] border-b border-[#2A2A2A] shadow-lg backdrop-blur-md"
+          ? "bg-[#0E0E0E]/95 border-b border-[#2A2A2A] shadow-luxury backdrop-blur-md"
           : "bg-transparent border-transparent text-white"
       }`
-    : "sticky top-0 z-50 transition-all duration-300 bg-[#111111] border-b border-[#2A2A2A] shadow-lg";
+    : "sticky top-0 z-50 transition-all duration-300 bg-[#0E0E0E]/95 border-b border-[#2A2A2A] shadow-luxury backdrop-blur-md";
 
   return (
     <>
       <nav ref={navbarRef} className={navClasses}>
-        <div className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
           {/* Mobile Hamburger Menu */}
           <button
-            className="md:hidden text-[var(--color-primary-gold)] focus:outline-none cursor-pointer"
+            className="md:hidden text-[#C9A24A] hover:text-[#E5C87B] p-1.5 rounded-lg hover:bg-white/5 transition-colors focus:outline-none cursor-pointer"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle Navigation Menu"
           >
@@ -164,7 +164,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
           {/* Brand Logo */}
           <Link
             href="/"
-            className="font-serif text-xl md:text-2xl font-bold tracking-wider text-[var(--color-primary-gold)] uppercase"
+            className="font-serif text-xl md:text-2xl font-bold tracking-wider text-[#C9A24A] hover:text-[#E5C87B] transition-colors uppercase select-none"
           >
             MD SHAKIB
           </Link>
@@ -177,10 +177,10 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 <Link
                   key={link.name}
                   href={link.path}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`text-xs uppercase tracking-widest font-semibold transition-all duration-200 py-1 ${
                     isActive
-                      ? "text-[var(--color-primary-gold)] border-b-2 border-[var(--color-primary-gold)] pb-1"
-                      : "text-neutral-300 hover:text-[var(--color-primary-gold)]"
+                      ? "text-[#C9A24A] border-b-2 border-[#C9A24A]"
+                      : "text-neutral-300 hover:text-[#C9A24A]"
                   }`}
                 >
                   {link.name}
@@ -194,7 +194,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             {/* Search Link */}
             <Link
               href="/books"
-              className="hover:text-[var(--color-accent-gold)] transition-colors"
+              className="hover:text-[#C9A24A] transition-colors p-1.5 rounded-full hover:bg-white/5"
               title="Search"
               aria-label="Search Books"
             >
@@ -207,7 +207,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth="1.75"
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
@@ -216,7 +216,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             {/* Cart Icon */}
             <Link
               href="/cart"
-              className="relative hover:text-[var(--color-accent-gold)] transition-colors"
+              className="relative hover:text-[#C9A24A] transition-colors p-1.5 rounded-full hover:bg-white/5"
               title="Cart"
               aria-label="Shopping Cart"
             >
@@ -229,13 +229,13 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
+                  strokeWidth="1.75"
                   d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
 
               {effectiveCartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-[var(--color-primary-gold)] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
                   {effectiveCartCount > 9 ? "9+" : effectiveCartCount}
                 </span>
               )}
@@ -246,7 +246,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
               <div className="flex items-center gap-3">
                 <Link
                   href={effectiveUser.role === "admin" ? "/admin" : "/account"}
-                  className="text-xs uppercase font-medium text-[var(--color-primary-gold)] hover:underline"
+                  className="text-xs uppercase tracking-wider font-semibold text-[#C9A24A] hover:underline"
                 >
                   {effectiveUser.name || "Account"}
                 </Link>
@@ -261,7 +261,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             ) : (
               <Link
                 href="/login"
-                className="text-xs font-semibold uppercase px-4 py-2 rounded-lg bg-[var(--color-primary-gold)] text-black hover:bg-[var(--color-accent-gold)] transition-colors"
+                className="text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-lg bg-[#C9A24A] text-black hover:bg-[#B89139] transition-all shadow-sm"
               >
                 Log In
               </Link>
@@ -271,17 +271,17 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
 
         {/* Mobile Dropdown Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-[#111111] border-t border-[#2A2A2A] absolute w-full left-0 z-50">
-            <div className="px-4 pt-2 pb-4 space-y-1">
+          <div className="md:hidden bg-[#111111] border-t border-[#2A2A2A] absolute w-full left-0 z-50 shadow-2xl">
+            <div className="px-4 pt-3 pb-5 space-y-1.5">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   href={link.path}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-md font-medium text-sm ${
+                  className={`block px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                     pathname === link.path
-                      ? "text-[var(--color-primary-gold)] bg-[#1a1a1a]"
-                      : "text-neutral-200 hover:bg-[#1a1a1a] hover:text-[var(--color-primary-gold)]"
+                      ? "text-[#C9A24A] bg-[#1A1A1A] font-semibold"
+                      : "text-neutral-300 hover:bg-[#1A1A1A] hover:text-[#C9A24A]"
                   }`}
                 >
                   {link.name}
@@ -293,7 +293,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                     setShowLogoutModal(true);
                     setIsMobileMenuOpen(false);
                   }}
-                  className="block w-full text-left px-3 py-2 rounded-md font-medium text-sm text-red-500 hover:bg-[#1a1a1a]"
+                  className="block w-full text-left px-3 py-2.5 rounded-lg font-medium text-sm text-red-400 hover:bg-[#1A1A1A]"
                 >
                   Log Out
                 </button>
@@ -301,7 +301,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 <Link
                   href="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-md font-medium text-sm text-[var(--color-primary-gold)] hover:bg-[#1a1a1a]"
+                  className="block px-3 py-2.5 rounded-lg font-semibold text-sm text-[#C9A24A] hover:bg-[#1A1A1A]"
                 >
                   Log In
                 </Link>

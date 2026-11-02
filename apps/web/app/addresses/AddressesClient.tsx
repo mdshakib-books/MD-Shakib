@@ -7,6 +7,9 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { AccountNav } from "@/components/account/AccountNav";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { ConfirmModal } from "@/components/ui/Modal";
+import { Badge } from "@/components/ui/Badge";
 import {
   deleteAddress,
   setDefaultAddress,
@@ -24,11 +27,14 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
   const [isPending, startTransition] = useTransition();
   const [isAdding, setIsAdding] = useState(false);
   const [editingAddress, setEditingAddress] = useState<AddressRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this address?")) return;
+  const confirmDelete = () => {
+    if (!deletingId) return;
+    const id = deletingId;
+    setDeletingId(null);
     setErrorMsg(null);
     setSuccessMsg(null);
     startTransition(async () => {
@@ -93,12 +99,12 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
 
   return (
     <PageContainer size="md">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-[var(--color-primary-gold)] uppercase font-bold">
+          <h1 className="font-serif text-2xl md:text-3xl text-[#C9A24A] uppercase font-bold tracking-wide">
             Saved Addresses
           </h1>
-          <p className="text-xs text-neutral-400 mt-1">
+          <p className="text-xs text-neutral-400 mt-1 font-light">
             Manage your delivery destinations for quick and easy checkout.
           </p>
         </div>
@@ -119,21 +125,24 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
       <AccountNav />
 
       {errorMsg && (
-        <div className="mb-6 p-3 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
+        <div className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
           {errorMsg}
         </div>
       )}
 
       {successMsg && (
-        <div className="mb-6 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
-          ✓ {successMsg}
+        <div className="mb-6 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span>{successMsg}</span>
         </div>
       )}
 
-      {/* Add Address Form Modal/Panel */}
+      {/* Add Address Form Panel */}
       {isAdding && (
-        <div className="bg-[#141414] border border-[#2E2E2E] rounded-xl p-6 mb-8 shadow-2xl">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-200 mb-4 pb-2 border-b border-[#2A2A2A]">
+        <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-6 mb-8 shadow-2xl animate-in fade-in duration-200">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200 mb-5 pb-3 border-b border-[#222222]">
             Add Delivery Address
           </h2>
           <form onSubmit={handleCreate} className="space-y-4">
@@ -155,30 +164,26 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <Input label="Landmark (Optional)" name="landmark" placeholder="Near Jama Masjid" />
-              <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1.5 uppercase tracking-wider">
-                  Address Type
-                </label>
-                <select
-                  name="addressType"
-                  defaultValue="Home"
-                  className="w-full bg-[#1A1A1A] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[var(--color-primary-gold)]"
-                >
-                  <option value="Home">Home</option>
-                  <option value="Office">Office</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+              <Select
+                label="Address Type"
+                name="addressType"
+                defaultValue="Home"
+                options={[
+                  { label: "Home", value: "Home" },
+                  { label: "Office", value: "Office" },
+                  { label: "Other", value: "Other" },
+                ]}
+              />
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center space-x-2 text-xs text-neutral-300 cursor-pointer">
-                <input type="checkbox" name="isDefault" className="accent-[var(--color-primary-gold)] rounded" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-[#222222]">
+              <label className="flex items-center space-x-2.5 text-xs text-neutral-300 cursor-pointer">
+                <input type="checkbox" name="isDefault" className="accent-[#C9A24A] rounded w-4 h-4" />
                 <span>Set as default shipping address</span>
               </label>
 
-              <div className="flex space-x-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsAdding(false)}>
+              <div className="flex space-x-2.5 justify-end">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setIsAdding(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary" size="sm" disabled={isPending}>
@@ -190,18 +195,21 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
         </div>
       )}
 
-      {/* Edit Address Form Modal/Panel */}
+      {/* Edit Address Form Panel */}
       {editingAddress && (
-        <div className="bg-[#141414] border border-[#2E2E2E] rounded-xl p-6 mb-8 shadow-2xl">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#2A2A2A]">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-200">
+        <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-6 mb-8 shadow-2xl animate-in fade-in duration-200">
+          <div className="flex items-center justify-between mb-5 pb-3 border-b border-[#222222]">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200">
               Edit Delivery Address
             </h2>
             <button
               onClick={() => setEditingAddress(null)}
-              className="text-xs text-neutral-400 hover:text-white"
+              className="text-xs text-neutral-400 hover:text-white flex items-center gap-1 cursor-pointer"
             >
-              ✕ Close
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Close</span>
             </button>
           </div>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -263,35 +271,31 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
                 name="landmark"
                 defaultValue={editingAddress.landmark || ""}
               />
-              <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1.5 uppercase tracking-wider">
-                  Address Type
-                </label>
-                <select
-                  name="addressType"
-                  defaultValue={editingAddress.address_type}
-                  className="w-full bg-[#1A1A1A] border border-[#333] rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-[var(--color-primary-gold)]"
-                >
-                  <option value="Home">Home</option>
-                  <option value="Office">Office</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+              <Select
+                label="Address Type"
+                name="addressType"
+                defaultValue={editingAddress.address_type}
+                options={[
+                  { label: "Home", value: "Home" },
+                  { label: "Office", value: "Office" },
+                  { label: "Other", value: "Other" },
+                ]}
+              />
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center space-x-2 text-xs text-neutral-300 cursor-pointer">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-[#222222]">
+              <label className="flex items-center space-x-2.5 text-xs text-neutral-300 cursor-pointer">
                 <input
                   type="checkbox"
                   name="isDefault"
                   defaultChecked={editingAddress.is_default}
-                  className="accent-[var(--color-primary-gold)] rounded"
+                  className="accent-[#C9A24A] rounded w-4 h-4"
                 />
                 <span>Set as default shipping address</span>
               </label>
 
-              <div className="flex space-x-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setEditingAddress(null)}>
+              <div className="flex space-x-2.5 justify-end">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setEditingAddress(null)}>
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary" size="sm" disabled={isPending}>
@@ -303,73 +307,85 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
         </div>
       )}
 
-      {/* Addresses List */}
-      {initialAddresses.length === 0 && !isAdding ? (
-        <div className="text-center py-16 px-4 bg-[#141414] border border-[#222] rounded-xl">
-          <p className="text-neutral-400 font-serif text-lg">No saved addresses</p>
-          <p className="text-xs text-neutral-500 mt-2 mb-4">
-            You have not added any delivery addresses yet.
+      {/* Address Cards Grid */}
+      {initialAddresses.length === 0 ? (
+        <div className="text-center py-16 bg-[#141414] border border-[#222222] rounded-2xl">
+          <svg className="w-10 h-10 text-neutral-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <p className="text-white font-serif text-base uppercase tracking-wide">No addresses saved</p>
+          <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto font-light">
+            Save your shipping destination for faster one-click checkout on your next order.
           </p>
-          <Button variant="primary" size="sm" onClick={() => setIsAdding(true)}>
-            Add Your First Address
-          </Button>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid sm:grid-cols-2 gap-4">
           {initialAddresses.map((addr) => (
             <div
               key={addr.id}
-              className={`bg-[#141414] border rounded-xl p-5 transition ${
-                addr.is_default ? "border-[var(--color-primary-gold)]/60" : "border-[#262626]"
+              className={`bg-[#141414] border rounded-2xl p-5 flex flex-col justify-between transition-all shadow-luxury ${
+                addr.is_default
+                  ? "border-[#C9A24A] shadow-[#C9A24A]/5"
+                  : "border-[#262626] hover:border-[#383838]"
               }`}
             >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-neutral-200 text-sm">{addr.full_name}</span>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#222] text-neutral-400">
+                    <span className="font-semibold text-neutral-100 text-sm">{addr.full_name}</span>
+                    <Badge variant="muted" size="sm">
                       {addr.address_type}
-                    </span>
-                    {addr.is_default && (
-                      <span className="text-[10px] font-bold text-black bg-[var(--color-primary-gold)] px-2 py-0.5 rounded">
-                        Default
-                      </span>
-                    )}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-neutral-400 mt-2">
-                    {addr.house_no}, {addr.area}
-                    {addr.landmark ? `, Near ${addr.landmark}` : ""}
-                  </p>
-                  <p className="text-xs text-neutral-400">
-                    {addr.city}, {addr.state} - <span className="font-mono text-neutral-300">{addr.pincode}</span>
-                  </p>
-                  <p className="text-xs text-neutral-500 mt-1">Phone: {addr.phone}</p>
+                  {addr.is_default && (
+                    <Badge variant="gold" size="sm">
+                      Default
+                    </Badge>
+                  )}
                 </div>
 
-                <div className="flex items-center space-x-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#222]">
+                <div className="text-xs text-neutral-400 space-y-1 font-light leading-relaxed mt-2">
+                  <p>{addr.house_no}, {addr.area}</p>
+                  {addr.landmark && <p className="text-neutral-500">Landmark: {addr.landmark}</p>}
+                  <p>{addr.city}, {addr.state} - <span className="font-mono text-neutral-300 font-normal">{addr.pincode}</span></p>
+                  <p className="pt-1 text-neutral-400">Phone: <span className="font-mono text-neutral-200">{addr.phone}</span></p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#222222] text-xs">
+                {!addr.is_default ? (
+                  <button
+                    onClick={() => handleSetDefault(addr.id)}
+                    disabled={isPending}
+                    className="text-neutral-400 hover:text-[#C9A24A] transition-colors cursor-pointer"
+                  >
+                    Set as Default
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-[var(--color-primary-gold)] font-medium tracking-wide">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Default Address</span>
+                  </span>
+                )}
+
+                <div className="flex items-center space-x-3">
                   <button
                     onClick={() => {
                       setEditingAddress(addr);
                       setIsAdding(false);
                     }}
                     disabled={isPending}
-                    className="text-xs text-neutral-300 hover:text-white cursor-pointer"
+                    className="text-neutral-300 hover:text-[#C9A24A] transition-colors cursor-pointer"
                   >
                     Edit
                   </button>
-                  {!addr.is_default && (
-                    <button
-                      onClick={() => handleSetDefault(addr.id)}
-                      disabled={isPending}
-                      className="text-xs text-[var(--color-primary-gold)] hover:underline cursor-pointer"
-                    >
-                      Set Default
-                    </button>
-                  )}
                   <button
-                    onClick={() => handleDelete(addr.id)}
+                    onClick={() => setDeletingId(addr.id)}
                     disabled={isPending}
-                    className="text-xs text-neutral-500 hover:text-red-400 cursor-pointer"
+                    className="text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
                   >
                     Delete
                   </button>
@@ -379,6 +395,18 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(deletingId)}
+        onClose={() => setDeletingId(null)}
+        onConfirm={confirmDelete}
+        title="Delete Address"
+        description="Are you sure you want to remove this saved delivery address? This action cannot be undone."
+        confirmText="Delete Address"
+        isDestructive
+        isLoading={isPending}
+      />
     </PageContainer>
   );
 }

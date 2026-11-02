@@ -10,36 +10,44 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-[#F5F5F5]">
+    <div className="min-h-screen flex flex-col bg-dark-bg text-[#F5F5F5]">
       <Navbar />
       <main className="flex-grow">
         <PageContainer size="md">
-          <div className="py-8 space-y-6">
-            <h1 className="font-serif text-3xl md:text-4xl font-bold text-[#C9A24A] uppercase mb-4">
+          <div className="py-12 space-y-6">
+            <h1 className="font-serif text-3xl md:text-4xl font-bold text-[var(--color-primary-gold)] uppercase mb-2">
               Privacy Policy
             </h1>
-            <p className="text-xs text-neutral-500 uppercase tracking-wider">Last updated: October 2026</p>
+            <p className="text-xs text-neutral-500 uppercase tracking-wider font-mono">Last updated: October 2026</p>
 
-            <div className="space-y-4 text-neutral-300 text-sm leading-relaxed">
-              <h2 className="font-serif text-xl text-neutral-100 font-semibold mt-6">1. Information We Collect</h2>
-              <p>
-                We collect personal information that you provide when registering, placing an order, or contacting customer support. This includes your name, email address, phone number, and delivery address.
-              </p>
+            <div className="space-y-6 text-neutral-300 text-sm leading-relaxed pt-4 border-t border-dark-border">
+              <div>
+                <h2 className="font-serif text-lg text-neutral-100 font-semibold mb-2">1. Information We Collect</h2>
+                <p className="text-neutral-400">
+                  We collect personal information that you provide when registering, placing an order, or contacting customer support. This includes your name, email address, phone number, and delivery address.
+                </p>
+              </div>
 
-              <h2 className="font-serif text-xl text-neutral-100 font-semibold mt-6">2. How We Use Your Information</h2>
-              <p>
-                Your information is used strictly to process orders, fulfill shipments with delivery partners (Delhivery), provide tracking updates, and communicate important transactional notices regarding your purchases.
-              </p>
+              <div>
+                <h2 className="font-serif text-lg text-neutral-100 font-semibold mb-2">2. How We Use Your Information</h2>
+                <p className="text-neutral-400">
+                  Your information is used strictly to process orders, fulfill shipments with delivery partners (Delhivery), provide tracking updates, and communicate important transactional notices regarding your purchases.
+                </p>
+              </div>
 
-              <h2 className="font-serif text-xl text-neutral-100 font-semibold mt-6">3. Payment Security</h2>
-              <p>
-                We do not store your complete credit card or payment card information on our servers. All digital payments are processed through PCI-DSS compliant payment gateways (Razorpay).
-              </p>
+              <div>
+                <h2 className="font-serif text-lg text-neutral-100 font-semibold mb-2">3. Payment Security</h2>
+                <p className="text-neutral-400">
+                  We do not store your complete credit card or payment card information on our servers. All digital payments are processed through PCI-DSS compliant payment gateways (Razorpay).
+                </p>
+              </div>
 
-              <h2 className="font-serif text-xl text-neutral-100 font-semibold mt-6">4. Data Protection &amp; Contact</h2>
-              <p>
-                We implement industry-standard encryption and security measures. For any privacy inquiries or data requests, please contact us at support@mdshakib.com.
-              </p>
+              <div>
+                <h2 className="font-serif text-lg text-neutral-100 font-semibold mb-2">4. Data Protection &amp; Contact</h2>
+                <p className="text-neutral-400">
+                  We implement industry-standard encryption and security measures. For any privacy inquiries or data requests, please contact us at support@mdshakib.com.
+                </p>
+              </div>
             </div>
           </div>
         </PageContainer>
@@ -48,4 +56,3 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
-

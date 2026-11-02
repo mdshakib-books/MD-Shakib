@@ -3,14 +3,6 @@ import { CartProvider } from "@/lib/commerce/cart-context";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import "./globals.css";
 
-const cinzel = {
-  variable: "font-cinzel",
-};
-
-const inter = {
-  variable: "font-inter",
-};
-
 export const metadata: Metadata = {
   title: "MD Shakib | Islamic Book Store",
   description:
@@ -32,6 +24,7 @@ export const viewport: Viewport = {
   themeColor: "#0B0B0B",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
@@ -40,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
-      <body className="bg-[#0B0B0B] text-[#F5F5F5] antialiased selection:bg-[#C9A24A] selection:text-black min-h-screen flex flex-col pb-[70px] md:pb-0 relative">
+    <html lang="en" className="dark scroll-smooth">
+      <body className="bg-[#0B0B0B] text-[#F5F5F5] antialiased selection:bg-[#C9A24A] selection:text-black min-h-screen flex flex-col pb-[calc(70px+env(safe-area-inset-bottom,0px))] md:pb-0 relative">
         <CartProvider>
           {children}
           <MobileBottomNav />

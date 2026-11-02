@@ -349,8 +349,10 @@ export function AdminBooksClient({
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                                📖
+                              <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500">
+                                <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
                               </div>
                             )}
                           </div>
@@ -406,10 +408,12 @@ export function AdminBooksClient({
                               setStockAdjustQty(5);
                               setStockAdjustReason("Restock delivery received");
                             }}
-                            className="text-xs text-gray-400 hover:text-white p-1 rounded hover:bg-[#222222]"
+                            className="text-xs text-neutral-400 hover:text-white p-1 rounded hover:bg-dark-card transition"
                             title="Adjust stock"
                           >
-                            ✏️
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -433,15 +437,17 @@ export function AdminBooksClient({
                           <Link
                             href={`/books/${book.id}`}
                             target="_blank"
-                            className="p-1.5 text-xs text-gray-400 hover:text-white rounded bg-[#181818] border border-[#262626] transition"
+                            className="p-1.5 text-xs text-neutral-400 hover:text-white rounded bg-dark-card border border-dark-border transition"
                             title="View on Storefront"
                           >
-                            ↗
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
                           </Link>
                           <button
                             type="button"
                             onClick={() => openEditModal(book)}
-                            className="px-2.5 py-1 text-xs font-medium text-gray-200 bg-[#1A1A1A] hover:bg-[#252525] border border-[#2E2E2E] rounded transition"
+                            className="px-2.5 py-1 text-xs font-medium text-neutral-200 bg-dark-card hover:bg-neutral-800 border border-dark-border rounded transition"
                           >
                             Edit
                           </button>
@@ -451,10 +457,12 @@ export function AdminBooksClient({
                               setDeletingBook(book);
                               setDeleteNotice(null);
                             }}
-                            className="p-1.5 text-xs text-red-400 hover:text-red-200 rounded bg-[#1C1212] border border-red-950 hover:bg-red-950 transition"
+                            className="p-1.5 text-xs text-red-400 hover:text-red-200 rounded bg-red-950/20 border border-red-900/40 hover:bg-red-950/50 transition"
                             title="Delete / Archive"
                           >
-                            ✕
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -478,9 +486,12 @@ export function AdminBooksClient({
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
-                className="text-gray-400 hover:text-white text-lg p-1"
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition"
+                aria-label="Close modal"
               >
-                ✕
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 

@@ -74,12 +74,12 @@ export function BookCard({
   return (
     <Link
       href={`/books/${book.id}`}
-      className="group relative flex flex-col bg-[#111111] border border-[#2A2A2A] rounded-[12px] p-4 transition-all duration-300 hover:-translate-y-[6px] hover:shadow-[0_10px_30px_rgba(201,162,74,0.15)] hover:border-[var(--color-primary-gold)]"
+      className="group relative flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-luxury-hover hover:border-[#C9A24A]/60"
     >
       {/* Discount Badge */}
       {hasDiscount && (
-        <div className="absolute top-4 left-4 z-10 bg-[#FFF5D1] text-black text-xs font-bold px-2 py-1 rounded shadow-sm">
-          -{book.discount}%
+        <div className="absolute top-4 left-4 z-10 bg-[#FFF5D1] text-black text-[11px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wide">
+          -{book.discount}% OFF
         </div>
       )}
 
@@ -88,7 +88,7 @@ export function BookCard({
         type="button"
         aria-label="Save to Wishlist"
         onClick={handleWishlistClick}
-        className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-white/10 backdrop-blur-sm rounded-full text-white hover:text-red-500 hover:bg-white/20 transition-colors cursor-pointer"
+        className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-neutral-300 hover:text-red-400 hover:bg-black/70 hover:border-red-400/30 transition-colors cursor-pointer"
       >
         <svg
           className="w-4 h-4"
@@ -99,14 +99,14 @@ export function BookCard({
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth="2"
+            strokeWidth="1.75"
             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
           />
         </svg>
       </button>
 
-      {/* Book Image */}
-      <div className="relative w-full aspect-[3/4] mb-4 overflow-hidden rounded-md bg-[#1a1a1a] flex items-center justify-center">
+      {/* Book Image Presentation */}
+      <div className="relative w-full aspect-[3/4] mb-4 overflow-hidden rounded-lg bg-[#0E0E0E] border border-[#222222] flex items-center justify-center p-3 shadow-inner">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={
@@ -114,7 +114,7 @@ export function BookCard({
             "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400&h=300"
           }
           alt={book.title}
-          className="w-[90%] h-[95%] object-cover rounded shadow-lg transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-contain rounded shadow transition-transform duration-500 group-hover:scale-105"
         />
       </div>
 
@@ -122,29 +122,29 @@ export function BookCard({
       <div className="flex-grow flex flex-col justify-between">
         <div>
           {book.category && (
-            <p className="text-[10px] uppercase font-semibold text-[var(--color-primary-gold)] tracking-wider mb-1">
+            <p className="text-[10px] uppercase font-semibold text-[#C9A24A] tracking-[0.15em] mb-1 font-sans">
               {book.category}
             </p>
           )}
-          <h3 className="font-medium text-sm md:text-base text-neutral-100 line-clamp-2 leading-tight mb-2">
+          <h3 className="font-serif text-sm md:text-base font-medium text-neutral-100 line-clamp-2 leading-snug mb-1">
             {book.title}
           </h3>
           {book.author && (
-            <p className="text-xs text-neutral-400 line-clamp-1 mb-2">
-              {book.author}
+            <p className="text-xs text-neutral-400 line-clamp-1 mb-2 font-light">
+              By <span className="text-neutral-300">{book.author}</span>
             </p>
           )}
         </div>
 
-        <div className="mt-2 flex items-center space-x-2">
+        <div className="mt-3 flex items-baseline space-x-2">
+          <span className="font-bold text-[#C9A24A] text-base md:text-lg">
+            {formatPrice(discountedPrice)}
+          </span>
           {hasDiscount && (
             <span className="text-neutral-500 text-xs line-through">
               {formatPrice(originalPrice)}
             </span>
           )}
-          <span className="font-bold text-[var(--color-primary-gold)] text-lg">
-            {formatPrice(discountedPrice)}
-          </span>
         </div>
       </div>
 
@@ -153,13 +153,13 @@ export function BookCard({
         type="button"
         onClick={handleCartClick}
         disabled={isOutOfStock}
-        className={`mt-4 w-full font-semibold py-2.5 rounded-[10px] text-sm flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer
+        className={`mt-4 w-full font-semibold py-2.5 px-3 rounded-lg text-xs md:text-sm flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer
           ${
             isOutOfStock
-              ? "bg-[#222222] text-neutral-500 cursor-not-allowed border border-[#2A2A2A]"
+              ? "bg-[#1C1C1C] text-neutral-500 cursor-not-allowed border border-[#2A2A2A]"
               : effectiveInCart
-              ? "bg-transparent border border-[var(--color-primary-gold)] text-[var(--color-primary-gold)] hover:bg-[var(--color-primary-gold)] hover:text-black"
-              : "bg-[var(--color-primary-gold)] hover:bg-[var(--color-accent-gold)] text-black"
+              ? "bg-transparent border border-[#C9A24A] text-[#C9A24A] hover:bg-[#C9A24A] hover:text-black"
+              : "bg-[#C9A24A] hover:bg-[#B89139] text-black shadow-md shadow-[#C9A24A]/10"
           }`}
       >
         {isOutOfStock ? (
@@ -175,11 +175,11 @@ export function BookCard({
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="2"
+                strokeWidth="1.75"
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            Go to Cart
+            <span>Go to Cart</span>
           </>
         ) : (
           <>
@@ -192,15 +192,14 @@ export function BookCard({
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="2"
+                strokeWidth="1.75"
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
-            Add to Cart
+            <span>Add to Cart</span>
           </>
         )}
       </button>
     </Link>
   );
 }
-
