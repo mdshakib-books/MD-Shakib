@@ -287,15 +287,27 @@ export function AdminBooksClient({
           </select>
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="px-4 py-2 bg-[var(--color-primary-gold,#C9A24A)] hover:bg-[#B8923E] text-black font-semibold rounded-lg text-sm transition flex items-center justify-center gap-2 shadow"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Add New Book</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/books/add"
+            className="px-3 py-2 border border-[#2A2A2A] hover:border-[var(--color-primary-gold,#C9A24A)] text-gray-300 hover:text-white rounded-lg text-sm transition hidden sm:inline-flex items-center gap-1.5"
+            title="Open Dedicated Full Page Creator"
+          >
+            <svg className="w-4 h-4 text-[var(--color-primary-gold,#C9A24A)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <span>Full Form</span>
+          </Link>
+          <button
+            onClick={openCreateModal}
+            className="px-4 py-2 bg-[var(--color-primary-gold,#C9A24A)] hover:bg-[#B8923E] text-black font-semibold rounded-lg text-sm transition flex items-center justify-center gap-2 shadow cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add New Book</span>
+          </button>
+        </div>
       </div>
 
       {/* Catalog Table */}

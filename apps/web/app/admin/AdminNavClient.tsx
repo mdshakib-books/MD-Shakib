@@ -105,6 +105,16 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
         </svg>
       ),
     },
+    {
+      name: "Profile & Settings",
+      href: "/admin/profile",
+      exact: false,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -212,15 +222,18 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
             </svg>
           </Link>
 
-          <div className="flex items-center gap-3 px-2 py-1.5 rounded-lg bg-[#141414] border border-[#222222]">
-            <div className="w-8 h-8 rounded-full bg-emerald-900 text-emerald-200 flex items-center justify-center font-bold text-xs uppercase">
+          <Link
+            href="/admin/profile"
+            className="flex items-center gap-3 px-2 py-1.5 rounded-lg bg-[#141414] border border-[#222222] hover:border-[var(--color-primary-gold)] transition group"
+          >
+            <div className="w-8 h-8 rounded-full bg-emerald-900 text-emerald-200 flex items-center justify-center font-bold text-xs uppercase group-hover:bg-[var(--color-primary-gold)] group-hover:text-black transition">
               {adminName ? adminName.charAt(0) : "A"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{adminName || "Admin"}</p>
+              <p className="text-xs font-semibold text-white truncate group-hover:text-[var(--color-primary-gold)] transition">{adminName || "Admin"}</p>
               <p className="text-[10px] text-gray-400 truncate">{adminEmail}</p>
             </div>
-          </div>
+          </Link>
         </div>
       </aside>
 

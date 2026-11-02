@@ -44,28 +44,42 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
     }
 
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setClientUser({
-          name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0],
-          email: user.email,
-          role: (user.user_metadata?.role as "user" | "admin") || "user",
-        });
-      } else {
+
+    const syncUser = async (user: any) => {
+      if (!user) {
         setClientUser(null);
+        return;
       }
+      let role = (user.user_metadata?.role as "user" | "admin") || "user";
+      let name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0];
+
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, role")
+          .eq("id", user.id)
+          .single();
+        if (profile) {
+          if (profile.role) role = profile.role as "user" | "admin";
+          if (profile.name) name = profile.name;
+        }
+      } catch {
+        // preserve fallback
+      }
+
+      setClientUser({
+        name,
+        email: user.email,
+        role,
+      });
+    };
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      syncUser(user);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setClientUser({
-          name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
-          email: session.user.email,
-          role: (session.user.user_metadata?.role as "user" | "admin") || "user",
-        });
-      } else {
-        setClientUser(null);
-      }
+      syncUser(session?.user || null);
     });
 
     return () => {
