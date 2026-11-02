@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { CartProvider } from "@/lib/commerce/cart-context";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import "./globals.css";
 
 const cinzel = {
@@ -21,6 +22,10 @@ export const metadata: Metadata = {
     "Islamic Bookstore",
     "Authentic Islamic Literature",
   ],
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -36,12 +41,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
-      <body className="bg-[#0B0B0B] text-[#F5F5F5] antialiased selection:bg-[#C9A24A] selection:text-black min-h-screen flex flex-col">
+      <body className="bg-[#0B0B0B] text-[#F5F5F5] antialiased selection:bg-[#C9A24A] selection:text-black min-h-screen flex flex-col pb-[70px] md:pb-0 relative">
         <CartProvider>
           {children}
+          <MobileBottomNav />
         </CartProvider>
       </body>
     </html>
   );
 }
-

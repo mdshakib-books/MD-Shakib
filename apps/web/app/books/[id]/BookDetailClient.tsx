@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { formatPrice } from "@/lib/utils";
 import { ProductGrid } from "@/components/commerce/ProductGrid";
@@ -15,6 +16,7 @@ interface BookDetailClientProps {
 }
 
 export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) {
+  const router = useRouter();
   const { addItem, isInCart } = useCart();
   const inCart = isInCart(book.id);
 
@@ -53,6 +55,26 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
       setAdded(true);
       setTimeout(() => setAdded(false), 2500);
     }
+  };
+
+  const handleBuyNow = async () => {
+    if (isOutOfStock || isSubmitting) return;
+    setIsSubmitting(true);
+    await addItem(
+      {
+        id: book.id,
+        title: book.title,
+        price: book.price,
+        discount: book.discount,
+        stock: book.stock,
+        imageUrl: book.imageUrl,
+        category: book.category,
+        author: book.author,
+      },
+      quantity
+    );
+    setIsSubmitting(false);
+    router.push("/cart");
   };
 
   return (
@@ -148,6 +170,40 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                     {formatPrice(book.price)}
                   </span>
                 )}
+                {hasDiscount && (
+                  <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded">
+                    {book.discount}% OFF
+                  </span>
+                )}
+              </div>
+
+              {/* Delivery Info Badge */}
+              <div className="flex items-start gap-3 bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-3 mt-4">
+                <span className="text-xl mt-0.5">🚚</span>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-200">
+                    Free Delivery
+                  </p>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Estimated delivery in 3–5 business days
+                  </p>
+                </div>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="grid grid-cols-3 gap-3 pt-3">
+                <div className="flex flex-col items-center gap-1 border border-[#2A2A2A] bg-[#111111] rounded-xl p-3 text-center">
+                  <span className="text-xl">🔁</span>
+                  <span className="text-[11px] text-neutral-300 font-medium">7 Days Replacement</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 border border-[#2A2A2A] bg-[#111111] rounded-xl p-3 text-center">
+                  <span className="text-xl">💵</span>
+                  <span className="text-[11px] text-neutral-300 font-medium">Cash On Delivery</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 border border-[#2A2A2A] bg-[#111111] rounded-xl p-3 text-center">
+                  <span className="text-xl">🔒</span>
+                  <span className="text-[11px] text-neutral-300 font-medium">Secure Payment</span>
+                </div>
               </div>
 
               {/* Description */}
@@ -189,8 +245,8 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
               </div>
             </div>
 
-            {/* Actions: Quantity & Add to Cart */}
-            <div className="mt-8 border-t border-[#2A2A2A] pt-6 flex flex-col sm:flex-row items-center gap-4">
+            {/* Actions: Quantity, Add to Cart & Buy Now */}
+            <div className="mt-8 border-t border-[#2A2A2A] pt-6 flex flex-col sm:flex-row items-center gap-3">
               <div className="flex items-center border border-[#333] rounded-lg bg-[#161616]">
                 <button
                   type="button"
@@ -215,33 +271,35 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                 type="button"
                 disabled={isOutOfStock || isSubmitting}
                 onClick={handleAddToCart}
-                className={`w-full sm:flex-1 py-3 px-6 rounded-lg font-semibold text-sm transition-all shadow-lg ${
+                className={`w-full sm:flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-all shadow-md ${
                   isOutOfStock
                     ? "bg-[#2A2A2A] text-neutral-500 cursor-not-allowed"
                     : added
                     ? "bg-emerald-600 text-white"
+                    : inCart
+                    ? "bg-transparent border border-[#C9A24A] text-[#C9A24A] hover:bg-[#C9A24A] hover:text-black cursor-pointer"
                     : "bg-[#C9A24A] text-black hover:bg-[#b89139] cursor-pointer"
                 }`}
               >
                 {isOutOfStock
                   ? "Out of Stock"
                   : isSubmitting
-                  ? "Adding to Cart..."
+                  ? "Adding..."
                   : added
                   ? "Added to Cart ✓"
                   : inCart
-                  ? `Add More to Cart (${quantity})`
+                  ? `In Cart (${quantity})`
                   : `Add to Cart (${quantity})`}
               </button>
 
-              {inCart && (
-                <Link
-                  href="/cart"
-                  className="w-full sm:w-auto py-3 px-6 rounded-lg border border-[var(--color-primary-gold)] text-[var(--color-primary-gold)] hover:bg-[var(--color-primary-gold)] hover:text-black font-semibold text-sm transition text-center"
-                >
-                  View Cart →
-                </Link>
-              )}
+              <button
+                type="button"
+                disabled={isOutOfStock || isSubmitting}
+                onClick={handleBuyNow}
+                className="w-full sm:flex-1 py-3 px-4 rounded-lg font-semibold text-sm bg-[var(--color-primary-gold)] text-black hover:bg-[var(--color-accent-gold)] transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                ⚡ Buy Now
+              </button>
             </div>
           </div>
         </div>
@@ -259,4 +317,3 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
     </>
   );
 }
-

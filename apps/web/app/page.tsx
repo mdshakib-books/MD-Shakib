@@ -4,6 +4,8 @@ import { Footer } from "@/components/layout/Footer";
 import { HeroSection, TrustIndicators } from "@/components/layout/HeroSection";
 import { PageContainer, SectionHeading } from "@/components/layout/PageContainer";
 import { ProductGrid } from "@/components/commerce/ProductGrid";
+import { OrderSteps } from "@/components/home/OrderSteps";
+import { Reviews } from "@/components/home/Reviews";
 import { getFeaturedBooks, type CatalogBook } from "@/lib/data/catalog";
 import Link from "next/link";
 
@@ -75,7 +77,13 @@ export default async function HomePage() {
         </div>
       </PageContainer>
 
-      {/* 5. Global Footer Shell */}
+      {/* 5. How To Order Steps Sequence */}
+      <OrderSteps />
+
+      {/* 6. Customer Testimonials */}
+      <Reviews />
+
+      {/* 7. Global Footer Shell */}
       <Footer />
     </div>
   );

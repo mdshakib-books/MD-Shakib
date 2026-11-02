@@ -29,6 +29,12 @@ export function Footer() {
             About
           </Link>
           <Link
+            href="/contact"
+            className="text-sm font-medium text-neutral-300 hover:text-[var(--color-primary-gold)] transition-colors"
+          >
+            Contact
+          </Link>
+          <Link
             href="/support"
             className="text-sm font-medium text-neutral-300 hover:text-[var(--color-primary-gold)] transition-colors"
           >
@@ -48,11 +54,13 @@ export function Footer() {
           </Link>
         </div>
 
-        {/* Social Icons Placeholder */}
+        {/* Social Icons */}
         <div className="flex space-x-6 mb-12">
           <a
-            href="#"
-            aria-label="Social Link"
+            href="https://twitter.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Twitter / X"
             className="flex items-center justify-center w-10 h-10 rounded-full border border-[#2A2A2A] text-neutral-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)] transition-all"
           >
             <svg
@@ -64,8 +72,10 @@ export function Footer() {
             </svg>
           </a>
           <a
-            href="#"
-            aria-label="Instagram Link"
+            href="https://instagram.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
             className="flex items-center justify-center w-10 h-10 rounded-full border border-[#2A2A2A] text-neutral-400 hover:text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)] transition-all"
           >
             <svg
@@ -89,4 +99,3 @@ export function Footer() {
     </footer>
   );
 }
-
