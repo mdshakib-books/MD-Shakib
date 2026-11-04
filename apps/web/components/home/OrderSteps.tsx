@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 interface Step {
   id: number;
@@ -104,28 +105,30 @@ export function OrderSteps() {
           <div className="w-16 h-0.5 bg-[#C9A24A]/70 mx-auto rounded-full mt-4" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {steps.map((step) => (
-            <div
-              key={step.id}
-              className="flex flex-col items-center text-center p-6 rounded-2xl bg-[#141414] border border-[#262626] hover:border-[#C9A24A]/50 transition-all duration-300 group"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#C9A24A] mb-5 shadow-inner transition-transform duration-300 group-hover:scale-105 group-hover:border-[#C9A24A]/60 relative">
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#C9A24A] text-black font-bold text-xs rounded-full flex items-center justify-center shadow-md">
-                  {step.id}
+        <ScrollReveal>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {steps.map((step) => (
+              <div
+                key={step.id}
+                className="flex flex-col items-center text-center p-6 rounded-2xl bg-[#141414] border border-[#262626] hover:border-[#C9A24A]/50 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] group"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-[#1C1C1C] border border-[#2A2A2A] flex items-center justify-center text-[#C9A24A] mb-5 shadow-inner transition-transform duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] group-hover:scale-105 group-hover:border-[#C9A24A]/60 relative">
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#C9A24A] text-black font-bold text-xs rounded-full flex items-center justify-center shadow-md">
+                    {step.id}
+                  </div>
+                  {step.icon}
                 </div>
-                {step.icon}
-              </div>
 
-              <h3 className="text-base font-serif font-semibold text-white tracking-wide mb-2">
-                {step.title}
-              </h3>
-              <p className="text-xs text-neutral-400 font-light leading-relaxed">
-                {step.description}
-              </p>
-            </div>
-          ))}
-        </div>
+                <h3 className="text-base font-serif font-semibold text-white tracking-wide mb-2">
+                  {step.title}
+                </h3>
+                <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );

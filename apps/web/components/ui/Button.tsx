@@ -22,11 +22,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#C9A24A]/60 focus:ring-offset-2 focus:ring-offset-[#0B0B0B] disabled:opacity-50 disabled:pointer-events-none cursor-pointer select-none active:scale-[0.98]";
+      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] focus:outline-none focus:ring-2 focus:ring-[#C9A24A]/60 focus:ring-offset-2 focus:ring-offset-[#0B0B0B] disabled:opacity-50 disabled:pointer-events-none cursor-pointer select-none active:scale-[0.98]";
 
     const variantStyles = {
       primary:
-        "bg-[#C9A24A] hover:bg-[#B89139] text-black font-semibold shadow-md shadow-[#C9A24A]/10 border border-[#C9A24A]/40",
+        "bg-[#C9A24A] hover:bg-[#B89139] text-black font-semibold shadow-md shadow-[#C9A24A]/10 hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] border border-[#C9A24A]/40",
       secondary:
         "bg-[#161616] border border-[#2A2A2A] text-neutral-200 hover:border-[#C9A24A]/60 hover:text-[#C9A24A] hover:bg-[#1A1A1A]",
       outline:

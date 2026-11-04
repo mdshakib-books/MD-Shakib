@@ -18,7 +18,7 @@ export function Loader({ fullScreen = false, size = "md", className }: LoaderPro
     <div
       className={cn(
         "flex justify-center items-center",
-        fullScreen ? "fixed inset-0 bg-[#0B0B0B]/80 z-50 backdrop-blur-sm" : "py-8",
+        fullScreen ? "fixed inset-0 bg-[#0B0B0B]/80 z-50 backdrop-blur-sm animate-fade-in" : "py-8",
         className
       )}
     >

@@ -41,7 +41,7 @@ export function AccountNav({ className = "" }: AccountNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-200 ${
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 ${
                 active
                   ? "bg-[var(--color-primary-gold)] text-black shadow-md font-bold"
                   : "text-neutral-400 hover:text-white hover:bg-[#1C1C1C]"

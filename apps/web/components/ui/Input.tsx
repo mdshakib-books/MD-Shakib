@@ -60,7 +60,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               error ? errorId : helperText ? helperId : undefined
             }
             className={cn(
-              "w-full h-11 px-4 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#737373] rounded-lg text-sm transition-all duration-200 focus:outline-none focus:border-[#C9A24A] focus:ring-1 focus:ring-[#C9A24A]/40 disabled:opacity-50 disabled:cursor-not-allowed",
+              "w-full h-11 px-4 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#737373] rounded-lg text-sm transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)] focus:outline-none focus:border-[#C9A24A] focus:ring-1 focus:ring-[#C9A24A]/40 disabled:opacity-50 disabled:cursor-not-allowed",
               leftIcon && "pl-10",
               rightIcon && "pr-10",
               error &&
@@ -78,11 +78,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         {error ? (
-          <p id={errorId} className="text-xs text-red-400 font-medium">
+          <p id={errorId} className="text-xs text-red-400 font-medium animate-fade-in">
             {error}
           </p>
         ) : helperText ? (
-          <p id={helperId} className="text-xs text-neutral-400">
+          <p id={helperId} className="text-xs text-neutral-400 animate-fade-in">
             {helperText}
           </p>
         ) : null}

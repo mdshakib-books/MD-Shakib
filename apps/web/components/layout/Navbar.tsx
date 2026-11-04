@@ -177,7 +177,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 <Link
                   key={link.name}
                   href={link.path}
-                  className={`text-xs uppercase tracking-widest font-semibold transition-all duration-200 py-1 ${
+                  className={`text-xs uppercase tracking-widest font-semibold transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] py-1 ${
                     isActive
                       ? "text-[#C9A24A] border-b-2 border-[#C9A24A]"
                       : "text-neutral-300 hover:text-[#C9A24A]"
@@ -194,7 +194,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             {/* Search Link */}
             <Link
               href="/books"
-              className="hover:text-[#C9A24A] transition-colors p-1.5 rounded-full hover:bg-white/5"
+              className="hover:text-[#C9A24A] transition-all duration-[var(--duration-micro)] active:scale-90 p-1.5 rounded-full hover:bg-white/5"
               title="Search"
               aria-label="Search Books"
             >
@@ -216,7 +216,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             {/* Cart Icon */}
             <Link
               href="/cart"
-              className="relative hover:text-[#C9A24A] transition-colors p-1.5 rounded-full hover:bg-white/5"
+              className="relative hover:text-[#C9A24A] transition-all duration-[var(--duration-micro)] active:scale-90 p-1.5 rounded-full hover:bg-white/5"
               title="Cart"
               aria-label="Shopping Cart"
             >
@@ -235,7 +235,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
               </svg>
 
               {effectiveCartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                <span className="absolute -top-1.5 -right-1.5 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pop">
                   {effectiveCartCount > 9 ? "9+" : effectiveCartCount}
                 </span>
               )}
@@ -246,7 +246,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
               <div className="flex items-center gap-3">
                 <Link
                   href={effectiveUser.role === "admin" ? "/admin" : "/account"}
-                  className="text-xs uppercase tracking-wider font-semibold text-[#C9A24A] hover:underline"
+                  className="text-xs uppercase tracking-wider font-semibold text-[#C9A24A] hover:underline transition-colors"
                 >
                   {effectiveUser.name || "Account"}
                 </Link>
@@ -261,7 +261,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             ) : (
               <Link
                 href="/login"
-                className="text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-lg bg-[#C9A24A] text-black hover:bg-[#B89139] transition-all shadow-sm"
+                className="text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-lg bg-[#C9A24A] text-black hover:bg-[#B89139] hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 shadow-sm"
               >
                 Log In
               </Link>
@@ -271,7 +271,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
 
         {/* Mobile Dropdown Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-[#111111] border-t border-[#2A2A2A] absolute w-full left-0 z-50 shadow-2xl">
+          <div className="md:hidden bg-[#111111] border-t border-[#2A2A2A] absolute w-full left-0 z-50 shadow-2xl animate-slide-down">
             <div className="px-4 pt-3 pb-5 space-y-1.5">
               {navLinks.map((link) => (
                 <Link

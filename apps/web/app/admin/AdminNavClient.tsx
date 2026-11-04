@@ -153,7 +153,7 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
       {/* Sidebar for Desktop / Overlay for Mobile */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-dark-surface border-r border-dark-border flex flex-col transition-transform duration-200 lg:static lg:translate-x-0 shadow-luxury",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-dark-surface border-r border-dark-border flex flex-col transition-transform duration-[var(--duration-modal)] [transition-timing-function:var(--ease-luxury)] lg:static lg:translate-x-0 shadow-luxury",
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -195,7 +195,7 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
                 href={link.href}
                 onClick={() => setIsMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-150",
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)]",
                   isActive
                     ? "bg-dark-card text-[var(--color-primary-gold)] border border-[var(--color-primary-gold)]/30 shadow-inner font-bold"
                     : "text-neutral-400 hover:text-neutral-200 hover:bg-dark-card/60"
@@ -214,7 +214,7 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
         <div className="p-4 border-t border-dark-border bg-dark-bg">
           <Link
             href="/"
-            className="flex items-center justify-center gap-2 w-full py-2 mb-3 text-xs font-medium text-neutral-300 hover:text-white bg-dark-card hover:bg-neutral-800 border border-dark-border rounded-lg transition"
+            className="flex items-center justify-center gap-2 w-full py-2 mb-3 text-xs font-medium text-neutral-300 hover:text-white bg-dark-card hover:bg-neutral-800 border border-dark-border rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)]"
           >
             <span>Exit to Storefront</span>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,7 +224,7 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
 
           <Link
             href="/admin/profile"
-            className="flex items-center gap-3 px-2 py-1.5 rounded-lg bg-dark-card border border-dark-border hover:border-[var(--color-primary-gold)]/40 transition group"
+            className="flex items-center gap-3 px-2 py-1.5 rounded-lg bg-dark-card border border-dark-border hover:border-[var(--color-primary-gold)]/40 transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] group"
           >
             <div className="w-8 h-8 rounded-full bg-dark-surface border border-dark-border text-[var(--color-primary-gold)] flex items-center justify-center font-bold text-xs uppercase group-hover:border-[var(--color-primary-gold)] transition">
               {adminName ? adminName.charAt(0) : "A"}
@@ -241,7 +241,7 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
       {isMobileOpen && (
         <div
           onClick={() => setIsMobileOpen(false)}
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden animate-fade-in"
         />
       )}
     </>

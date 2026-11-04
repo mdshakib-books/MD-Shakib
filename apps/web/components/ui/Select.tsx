@@ -57,7 +57,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               error ? errorId : helperText ? helperId : undefined
             }
             className={cn(
-              "w-full h-11 pl-4 pr-10 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] rounded-lg text-sm appearance-none transition-all duration-200 focus:outline-none focus:border-[#C9A24A] focus:ring-1 focus:ring-[#C9A24A]/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+              "w-full h-11 pl-4 pr-10 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] rounded-lg text-sm appearance-none transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)] focus:outline-none focus:border-[#C9A24A] focus:ring-1 focus:ring-[#C9A24A]/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
               error &&
                 "border-red-500/80 focus:border-red-500 focus:ring-red-500/30",
               className
@@ -79,7 +79,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </select>
 
           {/* Quiet luxury custom chevron */}
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400 transition-colors duration-[var(--duration-micro)]">
             <svg
               className="w-4 h-4"
               fill="none"
@@ -97,11 +97,11 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         </div>
 
         {error ? (
-          <p id={errorId} className="text-xs text-red-400 font-medium">
+          <p id={errorId} className="text-xs text-red-400 font-medium animate-fade-in">
             {error}
           </p>
         ) : helperText ? (
-          <p id={helperId} className="text-xs text-neutral-400">
+          <p id={helperId} className="text-xs text-neutral-400 animate-fade-in">
             {helperText}
           </p>
         ) : null}

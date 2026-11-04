@@ -34,9 +34,9 @@ export default async function OrderSuccessPage({ searchParams }: OrderSuccessPag
 
       <main className="flex-grow flex items-center justify-center py-16 px-4">
         <PageContainer size="sm">
-          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 md:p-12 shadow-2xl max-w-lg mx-auto text-center">
+          <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 md:p-12 shadow-2xl max-w-lg mx-auto text-center animate-fade-in-up">
             {/* Celebration Icon */}
-            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(16,185,129,0.2)] animate-pop">
               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>

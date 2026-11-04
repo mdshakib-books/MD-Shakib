@@ -67,7 +67,7 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        "transition-colors hover:bg-[#1A1A1A]/60 data-[state=selected]:bg-[#1A1A1A]",
+        "transition-colors duration-[var(--duration-micro)] hover:bg-[#1A1A1A]/60 data-[state=selected]:bg-[#1A1A1A]",
         className
       )}
       {...props}

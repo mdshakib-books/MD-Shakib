@@ -27,15 +27,15 @@ export function HeroSection({
 
         {/* Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 px-4 pt-16 md:pt-24 lg:pt-28">
-          <p className="text-[#E5C87B] text-[11px] md:text-xs tracking-[0.35em] uppercase font-semibold font-sans mb-1">
+          <p className="text-[#E5C87B] text-[11px] md:text-xs tracking-[0.35em] uppercase font-semibold font-sans mb-1 animate-fade-in">
             {presentingText}
           </p>
 
-          <h1 className="font-serif text-2xl md:text-3xl lg:text-4xl text-[#E5C87B] tracking-[0.1em] text-center my-2 md:my-3 drop-shadow-[0_2px_15px_rgba(229,200,123,0.4)]">
+          <h1 className="font-serif text-2xl md:text-3xl lg:text-4xl text-[#E5C87B] tracking-[0.1em] text-center my-2 md:my-3 drop-shadow-[0_2px_15px_rgba(229,200,123,0.4)] animate-fade-in-up">
             {arabicTitle}
           </h1>
 
-          <p className="text-neutral-300 max-w-sm md:max-w-lg text-xs md:text-sm font-light leading-relaxed">
+          <p className="text-neutral-300 max-w-sm md:max-w-lg text-xs md:text-sm font-light leading-relaxed animate-fade-in">
             {blessingText}
           </p>
         </div>
@@ -100,7 +100,7 @@ export function TrustIndicators() {
           {indicators.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-4 p-4 rounded-xl bg-[#141414] border border-[#262626]"
+              className="flex items-center gap-4 p-4 rounded-xl bg-[#141414] border border-[#262626] hover:border-[#C9A24A]/40 transition-colors duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)]"
             >
               <div className="flex items-center justify-center w-11 h-11 rounded-lg bg-[#1C1C1C] border border-[#2A2A2A] shrink-0 shadow-inner">
                 {item.icon}

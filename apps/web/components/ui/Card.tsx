@@ -14,7 +14,7 @@ export function Card({
     default: "bg-[#161616] border border-[#2A2A2A]",
     elevated: "bg-[#1A1A1A] border border-[#333333] shadow-luxury",
     interactive:
-      "bg-[#161616] border border-[#2A2A2A] hover:border-[#C9A24A]/60 hover:shadow-luxury-hover transition-all duration-300",
+      "bg-[#161616] border border-[#2A2A2A] hover:border-[#C9A24A]/60 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)]",
   };
 
   return (

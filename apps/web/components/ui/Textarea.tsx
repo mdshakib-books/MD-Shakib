@@ -49,7 +49,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             error ? errorId : helperText ? helperId : undefined
           }
           className={cn(
-            "w-full px-4 py-3 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#737373] rounded-lg text-sm transition-all duration-200 focus:outline-none focus:border-[#C9A24A] focus:ring-1 focus:ring-[#C9A24A]/40 disabled:opacity-50 disabled:cursor-not-allowed resize-y",
+            "w-full px-4 py-3 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#737373] rounded-lg text-sm transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)] focus:outline-none focus:border-[#C9A24A] focus:ring-1 focus:ring-[#C9A24A]/40 disabled:opacity-50 disabled:cursor-not-allowed resize-y",
             error &&
               "border-red-500/80 focus:border-red-500 focus:ring-red-500/30",
             className
@@ -58,11 +58,11 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         />
 
         {error ? (
-          <p id={errorId} className="text-xs text-red-400 font-medium">
+          <p id={errorId} className="text-xs text-red-400 font-medium animate-fade-in">
             {error}
           </p>
         ) : helperText ? (
-          <p id={helperId} className="text-xs text-neutral-400">
+          <p id={helperId} className="text-xs text-neutral-400 animate-fade-in">
             {helperText}
           </p>
         ) : null}

@@ -170,9 +170,9 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                   {addresses.map((addr) => (
                     <label
                       key={addr.id}
-                      className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
+                      className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] ${
                         selectedAddressId === addr.id
-                          ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-sm"
+                          ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-[0_0_15px_rgba(201,162,74,0.1)]"
                           : "border-[#262626] hover:border-[#383838]"
                       }`}
                     >
@@ -215,9 +215,9 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
 
               <div className="space-y-3">
                 <label
-                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] ${
                     paymentMethod === "COD"
-                      ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-sm"
+                      ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-[0_0_15px_rgba(201,162,74,0.1)]"
                       : "border-[#262626] hover:border-[#383838]"
                   }`}
                 >
@@ -238,9 +238,9 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                 </label>
 
                 <label
-                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] ${
                     paymentMethod === "ONLINE"
-                      ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-sm"
+                      ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-[0_0_15px_rgba(201,162,74,0.1)]"
                       : "border-[#262626] hover:border-[#383838]"
                   }`}
                 >

@@ -522,19 +522,33 @@ export function CartProvider({
       {/* Global Shopping Toast notification */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-xs md:text-sm font-medium transition-all duration-300 transform translate-y-0 ${
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-[calc(80px+env(safe-area-inset-bottom,0px))] md:bottom-6 right-4 sm:right-6 z-50 px-4 sm:px-5 py-3 rounded-xl shadow-luxury border flex items-center space-x-3 text-xs md:text-sm font-medium animate-slide-up transition-all duration-[var(--duration-dropdown)] [transition-timing-function:var(--ease-luxury)] max-w-sm ${
             toast.type === "success"
-              ? "bg-[#161616] border border-[var(--color-primary-gold)] text-white"
-              : "bg-red-950/90 border border-red-700 text-red-200"
+              ? "bg-[#161616] border-[var(--color-primary-gold)]/60 text-white shadow-[0_4px_20px_rgba(201,162,74,0.15)]"
+              : "bg-red-950/90 border-red-700 text-red-200"
           }`}
         >
-          <span>{toast.message}</span>
+          <span className="flex-1">{toast.message}</span>
           <button
             onClick={dismissToast}
-            className="text-neutral-400 hover:text-white cursor-pointer ml-2"
+            className="w-6 h-6 rounded-md hover:bg-white/10 flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer ml-1"
             aria-label="Dismiss notification"
           >
-            ✕
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
           </button>
         </div>
       )}

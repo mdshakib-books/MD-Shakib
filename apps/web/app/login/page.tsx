@@ -24,7 +24,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="bg-dark-surface border border-dark-border rounded-2xl p-8 md:p-10 shadow-luxury max-w-md mx-auto">
+    <div className="bg-dark-surface border border-dark-border rounded-2xl p-8 md:p-10 shadow-luxury max-w-md mx-auto animate-fade-in-up">
       <div className="text-center mb-8">
         <h1 className="font-serif text-2xl md:text-3xl font-bold uppercase text-[var(--color-primary-gold)]">
           Welcome Back

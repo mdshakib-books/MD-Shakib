@@ -74,7 +74,7 @@ export function BookCard({
   return (
     <Link
       href={`/books/${book.id}`}
-      className="group relative flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-luxury-hover hover:border-[#C9A24A]/60"
+      className="group relative flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] hover:-translate-y-1.5 hover:shadow-luxury-hover hover:border-[#C9A24A]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
     >
       {/* Discount Badge */}
       {hasDiscount && (
@@ -88,7 +88,7 @@ export function BookCard({
         type="button"
         aria-label="Save to Wishlist"
         onClick={handleWishlistClick}
-        className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-neutral-300 hover:text-red-400 hover:bg-black/70 hover:border-red-400/30 transition-colors cursor-pointer"
+        className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-neutral-300 hover:text-red-400 hover:bg-black/70 hover:border-red-400/30 active:scale-95 transition-all duration-[var(--duration-button)] cursor-pointer"
       >
         <svg
           className="w-4 h-4"
@@ -114,7 +114,7 @@ export function BookCard({
             "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400&h=300"
           }
           alt={book.title}
-          className="w-full h-full object-contain rounded shadow transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-contain rounded shadow transition-transform duration-500 [transition-timing-function:var(--ease-luxury)] group-hover:scale-[1.04]"
         />
       </div>
 
@@ -153,13 +153,13 @@ export function BookCard({
         type="button"
         onClick={handleCartClick}
         disabled={isOutOfStock}
-        className={`mt-4 w-full font-semibold py-2.5 px-3 rounded-lg text-xs md:text-sm flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer
+        className={`mt-4 w-full font-semibold py-2.5 px-3 rounded-lg text-xs md:text-sm flex items-center justify-center gap-2 transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] cursor-pointer
           ${
             isOutOfStock
               ? "bg-[#1C1C1C] text-neutral-500 cursor-not-allowed border border-[#2A2A2A]"
               : effectiveInCart
               ? "bg-transparent border border-[#C9A24A] text-[#C9A24A] hover:bg-[#C9A24A] hover:text-black"
-              : "bg-[#C9A24A] hover:bg-[#B89139] text-black shadow-md shadow-[#C9A24A]/10"
+              : "bg-[#C9A24A] hover:bg-[#B89139] text-black shadow-md shadow-[#C9A24A]/10 hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)]"
           }`}
       >
         {isOutOfStock ? (
