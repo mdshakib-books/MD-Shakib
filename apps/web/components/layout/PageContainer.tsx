@@ -5,12 +5,14 @@ export interface PageContainerProps {
   children: React.ReactNode;
   className?: string;
   size?: "sm" | "md" | "lg" | "full";
+  animate?: boolean;
 }
 
 export function PageContainer({
   children,
   className,
   size = "lg",
+  animate = true,
 }: PageContainerProps) {
   const sizeClasses = {
     sm: "max-w-3xl",
@@ -23,6 +25,7 @@ export function PageContainer({
     <div
       className={cn(
         "w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12",
+        animate && "animate-fade-in",
         sizeClasses[size],
         className
       )}

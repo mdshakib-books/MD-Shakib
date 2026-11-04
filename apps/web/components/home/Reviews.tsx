@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 interface ReviewItem {
   id: number;
@@ -65,37 +66,39 @@ export function Reviews({ customReviews }: { customReviews?: ReviewItem[] }) {
         <div className="w-16 h-0.5 bg-[#C9A24A]/70 rounded-full mt-4" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {reviews.map((review) => (
-          <div
-            key={review.id}
-            className="bg-[#141414] border border-[#262626] rounded-2xl p-6 sm:p-7 shadow-luxury hover:border-[#C9A24A]/50 transition-all duration-300 flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex space-x-1 mb-4" aria-label={`${review.rating} out of 5 stars`}>
-                {renderStars(review.rating)}
-              </div>
-              <p className="text-neutral-300 italic text-sm md:text-base leading-relaxed mb-6 font-light">
-                &ldquo;{review.review}&rdquo;
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-3 pt-4 border-t border-[#222222]">
-              <div className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#C9A24A]/40 flex items-center justify-center text-[#C9A24A] font-serif font-bold text-sm shadow-inner">
-                {review.name.charAt(0)}
-              </div>
+      <ScrollReveal>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {reviews.map((review) => (
+            <div
+              key={review.id}
+              className="bg-[#141414] border border-[#262626] rounded-2xl p-6 sm:p-7 shadow-luxury hover:border-[#C9A24A]/50 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] flex flex-col justify-between"
+            >
               <div>
-                <p className="font-semibold text-white text-sm">
-                  {review.name}
-                </p>
-                <p className="text-[11px] text-[#C9A24A] font-medium tracking-wide">
-                  {review.role || "Verified Reader"}
+                <div className="flex space-x-1 mb-4" aria-label={`${review.rating} out of 5 stars`}>
+                  {renderStars(review.rating)}
+                </div>
+                <p className="text-neutral-300 italic text-sm md:text-base leading-relaxed mb-6 font-light">
+                  &ldquo;{review.review}&rdquo;
                 </p>
               </div>
+
+              <div className="flex items-center space-x-3 pt-4 border-t border-[#222222]">
+                <div className="w-10 h-10 rounded-full bg-[#1C1C1C] border border-[#C9A24A]/40 flex items-center justify-center text-[#C9A24A] font-serif font-bold text-sm shadow-inner">
+                  {review.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-semibold text-white text-sm">
+                    {review.name}
+                  </p>
+                  <p className="text-[11px] text-[#C9A24A] font-medium tracking-wide">
+                    {review.role || "Verified Reader"}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </ScrollReveal>
     </section>
   );
 }

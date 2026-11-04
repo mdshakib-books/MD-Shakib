@@ -147,7 +147,7 @@ export function BooksCatalogClient({
               id="sort-select"
               value={currentSort}
               onChange={handleSortChange}
-              className="bg-[#141414] border border-[#2A2A2A] rounded-lg pl-3 pr-8 py-1.5 text-neutral-200 text-xs focus:outline-none focus:border-[#C9A24A] appearance-none cursor-pointer"
+              className="bg-[#141414] border border-[#2A2A2A] rounded-lg pl-3 pr-8 py-1.5 text-neutral-200 text-xs focus:outline-none focus:border-[#C9A24A] appearance-none cursor-pointer transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)]"
             >
               <option value="newest">Newest Arrivals</option>
               <option value="price_asc">Price: Low to High</option>
@@ -202,7 +202,7 @@ export function BooksCatalogClient({
             <button
               disabled={currentPage <= 1}
               onClick={() => updateFilters({ page: currentPage - 1 })}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition ${
+              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 ${
                 currentPage <= 1
                   ? "border-[#222222] text-neutral-600 cursor-not-allowed bg-transparent"
                   : "border-[#2A2A2A] bg-[#141414] text-neutral-300 hover:border-[#C9A24A] hover:text-[#C9A24A] cursor-pointer"
@@ -215,7 +215,7 @@ export function BooksCatalogClient({
               <button
                 key={p}
                 onClick={() => updateFilters({ page: p })}
-                className={`w-9 h-9 rounded-lg text-xs font-bold transition ${
+                className={`w-9 h-9 rounded-lg text-xs font-bold transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 ${
                   currentPage === p
                     ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20"
                     : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#3A3A3A] cursor-pointer"
@@ -228,7 +228,7 @@ export function BooksCatalogClient({
             <button
               disabled={currentPage >= totalPages}
               onClick={() => updateFilters({ page: currentPage + 1 })}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition ${
+              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 ${
                 currentPage >= totalPages
                   ? "border-[#222222] text-neutral-600 cursor-not-allowed bg-transparent"
                   : "border-[#2A2A2A] bg-[#141414] text-neutral-300 hover:border-[#C9A24A] hover:text-[#C9A24A] cursor-pointer"

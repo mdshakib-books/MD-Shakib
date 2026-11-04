@@ -60,19 +60,19 @@ export function AccountOverviewClient({ overview }: AccountOverviewClientProps) 
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 transition-colors shadow-luxury">
+        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] shadow-luxury">
           <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block">
             Total Orders
           </span>
           <span className="font-serif text-2xl md:text-3xl text-neutral-100 font-bold mt-2 block">
             {totalOrders}
           </span>
-          <Link href="/account/orders" className="text-[11px] text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] mt-2 inline-flex items-center gap-1 font-medium">
+          <Link href="/account/orders" className="text-[11px] text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] mt-2 inline-flex items-center gap-1 font-medium transition-colors">
             View history &rarr;
           </Link>
         </div>
 
-        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 transition-colors shadow-luxury">
+        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] shadow-luxury">
           <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block">
             Active Orders
           </span>
@@ -84,26 +84,26 @@ export function AccountOverviewClient({ overview }: AccountOverviewClientProps) 
           </span>
         </div>
 
-        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 transition-colors shadow-luxury">
+        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] shadow-luxury">
           <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block">
             Saved Addresses
           </span>
           <span className="font-serif text-2xl md:text-3xl text-neutral-100 font-bold mt-2 block">
             {savedAddressesCount}
           </span>
-          <Link href="/account/addresses" className="text-[11px] text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] mt-2 inline-flex items-center gap-1 font-medium">
+          <Link href="/account/addresses" className="text-[11px] text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] mt-2 inline-flex items-center gap-1 font-medium transition-colors">
             Manage destinations &rarr;
           </Link>
         </div>
 
-        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 transition-colors shadow-luxury">
+        <div className="bg-dark-surface border border-dark-border rounded-xl p-5 hover:border-[var(--color-primary-gold)]/40 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] shadow-luxury">
           <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block">
             Replacements
           </span>
           <span className="font-serif text-2xl md:text-3xl text-[var(--color-primary-gold)] font-bold mt-2 block">
             {activeReplacementsCount}
           </span>
-          <Link href="/account/replacements" className="text-[11px] text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] mt-2 inline-flex items-center gap-1 font-medium">
+          <Link href="/account/replacements" className="text-[11px] text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] mt-2 inline-flex items-center gap-1 font-medium transition-colors">
             View requests &rarr;
           </Link>
         </div>

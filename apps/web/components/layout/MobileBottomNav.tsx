@@ -231,11 +231,11 @@ export function MobileBottomNav() {
               key={item.name}
               type="button"
               onClick={() => router.push(item.route)}
-              className="flex flex-col items-center justify-center w-16 h-full transition-transform active:scale-95 touch-manipulation group cursor-pointer"
+              className="flex flex-col items-center justify-center w-16 h-full transition-transform duration-[var(--duration-micro)] active:scale-95 touch-manipulation group cursor-pointer"
             >
               {/* Icon Container */}
               <div
-                className={`relative flex items-center justify-center w-[36px] h-[36px] rounded-full transition-all duration-200 ${
+                className={`relative flex items-center justify-center w-[36px] h-[36px] rounded-full transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] ${
                   isActive
                     ? "bg-[#C9A24A]/15 text-[#C9A24A] border border-[#C9A24A]/40 shadow-[0_0_12px_rgba(201,162,74,0.35)] scale-105"
                     : "text-neutral-400 group-hover:text-neutral-200"
@@ -245,7 +245,7 @@ export function MobileBottomNav() {
 
                 {/* Cart Badge */}
                 {item.showBadge && itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                  <span className="absolute -top-1 -right-1 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pop">
                     {itemCount > 9 ? "9+" : itemCount}
                   </span>
                 )}
@@ -253,7 +253,7 @@ export function MobileBottomNav() {
 
               {/* Label */}
               <span
-                className={`text-[10px] font-medium tracking-wide mt-1 transition-colors duration-200 ${
+                className={`text-[10px] font-medium tracking-wide mt-1 transition-colors duration-[var(--duration-button)] ${
                   isActive ? "text-[#C9A24A] font-semibold" : "text-neutral-400 group-hover:text-neutral-200"
                 }`}
               >

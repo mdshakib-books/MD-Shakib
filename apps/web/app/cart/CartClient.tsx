@@ -103,10 +103,11 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
         <div className="grid lg:grid-cols-3 gap-8 min-w-0">
           {/* Left 2 Cols: Cart Item List */}
           <div className="lg:col-span-2 space-y-4 min-w-0">
-            {items.map((item) => (
+            {items.map((item, index) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 sm:gap-4 bg-[#141414] border border-[#262626] rounded-xl p-4 transition-all duration-200 hover:border-[#383838] min-w-0"
+                className="flex items-center gap-3 sm:gap-4 bg-[#141414] border border-[#262626] rounded-xl p-4 transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] hover:border-[#383838] min-w-0 animate-fade-in-up"
+                style={{ animationDelay: `${Math.min(index * 50, 300)}ms` }}
               >
                 <div className="w-14 h-20 sm:w-16 sm:h-22 flex-shrink-0 bg-[#0E0E0E] border border-[#222] rounded-lg overflow-hidden p-1 flex items-center justify-center shadow-inner">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -114,7 +115,7 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
                 </div>
 
                 <div className="flex-grow min-w-0">
-                  <Link href={`/books/${item.bookId}`} className="block hover:text-[#C9A24A] transition-colors">
+                  <Link href={`/books/${item.bookId}`} className="block hover:text-[#C9A24A] transition-colors duration-[var(--duration-button)]">
                     <h2 className="text-xs sm:text-sm font-semibold text-neutral-100 truncate">{item.title}</h2>
                   </Link>
                   {item.author && <p className="text-[11px] sm:text-xs text-neutral-400 mt-0.5 truncate font-light">By {item.author}</p>}
@@ -129,7 +130,7 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
                     <button
                       disabled={isPending}
                       onClick={() => handleQuantity(item.id, item.quantity - 1)}
-                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-colors"
+                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-transform duration-[var(--duration-micro)] active:scale-90"
                       aria-label="Decrease quantity"
                     >
                       −
@@ -138,7 +139,7 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
                     <button
                       disabled={isPending || (item.stock !== undefined && item.quantity >= item.stock)}
                       onClick={() => handleQuantity(item.id, item.quantity + 1)}
-                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-colors"
+                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-transform duration-[var(--duration-micro)] active:scale-90"
                       aria-label="Increase quantity"
                     >
                       +
@@ -148,7 +149,7 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
                   <button
                     disabled={isPending}
                     onClick={() => handleRemove(item.id)}
-                    className="w-8 h-8 rounded-lg bg-[#1C1C1C] text-neutral-400 hover:text-red-400 hover:bg-[#252525] flex items-center justify-center transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-lg bg-[#1C1C1C] text-neutral-400 hover:text-red-400 hover:bg-[#252525] flex items-center justify-center transition-all duration-[var(--duration-button)] active:scale-95 cursor-pointer"
                     title="Remove item"
                     aria-label="Remove item"
                   >

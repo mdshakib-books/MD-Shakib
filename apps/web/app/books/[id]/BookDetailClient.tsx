@@ -100,7 +100,7 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
               <img
                 src={selectedImage}
                 alt={book.title}
-                className="w-full h-full object-contain rounded-lg shadow-md transition-transform duration-300"
+                className="w-full h-full object-contain rounded-lg shadow-md transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)]"
               />
               {hasDiscount && (
                 <span className="absolute top-4 left-4 bg-[#FFF5D1] text-black text-xs font-bold px-2.5 py-1 rounded shadow uppercase tracking-wide">
@@ -117,10 +117,10 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                     key={i}
                     type="button"
                     onClick={() => setSelectedImage(img)}
-                    className={`w-16 h-20 rounded-lg border overflow-hidden p-1 bg-[#141414] cursor-pointer transition-all ${
+                    className={`w-16 h-20 rounded-lg border overflow-hidden p-1 bg-[#141414] cursor-pointer transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] ${
                       selectedImage === img
-                        ? "border-[#C9A24A] shadow-md shadow-[#C9A24A]/20"
-                        : "border-[#2A2A2A] opacity-60 hover:opacity-100"
+                        ? "border-[#C9A24A] shadow-md shadow-[#C9A24A]/20 scale-105"
+                        : "border-[#2A2A2A] opacity-60 hover:opacity-100 hover:border-[#383838]"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -262,7 +262,7 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                   type="button"
                   disabled={isOutOfStock || quantity <= 1}
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
+                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-transform duration-[var(--duration-micro)] active:scale-90 cursor-pointer"
                   aria-label="Decrease quantity"
                 >
                   −
@@ -272,7 +272,7 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                   type="button"
                   disabled={isOutOfStock || (book.stock !== undefined && quantity >= book.stock)}
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
+                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-transform duration-[var(--duration-micro)] active:scale-90 cursor-pointer"
                   aria-label="Increase quantity"
                 >
                   +
@@ -283,14 +283,14 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                 type="button"
                 disabled={isOutOfStock || isSubmitting}
                 onClick={handleAddToCart}
-                className={`w-full sm:flex-1 h-11 px-4 rounded-lg font-semibold text-xs md:text-sm tracking-wider transition-all duration-200 flex items-center justify-center gap-2 shadow-md ${
+                className={`w-full sm:flex-1 h-11 px-4 rounded-lg font-semibold text-xs md:text-sm tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] flex items-center justify-center gap-2 shadow-md ${
                   isOutOfStock
                     ? "bg-[#1C1C1C] text-neutral-500 cursor-not-allowed border border-[#2A2A2A]"
                     : added
-                    ? "bg-emerald-600 text-white"
+                    ? "bg-emerald-600 text-white shadow-emerald-900/30"
                     : inCart
                     ? "bg-transparent border border-[#C9A24A] text-[#C9A24A] hover:bg-[#C9A24A] hover:text-black cursor-pointer"
-                    : "bg-[#C9A24A] text-black hover:bg-[#B89139] cursor-pointer"
+                    : "bg-[#C9A24A] text-black hover:bg-[#B89139] hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] cursor-pointer"
                 }`}
               >
                 {isOutOfStock ? (
@@ -320,7 +320,7 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                 type="button"
                 disabled={isOutOfStock || isSubmitting}
                 onClick={handleBuyNow}
-                className="w-full sm:flex-1 h-11 px-4 rounded-lg font-semibold text-xs md:text-sm tracking-wider bg-[#C9A24A] text-black hover:bg-[#B89139] transition-all duration-200 shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:flex-1 h-11 px-4 rounded-lg font-semibold text-xs md:text-sm tracking-wider bg-[#C9A24A] text-black hover:bg-[#B89139] hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />

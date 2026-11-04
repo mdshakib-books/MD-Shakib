@@ -34,8 +34,8 @@ export function AdminMetricCard({
   const cardContent = (
     <div
       className={cn(
-        "bg-[#161616] border border-[#2A2A2A] rounded-xl p-5 sm:p-6 transition-all duration-200 relative overflow-hidden group",
-        href && "hover:border-[#C9A24A]/50 hover:bg-[#1A1A1A] cursor-pointer",
+        "bg-[#161616] border border-[#2A2A2A] rounded-xl p-5 sm:p-6 transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] relative overflow-hidden group",
+        href && "hover:border-[#C9A24A]/50 hover:-translate-y-1 hover:shadow-luxury-hover hover:bg-[#1A1A1A] cursor-pointer",
         className
       )}
     >
@@ -46,7 +46,7 @@ export function AdminMetricCard({
         {icon && (
           <div
             className={cn(
-              "w-9 h-9 rounded-lg border flex items-center justify-center text-sm font-serif font-bold transition-transform group-hover:scale-105",
+              "w-9 h-9 rounded-lg border flex items-center justify-center text-sm font-serif font-bold transition-transform duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] group-hover:scale-105",
               iconVariants[iconVariant]
             )}
           >

@@ -26,13 +26,13 @@ export function ProductGrid({
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            className="flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 animate-pulse"
+            className="flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 overflow-hidden relative"
           >
-            <div className="w-full aspect-[3/4] mb-4 rounded-lg bg-[#1F1F1F]" />
-            <div className="h-4 bg-[#1F1F1F] rounded mb-2 w-3/4" />
-            <div className="h-3 bg-[#1F1F1F] rounded mb-4 w-1/2" />
-            <div className="h-5 bg-[#1F1F1F] rounded w-1/3 mb-4" />
-            <div className="h-10 bg-[#1F1F1F] rounded-lg mt-auto" />
+            <div className="w-full aspect-[3/4] mb-4 rounded-lg bg-[#1C1C1C] skeleton-shimmer" />
+            <div className="h-4 bg-[#1C1C1C] skeleton-shimmer rounded mb-2 w-3/4" />
+            <div className="h-3 bg-[#1C1C1C] skeleton-shimmer rounded mb-4 w-1/2" />
+            <div className="h-5 bg-[#1C1C1C] skeleton-shimmer rounded w-1/3 mb-4" />
+            <div className="h-10 bg-[#1C1C1C] skeleton-shimmer rounded-lg mt-auto" />
           </div>
         ))}
       </div>
@@ -52,14 +52,19 @@ export function ProductGrid({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-      {books.map((book) => (
-        <BookCard
+      {books.map((book, index) => (
+        <div
           key={book.id}
-          book={book}
-          inCart={cartBookIds !== undefined ? cartBookIds.includes(book.id) : undefined}
-          onAddToCart={onAddToCart}
-          onGoToCart={onGoToCart}
-        />
+          className="animate-fade-in-up"
+          style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
+        >
+          <BookCard
+            book={book}
+            inCart={cartBookIds !== undefined ? cartBookIds.includes(book.id) : undefined}
+            onAddToCart={onAddToCart}
+            onGoToCart={onGoToCart}
+          />
+        </div>
       ))}
     </div>
   );
@@ -82,7 +87,7 @@ export function CategoryTabs({
         type="button"
         onClick={() => onSelectCategory("")}
         className={cn(
-          "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer",
+          "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 cursor-pointer",
           !activeCategory
             ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20 font-bold"
             : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#C9A24A]/50 hover:bg-[#1A1A1A]"
@@ -97,7 +102,7 @@ export function CategoryTabs({
           type="button"
           onClick={() => onSelectCategory(cat)}
           className={cn(
-            "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer",
+            "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 cursor-pointer",
             activeCategory === cat
               ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20 font-bold"
               : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#C9A24A]/50 hover:bg-[#1A1A1A]"

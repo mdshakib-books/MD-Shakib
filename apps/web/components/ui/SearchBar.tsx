@@ -53,7 +53,7 @@ export function SearchBar({
           onChange={(e) => setQuery(e.target.value)}
           autoFocus={autoFocus}
           placeholder={placeholder}
-          className="w-full h-10 px-4 pr-10 bg-[#0B0B0B] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#9CA3AF] rounded-full text-sm focus:outline-none focus:border-[#C9A24A] focus:shadow-[0_0_10px_rgba(201,162,74,0.25)] transition-all duration-200"
+          className="w-full h-10 px-4 pr-10 bg-[#0B0B0B] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#9CA3AF] rounded-full text-sm focus:outline-none focus:border-[#C9A24A] focus:shadow-[0_0_12px_rgba(201,162,74,0.25)] transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)]"
         />
 
         {/* Search Icon */}
@@ -76,7 +76,7 @@ export function SearchBar({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-10 top-1/2 transform -translate-y-1/2 text-[#9CA3AF] hover:text-[#C9A24A] transition-colors p-1 cursor-pointer"
+            className="absolute right-10 top-1/2 transform -translate-y-1/2 text-[#9CA3AF] hover:text-[#C9A24A] transition-colors duration-[var(--duration-micro)] p-1 cursor-pointer animate-fade-in"
             title="Clear search"
           >
             <svg
