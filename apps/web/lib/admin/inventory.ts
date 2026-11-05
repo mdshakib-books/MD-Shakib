@@ -174,6 +174,8 @@ export async function adjustAdminStock(payload: AdjustStockPayload): Promise<{
   revalidatePath("/admin/books");
   revalidatePath("/admin");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
   revalidatePath(`/books/${bookId}`);
 
   return {

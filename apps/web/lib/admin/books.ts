@@ -188,6 +188,8 @@ export async function createAdminBook(input: BookInput): Promise<{
   revalidatePath("/admin/inventory");
   revalidatePath("/admin");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
 
   return { success: true, book: newBook };
 }
@@ -316,6 +318,8 @@ export async function updateAdminBook(
   revalidatePath("/admin/inventory");
   revalidatePath("/admin");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
   revalidatePath(`/books/${id}`);
 
   return { success: true, book: updated };
@@ -374,6 +378,8 @@ export async function deleteAdminBook(id: string): Promise<{
     revalidatePath("/admin/books");
     revalidatePath("/admin/inventory");
     revalidatePath("/catalog");
+    revalidatePath("/books");
+    revalidatePath("/");
     revalidatePath(`/books/${id}`);
 
     return {
@@ -402,6 +408,8 @@ export async function deleteAdminBook(id: string): Promise<{
   revalidatePath("/admin/inventory");
   revalidatePath("/admin");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
 
   return {
     success: true,
@@ -438,6 +446,8 @@ export async function toggleBookStatus(
 
   revalidatePath("/admin/books");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
   revalidatePath(`/books/${id}`);
 
   return { success: true };

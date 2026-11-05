@@ -115,6 +115,8 @@ export async function createAdminCategory(input: CategoryInput): Promise<{
   revalidatePath("/admin/categories");
   revalidatePath("/admin/books");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
 
   return { success: true, category: newCategory };
 }
@@ -201,6 +203,8 @@ export async function updateAdminCategory(
   revalidatePath("/admin/categories");
   revalidatePath("/admin/books");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
 
   return { success: true, category: updated };
 }
@@ -261,6 +265,8 @@ export async function deleteAdminCategory(id: string): Promise<{
   revalidatePath("/admin/categories");
   revalidatePath("/admin/books");
   revalidatePath("/catalog");
+  revalidatePath("/books");
+  revalidatePath("/");
 
   return { success: true };
 }
