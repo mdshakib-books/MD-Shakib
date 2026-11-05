@@ -18,7 +18,7 @@ export default async function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
       <Navbar />
 
-      <main className="flex-grow py-12 px-4 md:px-6">
+      <main id="main-content" className="flex-grow py-12 px-4 md:px-6">
         <ProfileClient initialProfile={profile} />
       </main>
 

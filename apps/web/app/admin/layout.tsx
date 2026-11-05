@@ -20,7 +20,7 @@ export default async function AdminLayout({
         adminName={profile.name || "Administrator"}
         adminEmail={profile.email || ""}
       />
-      <main className="flex-1 overflow-x-hidden min-h-[calc(100vh-60px)] lg:min-h-screen p-4 sm:p-6 lg:p-10">
+      <main id="main-content" className="flex-1 overflow-x-hidden min-h-[calc(100vh-60px)] lg:min-h-screen p-4 sm:p-6 lg:p-10">
         {children}
       </main>
     </div>

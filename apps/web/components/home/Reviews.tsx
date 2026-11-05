@@ -40,6 +40,7 @@ function renderStars(rating: number) {
   return Array.from({ length: 5 }).map((_, i) => (
     <svg
       key={i}
+      aria-hidden="true"
       className={`w-4 h-4 ${
         i < rating ? "text-[#C9A24A] fill-current" : "text-neutral-700"
       }`}
@@ -74,7 +75,7 @@ export function Reviews({ customReviews }: { customReviews?: ReviewItem[] }) {
               className="bg-[#141414] border border-[#262626] rounded-2xl p-6 sm:p-7 shadow-luxury hover:border-[#C9A24A]/50 hover:-translate-y-1 hover:shadow-luxury-hover transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] flex flex-col justify-between"
             >
               <div>
-                <div className="flex space-x-1 mb-4" aria-label={`${review.rating} out of 5 stars`}>
+                <div className="flex space-x-1 mb-4" role="img" aria-label={`${review.rating} out of 5 stars`}>
                   {renderStars(review.rating)}
                 </div>
                 <p className="text-neutral-300 italic text-sm md:text-base leading-relaxed mb-6 font-light">

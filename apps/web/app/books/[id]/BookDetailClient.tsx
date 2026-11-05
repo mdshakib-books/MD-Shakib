@@ -111,20 +111,22 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
 
             {/* Thumbnail List */}
             {book.images && book.images.length > 1 && (
-              <div className="flex gap-3 mt-4 overflow-x-auto max-w-md pb-2">
+              <div className="flex gap-3 mt-4 overflow-x-auto max-w-md pb-2" role="group" aria-label="Book image gallery">
                 {book.images.map((img, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={() => setSelectedImage(img)}
-                    className={`w-16 h-20 rounded-lg border overflow-hidden p-1 bg-[#141414] cursor-pointer transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] ${
+                    aria-label={`View image ${i + 1} of ${book.images?.length || 1}`}
+                    aria-pressed={selectedImage === img}
+                    className={`w-16 h-20 rounded-lg border overflow-hidden p-1 bg-[#141414] cursor-pointer transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] ${
                       selectedImage === img
                         ? "border-[#C9A24A] shadow-md shadow-[#C9A24A]/20 scale-105"
                         : "border-[#2A2A2A] opacity-60 hover:opacity-100 hover:border-[#383838]"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img} alt="Thumbnail" className="w-full h-full object-cover rounded" />
+                    <img src={img} alt="" className="w-full h-full object-cover rounded" />
                   </button>
                 ))}
               </div>
@@ -262,18 +264,18 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                   type="button"
                   disabled={isOutOfStock || quantity <= 1}
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-transform duration-[var(--duration-micro)] active:scale-90 cursor-pointer"
-                  aria-label="Decrease quantity"
+                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-transform duration-[var(--duration-micro)] active:scale-90 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A24A]"
+                  aria-label={`Decrease quantity of ${book.title}`}
                 >
                   −
                 </button>
-                <span className="px-3 text-sm font-semibold text-white">{quantity}</span>
+                <span className="px-3 text-sm font-semibold text-white" aria-live="polite" aria-label={`Quantity: ${quantity}`}>{quantity}</span>
                 <button
                   type="button"
                   disabled={isOutOfStock || (book.stock !== undefined && quantity >= book.stock)}
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-transform duration-[var(--duration-micro)] active:scale-90 cursor-pointer"
-                  aria-label="Increase quantity"
+                  className="px-3.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 transition-transform duration-[var(--duration-micro)] active:scale-90 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A24A]"
+                  aria-label={`Increase quantity of ${book.title}`}
                 >
                   +
                 </button>
@@ -283,9 +285,16 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                 type="button"
                 disabled={isOutOfStock || isSubmitting}
                 onClick={handleAddToCart}
-                className={`w-full sm:flex-1 h-11 px-4 rounded-lg font-semibold text-xs md:text-sm tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] flex items-center justify-center gap-2 shadow-md ${
+                aria-label={
                   isOutOfStock
-                    ? "bg-[#1C1C1C] text-neutral-500 cursor-not-allowed border border-[#2A2A2A]"
+                    ? `${book.title} is out of stock`
+                    : inCart
+                    ? `Go to cart for ${book.title}`
+                    : `Add ${book.title} to cart`
+                }
+                className={`w-full sm:flex-1 h-11 px-4 rounded-lg font-semibold text-xs md:text-sm tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] flex items-center justify-center gap-2 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0B0B] ${
+                  isOutOfStock
+                    ? "bg-[#1C1C1C] text-neutral-400 cursor-not-allowed border border-[#2A2A2A]"
                     : added
                     ? "bg-emerald-600 text-white shadow-emerald-900/30"
                     : inCart

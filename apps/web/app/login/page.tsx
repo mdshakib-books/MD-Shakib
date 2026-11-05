@@ -35,8 +35,12 @@ function LoginForm() {
       </div>
 
       {messageParam === "password_updated" && (
-        <div className="mb-5 p-3.5 rounded-lg bg-emerald-950/20 border border-emerald-800/40 text-emerald-400 text-xs text-center flex items-center justify-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-5 p-3.5 rounded-lg bg-emerald-950/20 border border-emerald-800/40 text-emerald-400 text-xs text-center flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
           </svg>
           <span>Password updated successfully. Please log in with your new credentials.</span>
@@ -44,8 +48,12 @@ function LoginForm() {
       )}
 
       {state?.error && (
-        <div className="mb-5 p-3.5 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs text-center flex items-center justify-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-5 p-3.5 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs text-center flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{state.error}</span>
@@ -76,7 +84,8 @@ function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer select-none"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-3 top-8 text-neutral-400 hover:text-white text-xs cursor-pointer select-none rounded px-1.5 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
           >
             {showPassword ? "Hide" : "Show"}
           </button>
@@ -119,7 +128,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col bg-dark-bg text-white">
       <Navbar />
 
-      <main className="flex-grow flex items-center justify-center py-16 px-4">
+      <main id="main-content" className="flex-grow flex items-center justify-center py-16 px-4">
         <PageContainer size="sm">
           <Suspense fallback={<div className="text-center py-12 text-neutral-500">Loading login form...</div>}>
             <LoginForm />

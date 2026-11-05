@@ -72,9 +72,8 @@ export function BookCard({
   };
 
   return (
-    <Link
-      href={`/books/${book.id}`}
-      className="group relative flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] hover:-translate-y-1.5 hover:shadow-luxury-hover hover:border-[#C9A24A]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
+    <article
+      className="group relative flex flex-col bg-[#141414] border border-[#2A2A2A] rounded-xl p-4 transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] hover:-translate-y-1.5 hover:shadow-luxury-hover hover:border-[#C9A24A]/60 focus-within:border-[#C9A24A]/60"
     >
       {/* Discount Badge */}
       {hasDiscount && (
@@ -86,37 +85,43 @@ export function BookCard({
       {/* Wishlist Button */}
       <button
         type="button"
-        aria-label="Save to Wishlist"
+        aria-label={`Save ${book.title} to Wishlist`}
         onClick={handleWishlistClick}
-        className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-neutral-300 hover:text-red-400 hover:bg-black/70 hover:border-red-400/30 active:scale-95 transition-all duration-[var(--duration-button)] cursor-pointer"
+        className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-neutral-300 hover:text-red-400 hover:bg-black/70 hover:border-red-400/30 active:scale-95 transition-all duration-[var(--duration-button)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
       >
         <svg
           className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth="1.75"
+            strokeWidth={1.75}
             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
           />
         </svg>
       </button>
 
       {/* Book Image Presentation */}
-      <div className="relative w-full aspect-[3/4] mb-4 overflow-hidden rounded-lg bg-[#0E0E0E] border border-[#222222] flex items-center justify-center p-3 shadow-inner">
+      <Link
+        href={`/books/${book.id}`}
+        tabIndex={-1}
+        aria-hidden="true"
+        className="relative w-full aspect-[3/4] mb-4 overflow-hidden rounded-lg bg-[#0E0E0E] border border-[#222222] flex items-center justify-center p-3 shadow-inner"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={
             book.imageUrl ||
             "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400&h=300"
           }
-          alt={book.title}
+          alt=""
           className="w-full h-full object-contain rounded shadow transition-transform duration-500 [transition-timing-function:var(--ease-luxury)] group-hover:scale-[1.04]"
         />
-      </div>
+      </Link>
 
       {/* Book Details */}
       <div className="flex-grow flex flex-col justify-between">
@@ -126,9 +131,14 @@ export function BookCard({
               {book.category}
             </p>
           )}
-          <h3 className="font-serif text-sm md:text-base font-medium text-neutral-100 line-clamp-2 leading-snug mb-1">
-            {book.title}
-          </h3>
+          <Link
+            href={`/books/${book.id}`}
+            className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] rounded"
+          >
+            <h3 className="font-serif text-sm md:text-base font-medium text-neutral-100 line-clamp-2 leading-snug mb-1 group-hover:text-[#C9A24A] transition-colors">
+              {book.title}
+            </h3>
+          </Link>
           {book.author && (
             <p className="text-xs text-neutral-400 line-clamp-1 mb-2 font-light">
               By <span className="text-neutral-300">{book.author}</span>
@@ -141,7 +151,7 @@ export function BookCard({
             {formatPrice(discountedPrice)}
           </span>
           {hasDiscount && (
-            <span className="text-neutral-500 text-xs line-through">
+            <span className="text-neutral-400 text-xs line-through">
               {formatPrice(originalPrice)}
             </span>
           )}
@@ -153,10 +163,17 @@ export function BookCard({
         type="button"
         onClick={handleCartClick}
         disabled={isOutOfStock}
-        className={`mt-4 w-full font-semibold py-2.5 px-3 rounded-lg text-xs md:text-sm flex items-center justify-center gap-2 transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] cursor-pointer
+        aria-label={
+          isOutOfStock
+            ? `${book.title} is out of stock`
+            : effectiveInCart
+            ? `Go to cart for ${book.title}`
+            : `Add ${book.title} to cart`
+        }
+        className={`mt-4 w-full font-semibold py-2.5 px-3 rounded-lg text-xs md:text-sm flex items-center justify-center gap-2 transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#141414]
           ${
             isOutOfStock
-              ? "bg-[#1C1C1C] text-neutral-500 cursor-not-allowed border border-[#2A2A2A]"
+              ? "bg-[#1C1C1C] text-neutral-400 cursor-not-allowed border border-[#2A2A2A]"
               : effectiveInCart
               ? "bg-transparent border border-[#C9A24A] text-[#C9A24A] hover:bg-[#C9A24A] hover:text-black"
               : "bg-[#C9A24A] hover:bg-[#B89139] text-black shadow-md shadow-[#C9A24A]/10 hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)]"
@@ -171,11 +188,12 @@ export function BookCard({
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="1.75"
+                strokeWidth={1.75}
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
@@ -188,11 +206,12 @@ export function BookCard({
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="1.75"
+                strokeWidth={1.75}
                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
               />
             </svg>
@@ -200,6 +219,6 @@ export function BookCard({
           </>
         )}
       </button>
-    </Link>
+    </article>
   );
 }

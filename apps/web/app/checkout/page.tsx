@@ -27,7 +27,7 @@ export default async function CheckoutPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
       <Navbar cartCount={cart.itemCount} />
-      <main className="flex-grow pb-16">
+      <main id="main-content" className="flex-grow pb-16">
         <CheckoutClient cart={cart} addresses={addresses} />
       </main>
       <Footer />

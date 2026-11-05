@@ -32,8 +32,12 @@ function RegisterForm() {
       </div>
 
       {state?.error && (
-        <div className="mb-5 p-3.5 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs text-center flex items-center justify-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-5 p-3.5 rounded-lg bg-red-950/20 border border-red-800/40 text-red-400 text-xs text-center flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{state.error}</span>
@@ -97,7 +101,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex flex-col bg-dark-bg text-white">
       <Navbar />
 
-      <main className="flex-grow flex items-center justify-center py-16 px-4">
+      <main id="main-content" className="flex-grow flex items-center justify-center py-16 px-4">
         <PageContainer size="sm">
           <Suspense fallback={<div className="text-center py-12 text-neutral-400">Loading registration...</div>}>
             <RegisterForm />

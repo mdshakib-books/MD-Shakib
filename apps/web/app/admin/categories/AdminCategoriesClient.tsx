@@ -33,6 +33,21 @@ export function AdminCategoriesClient({ initialCategories }: AdminCategoriesClie
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Keyboard Escape dismissal for modals
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isModalOpen) setIsModalOpen(false);
+        if (deletingCat) {
+          setDeletingCat(null);
+          setDeleteError(null);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen, deletingCat]);
+
   const openCreateModal = () => {
     setEditingCategory(null);
     setName("");
@@ -224,15 +239,20 @@ export function AdminCategoriesClient({ initialCategories }: AdminCategoriesClie
 
       {/* CREATE / EDIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="category-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">
+            <h3 id="category-modal-title" className="text-base font-bold text-white mb-4">
               {editingCategory ? "Edit Category" : "Add New Category"}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {formError && (
-                <div className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
+                <div role="alert" aria-live="assertive" className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
                   {formError}
                 </div>
               )}
@@ -327,13 +347,18 @@ export function AdminCategoriesClient({ initialCategories }: AdminCategoriesClie
 
       {/* DELETE CONFIRMATION MODAL */}
       {deletingCat && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-category-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-red-400 mb-2">Delete Category</h3>
+            <h3 id="delete-category-modal-title" className="text-base font-bold text-red-400 mb-2">Delete Category</h3>
 
             {deleteError ? (
               <div className="space-y-4">
-                <div className="p-3 bg-red-950/60 border border-red-800 text-red-200 text-xs rounded-lg">
+                <div role="alert" aria-live="assertive" className="p-3 bg-red-950/60 border border-red-800 text-red-200 text-xs rounded-lg">
                   {deleteError}
                 </div>
                 <div className="flex justify-end">

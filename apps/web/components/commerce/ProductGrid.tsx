@@ -82,12 +82,18 @@ export function CategoryTabs({
   onSelectCategory,
 }: CategoryTabsProps) {
   return (
-    <div className="flex justify-start md:justify-center items-center space-x-2.5 overflow-x-auto py-3 scrollbar-none px-1">
+    <div
+      role="tablist"
+      aria-label="Book categories"
+      className="flex justify-start md:justify-center items-center space-x-2.5 overflow-x-auto py-3 scrollbar-none px-1"
+    >
       <button
         type="button"
+        role="tab"
+        aria-selected={!activeCategory}
         onClick={() => onSelectCategory("")}
         className={cn(
-          "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 cursor-pointer",
+          "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0B0B]",
           !activeCategory
             ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20 font-bold"
             : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#C9A24A]/50 hover:bg-[#1A1A1A]"
@@ -100,9 +106,11 @@ export function CategoryTabs({
         <button
           key={cat}
           type="button"
+          role="tab"
+          aria-selected={activeCategory === cat}
           onClick={() => onSelectCategory(cat)}
           className={cn(
-            "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 cursor-pointer",
+            "px-5 py-2 rounded-full whitespace-nowrap text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0B0B]",
             activeCategory === cat
               ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20 font-bold"
               : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#C9A24A]/50 hover:bg-[#1A1A1A]"

@@ -45,7 +45,7 @@ export default async function OrdersPage() {
     <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
       <Navbar />
 
-      <main className="flex-grow py-12 px-4 md:px-6">
+      <main id="main-content" className="flex-grow py-12 px-4 md:px-6">
         <PageContainer size="md">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>

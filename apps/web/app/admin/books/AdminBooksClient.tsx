@@ -63,6 +63,22 @@ export function AdminBooksClient({
   const [category, setCategory] = useState(categories[0]?.name || "Quran");
   const [language, setLanguage] = useState("English / Arabic");
   const [pages, setPages] = useState<number | "">(350);
+
+  // Keyboard Escape dismissal for modals
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isFormOpen) setIsFormOpen(false);
+        if (stockModalBook) setStockModalBook(null);
+        if (deletingBook) {
+          setDeletingBook(null);
+          setDeleteNotice(null);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFormOpen, stockModalBook, deletingBook]);
   const [publisher, setPublisher] = useState("");
   const [publishedDate, setPublishedDate] = useState("");
   const [coverImage, setCoverImage] = useState("");
@@ -477,19 +493,24 @@ export function AdminBooksClient({
 
       {/* ADD / EDIT BOOK MODAL */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-y-auto">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-book-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-y-auto"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
             <div className="p-5 border-b border-[#262626] flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white font-serif">
+              <h2 id="admin-book-modal-title" className="text-lg font-bold text-white font-serif">
                 {editingBook ? `Edit Book: ${editingBook.title}` : "Add New Catalog Book"}
               </h2>
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
-                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition"
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                 aria-label="Close modal"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -497,7 +518,7 @@ export function AdminBooksClient({
 
             <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
               {formError && (
-                <div className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
+                <div role="alert" aria-live="assertive" className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
                   {formError}
                 </div>
               )}
@@ -700,9 +721,14 @@ export function AdminBooksClient({
 
       {/* QUICK INVENTORY ADJUSTMENT MODAL */}
       {stockModalBook && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="stock-adjust-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-1">Adjust Inventory Stock</h3>
+            <h3 id="stock-adjust-modal-title" className="text-base font-bold text-white mb-1">Adjust Inventory Stock</h3>
             <p className="text-xs text-gray-400 mb-4">
               Book: <span className="text-white font-medium">{stockModalBook.title}</span> (Current:{" "}
               <span className="text-amber-400 font-bold">{stockModalBook.stock}</span> units)
@@ -785,9 +811,14 @@ export function AdminBooksClient({
 
       {/* DELETE / ARCHIVE CONFIRMATION MODAL */}
       {deletingBook && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-archive-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-red-400 mb-2">Delete or Archive Book</h3>
+            <h3 id="delete-archive-modal-title" className="text-base font-bold text-red-400 mb-2">Delete or Archive Book</h3>
 
             {deleteNotice ? (
               <div className="space-y-4">

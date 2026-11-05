@@ -41,6 +41,8 @@ export function Modal({
         );
         if (focusables.length > 0) {
           focusables[0].focus();
+        } else {
+          modalRef.current.focus();
         }
       }
     }, 50);
@@ -109,10 +111,11 @@ export function Modal({
         ref={modalRef}
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         className={cn(
-          "bg-[#161616] border border-[#2A2A2A] rounded-2xl p-6 sm:p-7 w-full shadow-2xl relative text-left animate-scale-in transition-all",
+          "bg-[#161616] border border-[#2A2A2A] rounded-2xl p-6 sm:p-7 w-full shadow-2xl relative text-left animate-scale-in transition-all max-h-[90vh] overflow-y-auto focus:outline-none",
           sizeClasses[size]
         )}
       >
@@ -121,13 +124,14 @@ export function Modal({
           type="button"
           onClick={onClose}
           aria-label="Close dialog"
-          className="absolute top-5 right-5 w-8 h-8 rounded-lg bg-[#222222] text-neutral-400 hover:text-white hover:bg-[#2A2A2A] flex items-center justify-center transition-colors duration-[var(--duration-button)] cursor-pointer"
+          className="absolute top-5 right-5 w-8 h-8 rounded-lg bg-[#222222] text-neutral-400 hover:text-white hover:bg-[#2A2A2A] flex items-center justify-center transition-colors duration-[var(--duration-button)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
         >
           <svg
             className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"

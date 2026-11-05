@@ -42,6 +42,21 @@ export function AdminUsersClient({
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Keyboard Escape dismissal for modals
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (selectedCustomerId) setSelectedCustomerId(null);
+        if (actionTarget) {
+          setActionTarget(null);
+          setActionError(null);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedCustomerId, actionTarget]);
+
   const openCustomerDetails = async (customerId: string) => {
     setSelectedCustomerId(customerId);
     setIsLoadingDetails(true);
@@ -291,20 +306,25 @@ export function AdminUsersClient({
 
       {/* CUSTOMER DETAILS MODAL */}
       {selectedCustomerId && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="customer-details-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
             <div className="p-5 border-b border-[#262626] flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">Customer Profile & Order History</h3>
+                <h3 id="customer-details-modal-title" className="text-base font-bold text-white">Customer Profile & Order History</h3>
                 <p className="text-xs text-gray-400 mt-0.5">Authoritative user snapshot</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedCustomerId(null)}
-                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition"
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                 aria-label="Close modal"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -437,14 +457,19 @@ export function AdminUsersClient({
 
       {/* STATUS ACTION CONFIRMATION MODAL */}
       {actionTarget && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="user-status-action-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-2">
+            <h3 id="user-status-action-modal-title" className="text-base font-bold text-white mb-2">
               Confirm Account Action: {actionTarget.action}
             </h3>
 
             {actionError && (
-              <div className="p-3 bg-red-950/60 border border-red-800 text-red-200 text-xs rounded-lg mb-3">
+              <div role="alert" aria-live="assertive" className="p-3 bg-red-950/60 border border-red-800 text-red-200 text-xs rounded-lg mb-3">
                 {actionError}
               </div>
             )}

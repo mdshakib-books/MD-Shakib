@@ -49,7 +49,7 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
     <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
       <Navbar />
 
-      <main className="flex-grow w-full pb-16">
+      <main id="main-content" className="flex-grow w-full pb-16">
         {/* Hero Header */}
         <section className="text-center py-16 px-4">
           <h1 className="text-3xl md:text-5xl font-serif tracking-wide uppercase">

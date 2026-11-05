@@ -139,8 +139,15 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
         </p>
 
         {errorMsg && (
-          <div className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
-            {errorMsg}
+          <div role="alert" className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center justify-between">
+            <span>{errorMsg}</span>
+            <button
+              type="button"
+              onClick={() => setErrorMsg(null)}
+              className="text-neutral-400 hover:text-white ml-2 text-xs underline focus-visible:ring-1 focus-visible:ring-[#C9A24A] rounded"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
@@ -148,12 +155,12 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
           {/* Left 2 Cols: Shipping Address & Payment Selection */}
           <div className="lg:col-span-2 space-y-6">
             {/* Step 1: Select Shipping Address */}
-            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-luxury">
+            <fieldset className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-luxury">
               <div className="flex items-center justify-between pb-3.5 border-b border-[#262626] mb-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200">
+                <legend className="text-xs font-semibold uppercase tracking-wider text-neutral-200">
                   1. Delivery Destination
-                </h2>
-                <Link href="/addresses" className="text-xs text-[#C9A24A] hover:underline font-medium">
+                </legend>
+                <Link href="/addresses" className="text-xs text-[#C9A24A] hover:underline font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A24A] rounded">
                   + Manage Addresses
                 </Link>
               </div>
@@ -161,8 +168,11 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
               {addresses.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-xs text-neutral-400 mb-4 font-light">No delivery address found.</p>
-                  <Link href="/addresses">
-                    <Button variant="primary" size="sm">Add Shipping Address</Button>
+                  <Link
+                    href="/addresses"
+                    className="inline-flex items-center justify-center font-medium rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] bg-[#C9A24A] hover:bg-[#B89139] text-black font-semibold text-xs px-4 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
+                  >
+                    Add Shipping Address
                   </Link>
                 </div>
               ) : (
@@ -170,7 +180,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                   {addresses.map((addr) => (
                     <label
                       key={addr.id}
-                      className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] ${
+                      className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] focus-within:ring-2 focus-within:ring-[#C9A24A] ${
                         selectedAddressId === addr.id
                           ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-[0_0_15px_rgba(201,162,74,0.1)]"
                           : "border-[#262626] hover:border-[#383838]"
@@ -182,7 +192,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                         value={addr.id}
                         checked={selectedAddressId === addr.id}
                         onChange={() => setSelectedAddressId(addr.id)}
-                        className="mt-1 accent-[#C9A24A]"
+                        className="mt-1 accent-[#C9A24A] focus:outline-none"
                       />
                       <div className="text-xs flex-grow">
                         <div className="flex items-center space-x-2">
@@ -199,23 +209,23 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                         <p className="text-neutral-400 mt-1 font-light leading-relaxed">
                           {addr.house_no}, {addr.area}, {addr.city}, {addr.state} - {addr.pincode}
                         </p>
-                        <p className="text-neutral-500 mt-1">Phone: {addr.phone}</p>
+                        <p className="text-neutral-400 mt-1">Phone: {addr.phone}</p>
                       </div>
                     </label>
                   ))}
                 </div>
               )}
-            </div>
+            </fieldset>
 
             {/* Step 2: Payment Method */}
-            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-luxury">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200 pb-3.5 border-b border-[#262626] mb-5">
+            <fieldset className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-luxury">
+              <legend className="text-xs font-semibold uppercase tracking-wider text-neutral-200 pb-3.5 border-b border-[#262626] mb-5 w-full block">
                 2. Payment Method
-              </h2>
+              </legend>
 
               <div className="space-y-3">
                 <label
-                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] focus-within:ring-2 focus-within:ring-[#C9A24A] ${
                     paymentMethod === "COD"
                       ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-[0_0_15px_rgba(201,162,74,0.1)]"
                       : "border-[#262626] hover:border-[#383838]"
@@ -227,7 +237,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                     value="COD"
                     checked={paymentMethod === "COD"}
                     onChange={() => setPaymentMethod("COD")}
-                    className="mt-1 accent-[#C9A24A]"
+                    className="mt-1 accent-[#C9A24A] focus:outline-none"
                   />
                   <div className="text-xs">
                     <span className="font-semibold text-neutral-100">Cash on Delivery (COD)</span>
@@ -238,7 +248,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                 </label>
 
                 <label
-                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] focus-within:ring-2 focus-within:ring-[#C9A24A] ${
                     paymentMethod === "ONLINE"
                       ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-[0_0_15px_rgba(201,162,74,0.1)]"
                       : "border-[#262626] hover:border-[#383838]"
@@ -250,7 +260,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                     value="ONLINE"
                     checked={paymentMethod === "ONLINE"}
                     onChange={() => setPaymentMethod("ONLINE")}
-                    className="mt-1 accent-[#C9A24A]"
+                    className="mt-1 accent-[#C9A24A] focus:outline-none"
                   />
                   <div className="text-xs">
                     <span className="font-semibold text-neutral-100">Online Payment (UPI, Cards, NetBanking)</span>
@@ -260,7 +270,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                   </div>
                 </label>
               </div>
-            </div>
+            </fieldset>
           </div>
 
           {/* Right Col: Price Breakdown & Place Order CTA */}
