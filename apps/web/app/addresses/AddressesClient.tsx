@@ -125,14 +125,22 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
       <AccountNav />
 
       {errorMsg && (
-        <div className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs"
+        >
           {errorMsg}
         </div>
       )}
 
       {successMsg && (
-        <div className="mb-6 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-6 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           <span>{successMsg}</span>
@@ -358,13 +366,14 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
                   <button
                     onClick={() => handleSetDefault(addr.id)}
                     disabled={isPending}
-                    className="text-neutral-400 hover:text-[#C9A24A] transition-colors cursor-pointer"
+                    aria-label={`Set ${addr.full_name}'s address as default`}
+                    className="text-neutral-400 hover:text-[#C9A24A] transition-colors cursor-pointer px-1 py-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                   >
                     Set as Default
                   </button>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-[11px] text-[var(--color-primary-gold)] font-medium tracking-wide">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                     </svg>
                     <span>Default Address</span>
@@ -378,14 +387,16 @@ export function AddressesClient({ initialAddresses }: AddressesClientProps) {
                       setIsAdding(false);
                     }}
                     disabled={isPending}
-                    className="text-neutral-300 hover:text-[#C9A24A] transition-colors cursor-pointer"
+                    aria-label={`Edit address for ${addr.full_name}`}
+                    className="text-neutral-300 hover:text-[#C9A24A] transition-colors cursor-pointer px-1 py-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => setDeletingId(addr.id)}
                     disabled={isPending}
-                    className="text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
+                    aria-label={`Delete address for ${addr.full_name}`}
+                    className="text-neutral-400 hover:text-red-400 transition-colors cursor-pointer px-1 py-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                   >
                     Delete
                   </button>

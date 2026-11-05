@@ -14,6 +14,7 @@ export interface EmptyStateProps {
   actionHref?: string;
   onAction?: () => void;
   className?: string;
+  headingLevel?: "h1" | "h2" | "h3";
 }
 
 export function EmptyState({
@@ -27,11 +28,13 @@ export function EmptyState({
   actionHref,
   onAction,
   className,
+  headingLevel = "h2",
 }: EmptyStateProps) {
   const displayTitle = title || message;
   const displayDesc = description || (title ? message : undefined);
   const btnLabel = actionLabel || actionText;
   const btnHref = actionHref || actionUrl;
+  const HeadingTag = headingLevel;
 
   return (
     <div
@@ -58,9 +61,9 @@ export function EmptyState({
         )}
       </div>
 
-      <h3 className="font-serif text-lg md:text-xl font-semibold text-white uppercase tracking-wide">
+      <HeadingTag className="font-serif text-lg md:text-xl font-semibold text-white uppercase tracking-wide">
         {displayTitle}
-      </h3>
+      </HeadingTag>
 
       {displayDesc && (
         <p className="text-xs sm:text-sm text-neutral-400 mt-2 max-w-sm leading-relaxed font-light">
@@ -71,10 +74,11 @@ export function EmptyState({
       {btnLabel && (
         <div className="mt-6">
           {btnHref ? (
-            <Link href={btnHref}>
-              <Button variant="primary" size="sm">
-                {btnLabel}
-              </Button>
+            <Link
+              href={btnHref}
+              className="inline-flex items-center justify-center font-medium rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] bg-[#C9A24A] hover:bg-[#B89139] text-black font-semibold shadow-md shadow-[#C9A24A]/10 hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] border border-[#C9A24A]/40 text-xs px-4 py-2 h-9 gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0B0B] active:scale-[0.98]"
+            >
+              {btnLabel}
             </Link>
           ) : onAction ? (
             <Button variant="primary" size="sm" onClick={onAction}>

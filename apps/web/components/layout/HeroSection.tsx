@@ -31,7 +31,11 @@ export function HeroSection({
             {presentingText}
           </p>
 
-          <h1 className="font-serif text-2xl md:text-3xl lg:text-4xl text-[#E5C87B] tracking-[0.1em] text-center my-2 md:my-3 drop-shadow-[0_2px_15px_rgba(229,200,123,0.4)] animate-fade-in-up">
+          <h1
+            lang="ar"
+            aria-label="Mohammad Shakib (محمد شکیب صدیقی)"
+            className="font-serif text-2xl md:text-3xl lg:text-4xl text-[#E5C87B] tracking-[0.1em] text-center my-2 md:my-3 drop-shadow-[0_2px_15px_rgba(229,200,123,0.4)] animate-fade-in-up"
+          >
             {arabicTitle}
           </h1>
 

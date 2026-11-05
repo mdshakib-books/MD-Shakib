@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useCart } from "@/lib/commerce/cart-context";
 import { createClient } from "@/lib/supabase/client";
 
@@ -15,7 +16,6 @@ interface NavItem {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { itemCount } = useCart();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -23,18 +23,19 @@ export function MobileBottomNav() {
     const supabase = createClient();
 
     const checkUserRole = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsAdmin(false);
-        return;
-      }
-
-      if (user.user_metadata?.role === "admin") {
-        setIsAdmin(true);
-        return;
-      }
-
       try {
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user;
+        if (!user) {
+          setIsAdmin(false);
+          return;
+        }
+
+        if (user.user_metadata?.role === "admin") {
+          setIsAdmin(true);
+          return;
+        }
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("role")
@@ -51,10 +52,12 @@ export function MobileBottomNav() {
       }
     };
 
-    checkUserRole();
+    checkUserRole().catch(() => setIsAdmin(false));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      checkUserRole();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      checkUserRole().catch(() => setIsAdmin(false));
     });
 
     return () => {
@@ -213,7 +216,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      aria-label="Mobile Navigation Bar"
+      aria-label="Mobile navigation"
       className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(70px+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-[#0E0E0E]/95 backdrop-blur-lg border-t border-[#2A2A2A] shadow-[0_-8px_25px_rgba(0,0,0,0.7)] z-[9999]"
     >
       <div className="flex justify-around items-center h-[70px] px-2 max-w-lg mx-auto">
@@ -227,11 +230,11 @@ export function MobileBottomNav() {
             (item.route === "/profile" && pathname.startsWith("/account"));
 
           return (
-            <button
+            <Link
               key={item.name}
-              type="button"
-              onClick={() => router.push(item.route)}
-              className="flex flex-col items-center justify-center w-16 h-full transition-transform duration-[var(--duration-micro)] active:scale-95 touch-manipulation group cursor-pointer"
+              href={item.route}
+              aria-current={isActive ? "page" : undefined}
+              className="flex flex-col items-center justify-center w-16 h-full transition-transform duration-[var(--duration-micro)] active:scale-95 touch-manipulation group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] rounded-lg"
             >
               {/* Icon Container */}
               <div
@@ -245,7 +248,10 @@ export function MobileBottomNav() {
 
                 {/* Cart Badge */}
                 {item.showBadge && itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pop">
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-1 -right-1 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pop"
+                  >
                     {itemCount > 9 ? "9+" : itemCount}
                   </span>
                 )}
@@ -259,7 +265,7 @@ export function MobileBottomNav() {
               >
                 {item.name}
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>

@@ -22,7 +22,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] focus:outline-none focus:ring-2 focus:ring-[#C9A24A]/60 focus:ring-offset-2 focus:ring-offset-[#0B0B0B] disabled:opacity-50 disabled:pointer-events-none cursor-pointer select-none active:scale-[0.98]";
+      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0B0B] disabled:opacity-50 disabled:pointer-events-none cursor-pointer select-none active:scale-[0.98]";
 
     const variantStyles = {
       primary:
@@ -36,20 +36,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       ghost:
         "bg-transparent text-neutral-400 hover:text-neutral-100 hover:bg-[#1A1A1A]",
       link:
-        "bg-transparent text-[#C9A24A] hover:underline p-0 h-auto font-medium focus:ring-0",
+        "bg-transparent text-[#C9A24A] hover:underline p-0 h-auto font-medium focus-visible:ring-0",
     };
 
     const sizeStyles = {
       sm: "text-xs px-3 py-1.5 h-8 gap-1.5",
       md: "text-sm px-4 py-2.5 h-10 gap-2",
       lg: "text-base px-6 py-3 h-12 gap-2.5 font-semibold",
-      icon: "w-9 h-9 p-0 flex items-center justify-center",
+      icon: "w-9 h-9 p-0 flex items-center justify-center min-w-[36px] min-h-[36px]",
     };
 
     return (
       <button
         ref={ref}
         disabled={disabled || isLoading}
+        aria-busy={isLoading ? "true" : undefined}
         className={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
         {...props}
       >
@@ -60,6 +61,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <circle
                 className="opacity-25"

@@ -132,6 +132,52 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ==============================================================================
+   PHASE 08: FOCUS-VISIBLE LUXURY RING & ACCESSIBILITY SYSTEM
+   ============================================================================== */
+
+:focus-visible {
+  outline: 2px solid #C9A24A;
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* High Contrast Input Placeholders (WCAG 2.2 AA: > 7:1 ratio on dark surfaces) */
+::placeholder {
+  color: #9CA3AF !important;
+  opacity: 1;
+}
+
+/* Accessible Keyboard Skip Link */
+.skip-link {
+  position: absolute;
+  top: -120px;
+  left: 1rem;
+  z-index: 10000;
+  padding: 0.75rem 1.25rem;
+  background-color: #C9A24A;
+  color: #000000;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 0.5rem;
+  border: 1px solid #E5C87B;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 15px rgba(201, 162, 74, 0.4);
+  transition: top var(--duration-button) var(--ease-luxury);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 1rem;
+  outline: 2px solid #FFFFFF;
+  outline-offset: 2px;
+}
+
+/* ==============================================================================
    PHASE 07: CENTRALIZED MOTION SYSTEM & KEYFRAMES
    ============================================================================== */
 

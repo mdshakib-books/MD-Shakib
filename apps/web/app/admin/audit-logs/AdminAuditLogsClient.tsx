@@ -19,6 +19,18 @@ export function AdminAuditLogsClient({ initialLogs, totalLogs }: AdminAuditLogsC
   const [actionFilter, setActionFilter] = useState("ALL");
   const [inspectingLog, setInspectingLog] = useState<EnrichedLog | null>(null);
 
+  // Keyboard Escape dismissal for modal
+  React.useEffect(() => {
+    if (!inspectingLog) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setInspectingLog(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [inspectingLog]);
+
   const filteredLogs = initialLogs.filter((log) => {
     const matchesModel = modelFilter === "ALL" || log.model_name === modelFilter;
     const matchesAction = actionFilter === "ALL" || log.action === actionFilter;
@@ -143,11 +155,16 @@ export function AdminAuditLogsClient({ initialLogs, totalLogs }: AdminAuditLogsC
 
       {/* INSPECT LOG MODAL */}
       {inspectingLog && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="audit-log-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
             <div className="p-5 border-b border-[#262626] flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">Audit Log Inspection</h3>
+                <h3 id="audit-log-modal-title" className="text-base font-bold text-white">Audit Log Inspection</h3>
                 <p className="text-xs text-gray-400 mt-0.5">
                   ID: <span className="font-mono text-gray-300">{inspectingLog.id}</span>
                 </p>
@@ -155,10 +172,10 @@ export function AdminAuditLogsClient({ initialLogs, totalLogs }: AdminAuditLogsC
               <button
                 type="button"
                 onClick={() => setInspectingLog(null)}
-                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition"
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                 aria-label="Close modal"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>

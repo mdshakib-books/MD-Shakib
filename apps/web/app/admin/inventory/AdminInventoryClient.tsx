@@ -51,6 +51,18 @@ export function AdminInventoryClient({
   >([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Keyboard Escape dismissal for modals
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (adjustingItem) setAdjustingItem(null);
+        if (historyItem) setHistoryItem(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [adjustingItem, historyItem]);
+
   const openAdjustModal = (item: InventoryItem) => {
     setAdjustingItem(item);
     setAdjustType("INCREASE");
@@ -283,16 +295,21 @@ export function AdminInventoryClient({
 
       {/* ADJUST STOCK MODAL */}
       {adjustingItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inventory-adjust-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-1">Stock Adjustment</h3>
+            <h3 id="inventory-adjust-modal-title" className="text-base font-bold text-white mb-1">Stock Adjustment</h3>
             <p className="text-xs text-gray-400 mb-4">
               Book: <span className="text-white font-medium">{adjustingItem.title}</span>
             </p>
 
             <form onSubmit={handleAdjustSubmit} className="space-y-4">
               {adjustError && (
-                <div className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
+                <div role="alert" aria-live="assertive" className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
                   {adjustError}
                 </div>
               )}
@@ -380,20 +397,25 @@ export function AdminInventoryClient({
 
       {/* ADJUSTMENT HISTORY DRAWER */}
       {historyItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inventory-history-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
               <div>
-                <h3 className="text-base font-bold text-white">Stock Adjustment History</h3>
+                <h3 id="inventory-history-modal-title" className="text-base font-bold text-white">Stock Adjustment History</h3>
                 <p className="text-xs text-gray-400 mt-0.5">{historyItem.title}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setHistoryItem(null)}
-                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition"
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-dark-surface transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                 aria-label="Close modal"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>

@@ -74,12 +74,21 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
       });
     };
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      syncUser(user);
-    });
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        syncUser(data?.user || null);
+      })
+      .catch(() => {
+        setClientUser(null);
+      });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncUser(session?.user || null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncUser(session?.user || null).catch(() => {
+        setClientUser(null);
+      });
     });
 
     return () => {
@@ -95,6 +104,17 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileMenuOpen]);
 
   const handleLogoutConfirm = async () => {
     setShowLogoutModal(false);
@@ -129,19 +149,22 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
 
   return (
     <>
-      <nav ref={navbarRef} className={navClasses}>
+      <nav ref={navbarRef} className={navClasses} aria-label="Main navigation">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
           {/* Mobile Hamburger Menu */}
           <button
-            className="md:hidden text-[#C9A24A] hover:text-[#E5C87B] p-1.5 rounded-lg hover:bg-white/5 transition-colors focus:outline-none cursor-pointer"
+            className="md:hidden text-[#C9A24A] hover:text-[#E5C87B] p-1.5 rounded-lg hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] cursor-pointer"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle Navigation Menu"
+            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-nav-menu"
           >
             <svg
               className="w-6 h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               {isMobileMenuOpen ? (
                 <path
@@ -164,7 +187,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
           {/* Brand Logo */}
           <Link
             href="/"
-            className="font-serif text-xl md:text-2xl font-bold tracking-wider text-[#C9A24A] hover:text-[#E5C87B] transition-colors uppercase select-none"
+            className="font-serif text-xl md:text-2xl font-bold tracking-wider text-[#C9A24A] hover:text-[#E5C87B] transition-colors uppercase select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] rounded"
           >
             MD SHAKIB
           </Link>
@@ -177,7 +200,8 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 <Link
                   key={link.name}
                   href={link.path}
-                  className={`text-xs uppercase tracking-widest font-semibold transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] py-1 ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`text-xs uppercase tracking-widest font-semibold transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] rounded ${
                     isActive
                       ? "text-[#C9A24A] border-b-2 border-[#C9A24A]"
                       : "text-neutral-300 hover:text-[#C9A24A]"
@@ -194,7 +218,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             {/* Search Link */}
             <Link
               href="/books"
-              className="hover:text-[#C9A24A] transition-all duration-[var(--duration-micro)] active:scale-90 p-1.5 rounded-full hover:bg-white/5"
+              className="hover:text-[#C9A24A] transition-all duration-[var(--duration-micro)] active:scale-90 p-1.5 rounded-full hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
               title="Search"
               aria-label="Search Books"
             >
@@ -203,6 +227,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
@@ -216,15 +241,16 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             {/* Cart Icon */}
             <Link
               href="/cart"
-              className="relative hover:text-[#C9A24A] transition-all duration-[var(--duration-micro)] active:scale-90 p-1.5 rounded-full hover:bg-white/5"
+              className="relative hover:text-[#C9A24A] transition-all duration-[var(--duration-micro)] active:scale-90 p-1.5 rounded-full hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
               title="Cart"
-              aria-label="Shopping Cart"
+              aria-label={`Shopping Cart${effectiveCartCount > 0 ? `, ${effectiveCartCount} items` : ""}`}
             >
               <svg
                 className="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
@@ -235,7 +261,10 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
               </svg>
 
               {effectiveCartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pop">
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-1.5 -right-1.5 bg-[#C9A24A] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pop"
+                >
                   {effectiveCartCount > 9 ? "9+" : effectiveCartCount}
                 </span>
               )}
@@ -246,14 +275,14 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
               <div className="flex items-center gap-3">
                 <Link
                   href={effectiveUser.role === "admin" ? "/admin" : "/account"}
-                  className="text-xs uppercase tracking-wider font-semibold text-[#C9A24A] hover:underline transition-colors"
+                  className="text-xs uppercase tracking-wider font-semibold text-[#C9A24A] hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] rounded"
                 >
                   {effectiveUser.name || "Account"}
                 </Link>
                 <button
                   type="button"
                   onClick={() => setShowLogoutModal(true)}
-                  className="text-xs text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
+                  className="text-xs text-neutral-400 hover:text-red-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] rounded px-1"
                 >
                   Logout
                 </button>
@@ -261,7 +290,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
             ) : (
               <Link
                 href="/login"
-                className="text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-lg bg-[#C9A24A] text-black hover:bg-[#B89139] hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 shadow-sm"
+                className="text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-lg bg-[#C9A24A] text-black hover:bg-[#B89139] hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
               >
                 Log In
               </Link>
@@ -271,14 +300,15 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
 
         {/* Mobile Dropdown Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-[#111111] border-t border-[#2A2A2A] absolute w-full left-0 z-50 shadow-2xl animate-slide-down">
+          <div id="mobile-nav-menu" className="md:hidden bg-[#111111] border-t border-[#2A2A2A] absolute w-full left-0 z-50 shadow-2xl animate-slide-down">
             <div className="px-4 pt-3 pb-5 space-y-1.5">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   href={link.path}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+                  aria-current={pathname === link.path ? "page" : undefined}
+                  className={`block px-3 py-2.5 rounded-lg font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] ${
                     pathname === link.path
                       ? "text-[#C9A24A] bg-[#1A1A1A] font-semibold"
                       : "text-neutral-300 hover:bg-[#1A1A1A] hover:text-[#C9A24A]"
@@ -293,7 +323,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                     setShowLogoutModal(true);
                     setIsMobileMenuOpen(false);
                   }}
-                  className="block w-full text-left px-3 py-2.5 rounded-lg font-medium text-sm text-red-400 hover:bg-[#1A1A1A]"
+                  className="block w-full text-left px-3 py-2.5 rounded-lg font-medium text-sm text-red-400 hover:bg-[#1A1A1A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                 >
                   Log Out
                 </button>
@@ -301,7 +331,7 @@ export function Navbar({ cartCount: explicitCartCount, user: explicitUser, onLog
                 <Link
                   href="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="block px-3 py-2.5 rounded-lg font-semibold text-sm text-[#C9A24A] hover:bg-[#1A1A1A]"
+                  className="block px-3 py-2.5 rounded-lg font-semibold text-sm text-[#C9A24A] hover:bg-[#1A1A1A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
                 >
                   Log In
                 </Link>

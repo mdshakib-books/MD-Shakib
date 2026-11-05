@@ -6,7 +6,12 @@ export function Table({
   ...props
 }: React.HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="relative w-full overflow-x-auto">
+    <div
+      role="region"
+      aria-label="Data table"
+      tabIndex={0}
+      className="relative w-full overflow-x-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A24A]/40 rounded-lg"
+    >
       <table
         className={cn(
           "w-full caption-bottom text-sm text-left text-neutral-300",
@@ -77,10 +82,12 @@ export function TableRow({
 
 export function TableHead({
   className,
+  scope = "col",
   ...props
 }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
+      scope={scope}
       className={cn(
         "py-3.5 px-4 font-semibold text-neutral-400 [&:has([role=checkbox])]:pr-0",
         className

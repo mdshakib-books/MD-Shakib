@@ -95,6 +95,11 @@ export function BooksCatalogClient({
 
   const { books, totalCount, totalPages } = initialData;
 
+  const searchSuggestions = React.useMemo(() => {
+    const titles = books.map((b) => b.title);
+    return Array.from(new Set([...titles, ...categories]));
+  }, [books, categories]);
+
   return (
     <>
       {/* Search Bar */}
@@ -102,6 +107,7 @@ export function BooksCatalogClient({
         <SearchBar
           onSearch={handleSearch}
           onClear={handleClear}
+          suggestions={searchSuggestions}
           defaultQuery={currentSearch}
           placeholder="Search books, authors..."
         />
@@ -118,7 +124,7 @@ export function BooksCatalogClient({
 
       {/* Active Filter Indicators & Sorting Bar */}
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[#222222] pb-4">
-        <div className="text-xs text-neutral-400">
+        <div className="text-xs text-neutral-400" role="status" aria-live="polite">
           {currentSearch || currentCategory ? (
             <span>
               Showing results for{" "}
@@ -198,11 +204,12 @@ export function BooksCatalogClient({
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-14">
+          <nav aria-label="Catalog pagination" className="flex justify-center items-center gap-2 mt-14">
             <button
               disabled={currentPage <= 1}
               onClick={() => updateFilters({ page: currentPage - 1 })}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 ${
+              aria-label="Previous page"
+              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] ${
                 currentPage <= 1
                   ? "border-[#222222] text-neutral-600 cursor-not-allowed bg-transparent"
                   : "border-[#2A2A2A] bg-[#141414] text-neutral-300 hover:border-[#C9A24A] hover:text-[#C9A24A] cursor-pointer"
@@ -215,7 +222,9 @@ export function BooksCatalogClient({
               <button
                 key={p}
                 onClick={() => updateFilters({ page: p })}
-                className={`w-9 h-9 rounded-lg text-xs font-bold transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 ${
+                aria-label={`Page ${p}`}
+                aria-current={currentPage === p ? "page" : undefined}
+                className={`w-9 h-9 rounded-lg text-xs font-bold transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] ${
                   currentPage === p
                     ? "bg-[#C9A24A] text-black shadow-md shadow-[#C9A24A]/20"
                     : "bg-[#141414] border border-[#2A2A2A] text-neutral-400 hover:text-white hover:border-[#3A3A3A] cursor-pointer"
@@ -228,7 +237,8 @@ export function BooksCatalogClient({
             <button
               disabled={currentPage >= totalPages}
               onClick={() => updateFilters({ page: currentPage + 1 })}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 ${
+              aria-label="Next page"
+              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider border transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] ${
                 currentPage >= totalPages
                   ? "border-[#222222] text-neutral-600 cursor-not-allowed bg-transparent"
                   : "border-[#2A2A2A] bg-[#141414] text-neutral-300 hover:border-[#C9A24A] hover:text-[#C9A24A] cursor-pointer"
@@ -236,7 +246,7 @@ export function BooksCatalogClient({
             >
               Next
             </button>
-          </div>
+          </nav>
         )}
       </PageContainer>
     </>

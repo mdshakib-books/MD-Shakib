@@ -14,6 +14,18 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+  // Close mobile sidebar on Escape key
+  React.useEffect(() => {
+    if (!isMobileOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileOpen]);
+
   const navLinks = [
     {
       name: "Dashboard",
@@ -124,10 +136,12 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="p-2 rounded-lg bg-dark-card border border-dark-border text-neutral-300 hover:text-white"
+            className="p-2 rounded-lg bg-dark-card border border-dark-border text-neutral-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
             aria-label="Toggle navigation menu"
+            aria-expanded={isMobileOpen}
+            aria-controls="admin-sidebar"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               {isMobileOpen ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               ) : (
@@ -141,10 +155,10 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
         </div>
         <Link
           href="/"
-          className="text-xs text-neutral-400 hover:text-white flex items-center gap-1 transition"
+          className="text-xs text-neutral-400 hover:text-white flex items-center gap-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] rounded px-1.5 py-1"
         >
           <span>Storefront</span>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
         </Link>
@@ -152,6 +166,8 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
 
       {/* Sidebar for Desktop / Overlay for Mobile */}
       <aside
+        id="admin-sidebar"
+        aria-label="Admin sidebar navigation"
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-dark-surface border-r border-dark-border flex flex-col transition-transform duration-[var(--duration-modal)] [transition-timing-function:var(--ease-luxury)] lg:static lg:translate-x-0 shadow-luxury",
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
@@ -173,9 +189,10 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
           {isMobileOpen && (
             <button
               onClick={() => setIsMobileOpen(false)}
-              className="lg:hidden text-neutral-400 hover:text-white"
+              aria-label="Close admin navigation menu"
+              className="lg:hidden text-neutral-400 hover:text-white p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -183,7 +200,7 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav aria-label="Admin primary navigation" className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navLinks.map((link) => {
             const isActive = link.exact
               ? pathname === link.href
@@ -194,14 +211,15 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
                 key={link.name}
                 href={link.href}
                 onClick={() => setIsMobileOpen(false)}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)]",
+                  "flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]",
                   isActive
                     ? "bg-dark-card text-[var(--color-primary-gold)] border border-[var(--color-primary-gold)]/30 shadow-inner font-bold"
                     : "text-neutral-400 hover:text-neutral-200 hover:bg-dark-card/60"
                 )}
               >
-                <span className={cn(isActive ? "text-[var(--color-primary-gold)]" : "text-neutral-500")}>
+                <span className={cn(isActive ? "text-[var(--color-primary-gold)]" : "text-neutral-500")} aria-hidden="true">
                   {link.icon}
                 </span>
                 <span>{link.name}</span>
@@ -214,17 +232,17 @@ export function AdminNavClient({ adminName, adminEmail }: AdminNavClientProps) {
         <div className="p-4 border-t border-dark-border bg-dark-bg">
           <Link
             href="/"
-            className="flex items-center justify-center gap-2 w-full py-2 mb-3 text-xs font-medium text-neutral-300 hover:text-white bg-dark-card hover:bg-neutral-800 border border-dark-border rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)]"
+            className="flex items-center justify-center gap-2 w-full py-2 mb-3 text-xs font-medium text-neutral-300 hover:text-white bg-dark-card hover:bg-neutral-800 border border-dark-border rounded-lg transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
           >
             <span>Exit to Storefront</span>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
           </Link>
 
           <Link
             href="/admin/profile"
-            className="flex items-center gap-3 px-2 py-1.5 rounded-lg bg-dark-card border border-dark-border hover:border-[var(--color-primary-gold)]/40 transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] group"
+            className="flex items-center gap-3 px-2 py-1.5 rounded-lg bg-dark-card border border-dark-border hover:border-[var(--color-primary-gold)]/40 transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
           >
             <div className="w-8 h-8 rounded-full bg-dark-surface border border-dark-border text-[var(--color-primary-gold)] flex items-center justify-center font-bold text-xs uppercase group-hover:border-[var(--color-primary-gold)] transition">
               {adminName ? adminName.charAt(0) : "A"}

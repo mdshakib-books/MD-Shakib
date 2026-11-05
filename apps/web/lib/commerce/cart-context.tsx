@@ -201,7 +201,8 @@ export function CartProvider({
   const refreshCart = useCallback(async () => {
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
 
       if (user) {
         setIsAuthenticated(true);
@@ -249,7 +250,8 @@ export function CartProvider({
     const initCart = async () => {
       try {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user;
 
         if (!isMounted) return;
 
@@ -303,11 +305,18 @@ export function CartProvider({
     window.addEventListener("storage", handleStorage);
 
     const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        setIsAuthenticated(true);
-        await refreshCart();
-      } else {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      try {
+        if (session?.user) {
+          setIsAuthenticated(true);
+          await refreshCart();
+        } else {
+          setIsAuthenticated(false);
+          syncFromGuestStorage();
+        }
+      } catch {
         setIsAuthenticated(false);
         syncFromGuestStorage();
       }

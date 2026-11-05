@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { CartProvider } from "@/lib/commerce/cart-context";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { NetworkStatusBanner } from "@/components/ui/NetworkStatusBanner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,6 +36,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark scroll-smooth">
       <body className="bg-[#0B0B0B] text-[#F5F5F5] antialiased selection:bg-[#C9A24A] selection:text-black min-h-screen flex flex-col pb-[calc(70px+env(safe-area-inset-bottom,0px))] md:pb-0 relative">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <NetworkStatusBanner />
         <CartProvider>
           {children}
           <MobileBottomNav />

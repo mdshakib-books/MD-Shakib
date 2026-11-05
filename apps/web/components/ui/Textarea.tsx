@@ -26,6 +26,13 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     const textareaId = id || generatedId;
     const errorId = `${textareaId}-error`;
     const helperId = `${textareaId}-helper`;
+    const describedBy = [
+      error ? errorId : null,
+      helperText ? helperId : null,
+      props["aria-describedby"],
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
     return (
       <div className="w-full text-left space-y-1.5">
@@ -35,7 +42,11 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 font-sans"
           >
             {label}
-            {required && <span className="text-[#C9A24A] ml-1">*</span>}
+            {required && (
+              <span className="text-[#C9A24A] ml-1" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
 
@@ -44,21 +55,20 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           rows={rows}
           required={required}
+          aria-required={required ? "true" : undefined}
           aria-invalid={Boolean(error)}
-          aria-describedby={
-            error ? errorId : helperText ? helperId : undefined
-          }
+          aria-describedby={describedBy}
           className={cn(
-            "w-full px-4 py-3 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#737373] rounded-lg text-sm transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)] focus:outline-none focus:border-[#C9A24A] focus:ring-1 focus:ring-[#C9A24A]/40 disabled:opacity-50 disabled:cursor-not-allowed resize-y",
+            "w-full px-4 py-3 bg-[#0E0E0E] border border-[#2A2A2A] text-[#F5F5F5] placeholder-[#9CA3AF] rounded-lg text-sm transition-all duration-[var(--duration-micro)] [transition-timing-function:var(--ease-luxury)] focus-visible:outline-none focus-visible:border-[#C9A24A] focus-visible:ring-2 focus-visible:ring-[#C9A24A]/50 disabled:opacity-50 disabled:cursor-not-allowed resize-y",
             error &&
-              "border-red-500/80 focus:border-red-500 focus:ring-red-500/30",
+              "border-red-500/80 focus-visible:border-red-500 focus-visible:ring-red-500/40",
             className
           )}
           {...props}
         />
 
         {error ? (
-          <p id={errorId} className="text-xs text-red-400 font-medium animate-fade-in">
+          <p id={errorId} role="alert" className="text-xs text-red-400 font-medium animate-fade-in">
             {error}
           </p>
         ) : helperText ? (

@@ -55,6 +55,7 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
     return (
       <PageContainer size="md">
         <EmptyState
+          headingLevel="h1"
           title="Your Cart is Empty"
           description="You haven't added any authentic Islamic books to your cart yet. Explore our scholarly collection to begin."
           icon={
@@ -95,8 +96,15 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
         </div>
 
         {errorMsg && (
-          <div className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
-            {errorMsg}
+          <div role="alert" className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center justify-between">
+            <span>{errorMsg}</span>
+            <button
+              type="button"
+              onClick={() => setErrorMsg(null)}
+              className="text-neutral-400 hover:text-white ml-2 text-xs underline focus-visible:ring-1 focus-visible:ring-[#C9A24A] rounded"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
@@ -130,17 +138,23 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
                     <button
                       disabled={isPending}
                       onClick={() => handleQuantity(item.id, item.quantity - 1)}
-                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-transform duration-[var(--duration-micro)] active:scale-90"
-                      aria-label="Decrease quantity"
+                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-transform duration-[var(--duration-micro)] active:scale-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A24A]"
+                      aria-label={`Decrease quantity of ${item.title}`}
                     >
                       −
                     </button>
-                    <span className="px-2 text-xs font-mono font-semibold text-neutral-200">{item.quantity}</span>
+                    <span
+                      aria-live="polite"
+                      aria-label={`Quantity: ${item.quantity}`}
+                      className="px-2 text-xs font-mono font-semibold text-neutral-200"
+                    >
+                      {item.quantity}
+                    </span>
                     <button
                       disabled={isPending || (item.stock !== undefined && item.quantity >= item.stock)}
                       onClick={() => handleQuantity(item.id, item.quantity + 1)}
-                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-transform duration-[var(--duration-micro)] active:scale-90"
-                      aria-label="Increase quantity"
+                      className="px-2.5 h-full text-neutral-400 hover:text-white disabled:opacity-40 text-xs cursor-pointer transition-transform duration-[var(--duration-micro)] active:scale-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A24A]"
+                      aria-label={`Increase quantity of ${item.title}`}
                     >
                       +
                     </button>
@@ -149,11 +163,11 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
                   <button
                     disabled={isPending}
                     onClick={() => handleRemove(item.id)}
-                    className="w-8 h-8 rounded-lg bg-[#1C1C1C] text-neutral-400 hover:text-red-400 hover:bg-[#252525] flex items-center justify-center transition-all duration-[var(--duration-button)] active:scale-95 cursor-pointer"
-                    title="Remove item"
-                    aria-label="Remove item"
+                    className="w-8 h-8 rounded-lg bg-[#1C1C1C] text-neutral-400 hover:text-red-400 hover:bg-[#252525] flex items-center justify-center transition-all duration-[var(--duration-button)] active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A]"
+                    title={`Remove ${item.title}`}
+                    aria-label={`Remove ${item.title} from cart`}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
@@ -189,14 +203,12 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
 
             <Link
               href={isAuthenticated ? "/checkout" : "/login?redirect=/checkout"}
-              className="block w-full"
+              className="block w-full text-center py-3 px-4 rounded-lg bg-[#C9A24A] hover:bg-[#B89139] text-black font-bold uppercase tracking-wider text-xs shadow-md shadow-[#C9A24A]/10 hover:shadow-[0_4px_16px_rgba(201,162,74,0.25)] transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#141414]"
             >
-              <Button variant="primary" className="w-full uppercase tracking-wider text-xs font-bold" disabled={isPending || items.length === 0}>
-                {isAuthenticated ? "Proceed to Checkout" : "Sign In to Checkout"}
-              </Button>
+              {isAuthenticated ? "Proceed to Checkout" : "Sign In to Checkout"}
             </Link>
 
-            <p className="text-[10px] text-neutral-500 text-center leading-tight">
+            <p className="text-[10px] text-neutral-400 text-center leading-tight">
               Taxes included. Cash on Delivery (COD) and fast shipping available.
             </p>
           </div>

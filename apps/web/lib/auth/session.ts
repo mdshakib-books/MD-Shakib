@@ -57,14 +57,18 @@ export function getCanonicalSiteUrl(): string {
  * Never trusts client headers; verifies identity with Supabase Auth.
  */
 export async function getAuthenticatedUser() {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-  if (error || !user) {
+    if (error || !user) {
+      return null;
+    }
+
+    return user;
+  } catch {
     return null;
   }
-
-  return user;
 }
 
 /**

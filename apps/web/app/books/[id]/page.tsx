@@ -40,7 +40,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-[#F5F5F5]">
       <Navbar />
-      <main className="flex-grow">
+      <main id="main-content" className="flex-grow">
         <BookDetailClient book={book} similarBooks={similarBooks} />
       </main>
       <Footer />

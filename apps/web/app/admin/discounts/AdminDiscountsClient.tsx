@@ -36,6 +36,18 @@ export function AdminDiscountsClient({ initialDiscounts }: AdminDiscountsClientP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Keyboard Escape dismissal for modal
+  React.useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
+
   const openCreateModal = () => {
     setEditingDiscount(null);
     setCode("");
@@ -246,15 +258,20 @@ export function AdminDiscountsClient({ initialDiscounts }: AdminDiscountsClientP
 
       {/* CREATE / EDIT COUPON MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="coupon-modal-title"
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+        >
           <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">
+            <h3 id="coupon-modal-title" className="text-base font-bold text-white mb-4">
               {editingDiscount ? "Edit Coupon Code" : "Create New Coupon"}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {formError && (
-                <div className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
+                <div role="alert" aria-live="assertive" className="p-3 text-xs bg-red-950/60 border border-red-800 text-red-200 rounded-lg">
                   {formError}
                 </div>
               )}
