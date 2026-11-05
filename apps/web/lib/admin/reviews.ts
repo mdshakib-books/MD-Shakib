@@ -138,6 +138,8 @@ export async function moderateAdminReview(payload: {
   if (rev?.book_id) {
     revalidatePath(`/books/${rev.book_id}`);
     revalidatePath("/catalog");
+    revalidatePath("/books");
+    revalidatePath("/");
   }
 
   return { success: true };

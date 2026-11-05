@@ -180,7 +180,7 @@ export async function placeOrderOnline(
             razorpayOrderId: existingOrder.razorpay_order_id,
             amount: Math.round(Number(existingOrder.total_amount) * 100),
             currency: "INR",
-            keyId: process.env.RAZORPAY_KEY_ID || "",
+            keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "",
             orderId: existingOrder.id,
           },
         };
