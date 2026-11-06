@@ -7,6 +7,7 @@ import { getAuthenticatedUser } from "@/lib/auth/session";
 import { getCustomerCart } from "./cart";
 import { createRazorpayOrder, type CreatePaymentOrderResult } from "@/lib/integrations/razorpay/service";
 import { sendOrderEmails } from "@/lib/integrations/resend/service";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import type { Database } from "@/types/database.types";
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
@@ -27,6 +28,11 @@ export async function placeOrderCOD(
   const user = await getAuthenticatedUser();
   if (!user) {
     return { success: false, error: "Authentication required to place order." };
+  }
+
+  const rl = await checkRateLimit(`checkout:${user.id}`, "checkout");
+  if (!rl.allowed) {
+    return { success: false, error: "You are placing orders too quickly. Please wait a moment." };
   }
 
   const supabase = await createClient();
@@ -158,6 +164,11 @@ export async function placeOrderOnline(
   const user = await getAuthenticatedUser();
   if (!user) {
     return { success: false, error: "Authentication required to place order." };
+  }
+
+  const rl = await checkRateLimit(`checkout:${user.id}`, "checkout");
+  if (!rl.allowed) {
+    return { success: false, error: "You are placing orders too quickly. Please wait a moment." };
   }
 
   const supabase = await createClient();

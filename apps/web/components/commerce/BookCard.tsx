@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/commerce/cart-context";
@@ -112,14 +113,15 @@ export function BookCard({
         aria-hidden="true"
         className="relative w-full aspect-[3/4] mb-4 overflow-hidden rounded-lg bg-[#0E0E0E] border border-[#222222] flex items-center justify-center p-3 shadow-inner"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={
             book.imageUrl ||
-            "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400&h=300"
+            "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400"
           }
-          alt=""
-          className="w-full h-full object-contain rounded shadow transition-transform duration-500 [transition-timing-function:var(--ease-luxury)] group-hover:scale-[1.04]"
+          alt={book.title ? `${book.title} cover` : "Book cover"}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          className="object-contain p-2 rounded shadow transition-transform duration-500 [transition-timing-function:var(--ease-luxury)] group-hover:scale-[1.04]"
         />
       </Link>
 

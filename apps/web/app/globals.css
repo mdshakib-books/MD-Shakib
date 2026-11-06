@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -21,8 +20,8 @@
   --color-dark-secondary: #B0B0B0;
 
   /* Typography */
-  --font-serif: 'Cinzel', Georgia, serif;
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-cinzel), 'Cinzel', Georgia, serif;
+  --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Shadows */
   --shadow-luxury: 0 4px 20px rgba(0, 0, 0, 0.4);
@@ -74,10 +73,10 @@
   --color-dark-secondary: #B0B0B0;
 
   /* Fonts */
-  --font-cinzel: 'Cinzel', Georgia, serif;
-  --font-inter: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-serif: 'Cinzel', Georgia, serif;
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-cinzel: var(--font-cinzel), 'Cinzel', Georgia, serif;
+  --font-inter: var(--font-inter), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-cinzel), 'Cinzel', Georgia, serif;
+  --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Shadows */
   --shadow-luxury: 0 4px 20px rgba(0, 0, 0, 0.4);

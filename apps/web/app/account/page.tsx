@@ -7,6 +7,15 @@ import { AccountOverviewClient } from "./AccountOverviewClient";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Account Overview | MD Shakib Islamic Books",
+  description: "Customer account dashboard and management.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
 export default async function AccountPage() {
   const overview = await getCustomerAccountOverview();
 

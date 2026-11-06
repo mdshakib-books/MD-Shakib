@@ -836,11 +836,43 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_key: string
+          p_max_requests: number
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
+      prune_expired_rate_limits: {
+        Args: {
+          p_retention_interval?: string
+        }
+        Returns: number
+      }
       cancel_order_atomic: {
         Args: {
           p_cancel_reason: string

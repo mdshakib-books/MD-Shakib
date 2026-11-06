@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -117,9 +118,12 @@ export function CartClient({ initialCart, isAuthenticated: initialAuth = false }
                 className="flex items-center gap-3 sm:gap-4 bg-[#141414] border border-[#262626] rounded-xl p-4 transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] hover:border-[#383838] min-w-0 animate-fade-in-up"
                 style={{ animationDelay: `${Math.min(index * 50, 300)}ms` }}
               >
-                <div className="w-14 h-20 sm:w-16 sm:h-22 flex-shrink-0 bg-[#0E0E0E] border border-[#222] rounded-lg overflow-hidden p-1 flex items-center justify-center shadow-inner">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.imageUrl} alt={item.title} className="w-full h-full object-contain" />
+                <div className="relative w-14 h-20 sm:w-16 sm:h-22 flex-shrink-0 bg-[#0E0E0E] border border-[#222] rounded-lg overflow-hidden p-1 flex items-center justify-center shadow-inner">
+                  {item.imageUrl ? (
+                    <Image src={item.imageUrl} alt={item.title} fill sizes="64px" className="object-contain p-1" />
+                  ) : (
+                    <span className="text-[10px] text-neutral-500 font-serif">No Cover</span>
+                  )}
                 </div>
 
                 <div className="flex-grow min-w-0">

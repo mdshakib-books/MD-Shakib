@@ -44,6 +44,7 @@ export async function middleware(request: NextRequest) {
 
   // Protected customer & admin routes
   const isProtectedRoute =
+    pathname.startsWith("/account") ||
     pathname.startsWith("/profile") ||
     pathname.startsWith("/addresses") ||
     pathname.startsWith("/orders") ||

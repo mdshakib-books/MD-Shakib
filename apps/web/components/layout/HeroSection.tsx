@@ -1,4 +1,5 @@
 import * as React from "react";
+import Image from "next/image";
 
 export interface HeroSectionProps {
   presentingText?: string;
@@ -14,11 +15,13 @@ export function HeroSection({
   return (
     <section className="w-full relative">
       <div className="relative w-full h-[280px] md:h-[400px] lg:h-[520px] overflow-hidden group">
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
-          style={{
-            backgroundImage: `url("https://plus.unsplash.com/premium_photo-1677231559663-b9f6a7c33c77?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")`,
-          }}
+        <Image
+          src="https://plus.unsplash.com/premium_photo-1677231559663-b9f6a7c33c77?q=80&w=2000&auto=format&fit=crop"
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1440px"
+          className="object-cover object-center transition-transform duration-1000 group-hover:scale-105"
         />
 
         {/* Dark Editorial Gradient Overlay */}

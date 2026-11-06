@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createRazorpayOrder } from "@/lib/integrations/razorpay/service";
+import { checkRateLimit, rateLimitExceededResponse, getClientIp } from "@/lib/security/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -17,6 +19,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // Rate limit checkout payment attempts per user / IP
+    const clientIp = getClientIp(req);
+    const rlKey = user.id || clientIp;
+    const rl = await checkRateLimit(rlKey, "payment");
+    if (!rl.allowed) {
+      logger.warn("Rate limit exceeded for /api/payments/create-order", { userId: user.id, clientIp });
+      return rateLimitExceededResponse(rl);
+    }
+
     const body = await req.json();
     const { orderId } = body;
 
@@ -31,7 +42,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error("API /payments/create-order error:", error?.message || error);
+    logger.error("API /payments/create-order failure", { endpoint: "/api/payments/create-order" }, error);
     return NextResponse.json(
       { error: error?.message || "Internal server error creating payment order." },
       { status: 400 }

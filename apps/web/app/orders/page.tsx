@@ -13,6 +13,15 @@ import { getAuthenticatedUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Order History | MD Shakib Islamic Books",
+  description: "View and track your previous book orders.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
 export default async function OrdersPage() {
   const user = await getAuthenticatedUser();
   if (!user) {

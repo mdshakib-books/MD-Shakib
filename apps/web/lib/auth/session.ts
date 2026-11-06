@@ -44,9 +44,10 @@ export function getCanonicalSiteUrl(): string {
   }
 
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "Production configuration error: NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL must be configured in production."
-    );
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`;
+    }
+    return "https://mdshakib.com";
   }
 
   return "http://localhost:3000";
