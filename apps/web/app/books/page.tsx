@@ -1,9 +1,26 @@
 import * as React from "react";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { getBooks, CATALOG_CATEGORIES, type PaginatedCatalogResult } from "@/lib/data/catalog";
+import { JsonLd, buildBreadcrumbSchema } from "@/components/seo/JsonLd";
 import { BooksCatalogClient } from "./BooksCatalogClient";
+
+export const metadata: Metadata = {
+  title: "Islamic Books Catalogue | Quran, Hadith, Fiqh & History",
+  description:
+    "Browse our complete collection of authentic Islamic books, Quran tafsir, Sahih Hadith, jurisprudence, Islamic history, and biographies.",
+  alternates: {
+    canonical: "/books",
+  },
+  openGraph: {
+    title: "Islamic Books Catalogue | MD Shakib",
+    description: "Browse our complete collection of authentic Islamic books with express shipping across India.",
+    url: "/books",
+    type: "website",
+  },
+};
 
 interface BooksPageProps {
   searchParams: Promise<{
@@ -45,8 +62,14 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
     fetchError = true;
   }
 
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: "Home", url: "/" },
+    { name: "Books", url: "/books" },
+  ]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0B0B] text-white">
+      <JsonLd data={breadcrumbSchema} />
       <Navbar />
 
       <main id="main-content" className="flex-grow w-full pb-16">

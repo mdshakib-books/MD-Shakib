@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { formatPrice } from "@/lib/utils";
@@ -96,14 +97,22 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
           {/* Left Column: Image Gallery */}
           <div className="flex flex-col items-center">
             <div className="relative w-full max-w-md aspect-[3/4] bg-[#141414] border border-[#2A2A2A] rounded-2xl overflow-hidden flex items-center justify-center p-6 shadow-2xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selectedImage}
-                alt={book.title}
-                className="w-full h-full object-contain rounded-lg shadow-md transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)]"
-              />
+              {selectedImage ? (
+                <Image
+                  src={selectedImage}
+                  alt={book.title}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 448px"
+                  className="object-contain p-4 rounded-lg shadow-md transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)]"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-neutral-500 font-serif">
+                  No Cover Available
+                </div>
+              )}
               {hasDiscount && (
-                <span className="absolute top-4 left-4 bg-[#FFF5D1] text-black text-xs font-bold px-2.5 py-1 rounded shadow uppercase tracking-wide">
+                <span className="absolute top-4 left-4 z-10 bg-[#FFF5D1] text-black text-xs font-bold px-2.5 py-1 rounded shadow uppercase tracking-wide">
                   -{book.discount}% OFF
                 </span>
               )}
@@ -119,14 +128,13 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
                     onClick={() => setSelectedImage(img)}
                     aria-label={`View image ${i + 1} of ${book.images?.length || 1}`}
                     aria-pressed={selectedImage === img}
-                    className={`w-16 h-20 rounded-lg border overflow-hidden p-1 bg-[#141414] cursor-pointer transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] ${
+                    className={`relative w-16 h-20 rounded-lg border overflow-hidden p-1 bg-[#141414] cursor-pointer transition-all duration-[var(--duration-button)] [transition-timing-function:var(--ease-luxury)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A24A] ${
                       selectedImage === img
                         ? "border-[#C9A24A] shadow-md shadow-[#C9A24A]/20 scale-105"
                         : "border-[#2A2A2A] opacity-60 hover:opacity-100 hover:border-[#383838]"
                     }`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img} alt="" className="w-full h-full object-cover rounded" />
+                    <Image src={img} alt="" fill sizes="64px" className="object-cover rounded p-0.5" />
                   </button>
                 ))}
               </div>

@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -8,6 +9,15 @@ import { getAuthenticatedUser } from "@/lib/auth/session";
 import { CheckoutClient } from "./CheckoutClient";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Secure Checkout | MD Shakib Islamic Books",
+  description: "Complete your order securely with Cash on Delivery or online payment.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function CheckoutPage() {
   const user = await getAuthenticatedUser();

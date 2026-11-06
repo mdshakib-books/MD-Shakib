@@ -4,6 +4,7 @@ import * as React from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { AccountNav } from "@/components/account/AccountNav";
 import { Button } from "@/components/ui/Button";
@@ -293,9 +294,12 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
             <div className="space-y-4">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4">
-                  <div className="w-14 h-18 bg-[#0E0E0E] border border-[#222222] rounded-lg overflow-hidden p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.image_url} alt={item.title} className="w-full h-full object-contain" />
+                  <div className="relative w-14 h-18 bg-[#0E0E0E] border border-[#222222] rounded-lg overflow-hidden p-1 flex-shrink-0 flex items-center justify-center shadow-inner">
+                    {item.image_url ? (
+                      <Image src={item.image_url} alt={item.title} fill sizes="56px" className="object-contain p-1" />
+                    ) : (
+                      <span className="text-[10px] text-neutral-500 font-serif">No Cover</span>
+                    )}
                   </div>
 
                   <div className="flex-grow min-w-0 text-xs">

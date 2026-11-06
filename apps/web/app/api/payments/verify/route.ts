@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { verifyAndSettlePayment } from "@/lib/integrations/razorpay/service";
+import { checkRateLimit, rateLimitExceededResponse, getClientIp } from "@/lib/security/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +17,15 @@ export async function POST(req: Request) {
         { error: "Authentication required to verify payment." },
         { status: 401 }
       );
+    }
+
+    // Rate limit payment verification attempts per user / IP
+    const clientIp = getClientIp(req);
+    const rlKey = user.id || clientIp;
+    const rl = await checkRateLimit(rlKey, "payment");
+    if (!rl.allowed) {
+      logger.warn("Rate limit exceeded for /api/payments/verify", { userId: user.id, clientIp });
+      return rateLimitExceededResponse(rl);
     }
 
     const body = await req.json();
@@ -36,7 +47,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error("API /payments/verify error:", error?.message || error);
+    logger.error("API /payments/verify payment settlement failed", { endpoint: "/api/payments/verify" }, error);
     return NextResponse.json(
       { error: error?.message || "Payment signature verification failed." },
       { status: 400 }

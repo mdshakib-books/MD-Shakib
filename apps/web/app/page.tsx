@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { HeroSection, TrustIndicators } from "@/components/layout/HeroSection";
@@ -7,10 +8,27 @@ import { ProductGrid } from "@/components/commerce/ProductGrid";
 import { OrderSteps } from "@/components/home/OrderSteps";
 import { Reviews } from "@/components/home/Reviews";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { JsonLd, buildOrganizationSchema, buildWebSiteSchema } from "@/components/seo/JsonLd";
 import { getFeaturedBooks, type CatalogBook } from "@/lib/data/catalog";
 import Link from "next/link";
 
 export const revalidate = 60; // ISR cache revalidation every 60 seconds
+
+export const metadata: Metadata = {
+  title: "MD Shakib | Authentic Islamic Books & Classical Texts",
+  description:
+    "Curated collection of authentic Islamic books, noble Quran editions, authoritative Hadith collections, and classical scholarly treatises with express delivery across India.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "MD Shakib Islamic Books",
+    description: "Curated collection of authentic Islamic books with express delivery across India.",
+    url: "/",
+    siteName: "MD Shakib Islamic Books",
+    type: "website",
+  },
+};
 
 export default async function HomePage() {
   let featuredBooks: CatalogBook[] = [];
@@ -25,6 +43,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0B0B0B] text-[#F5F5F5]">
+      <JsonLd data={[buildOrganizationSchema(), buildWebSiteSchema()]} />
       {/* 1. Global Navigation Shell */}
       <Navbar />
 

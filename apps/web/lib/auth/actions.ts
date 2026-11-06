@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeRedirectUrl, getAuthenticatedUser, getCanonicalSiteUrl } from "./session";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import type { Database } from "@/types/database.types";
 
 export interface AuthActionResult {
@@ -32,6 +33,11 @@ export async function signUpCustomer(
 
   if (!password || password.length < 6) {
     return { success: false, error: "Password must be at least 6 characters long." };
+  }
+
+  const rl = await checkRateLimit(`signup:${email}`, "auth");
+  if (!rl.allowed) {
+    return { success: false, error: "Too many registration attempts. Please wait 1 minute before trying again." };
   }
 
   const supabase = await createClient();
@@ -80,6 +86,11 @@ export async function loginCustomer(
     return { success: false, error: "Please enter both your email address and password." };
   }
 
+  const rl = await checkRateLimit(`login:${email}`, "auth");
+  if (!rl.allowed) {
+    return { success: false, error: "Too many login attempts. Please wait 1 minute before trying again." };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -121,6 +132,11 @@ export async function sendPasswordReset(
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { success: false, error: "Please enter a valid email address." };
+  }
+
+  const rl = await checkRateLimit(`pwreset:${email}`, "auth");
+  if (!rl.allowed) {
+    return { success: false, error: "Too many password reset requests. Please wait 1 minute before trying again." };
   }
 
   const supabase = await createClient();
