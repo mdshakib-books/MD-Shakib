@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
+import { AboutMissionLottie } from "@/components/about/AboutMissionLottie";
 
 export const metadata: Metadata = {
   title: "About Us | MD Shakib Islamic Books",
@@ -75,25 +76,7 @@ export default function AboutPage() {
         {/* 3. MISSION SECTION */}
         <section className="py-16 md:py-24">
           <div className="max-w-[1200px] mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
-            <div className="w-full h-[280px] md:h-[320px] rounded-2xl bg-dark-surface border border-dark-border flex flex-col items-center justify-center p-8 text-center shadow-luxury relative overflow-hidden group hover:border-[var(--color-primary-gold)] transition-colors">
-              <div className="w-20 h-20 rounded-full bg-dark-card border border-[var(--color-primary-gold)]/40 flex items-center justify-center text-[var(--color-primary-gold)] mb-4 shadow-[0_0_20px_rgba(201,162,74,0.2)]">
-                <svg
-                  className="w-10 h-10"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-              </div>
-              <p className="font-serif text-[var(--color-primary-gold)] text-lg font-bold">Nurturing Knowledge &amp; Faith</p>
-              <p className="text-xs text-neutral-400 mt-2 max-w-xs font-light">Connecting every home with authentic Islamic literature and scholarly heritage.</p>
-            </div>
+            <AboutMissionLottie />
 
             <div>
               <h2 className="font-serif text-2xl md:text-3xl text-[var(--color-primary-gold)] mb-4 uppercase tracking-wide">
