@@ -239,3 +239,43 @@ export async function updateCustomerAccountStatus(payload: {
   return { success: true };
 }
 
+/**
+ * Updates a user account role (user / admin) via dedicated atomic RPC.
+ * Disallows administrators from modifying their own roles.
+ */
+export async function updateUserRole(payload: {
+  userId: string;
+  newRole: "user" | "admin";
+}): Promise<{ success: boolean; error?: string }> {
+  const { user } = await requireAdmin();
+  const supabase = await createClient();
+
+  const { userId, newRole } = payload;
+
+  if (userId === user.id) {
+    return {
+      success: false,
+      error: "Safety invariant: You cannot modify your own active administrator role.",
+    };
+  }
+
+  const { data, error } = await supabase.rpc("admin_update_user_role", {
+    p_admin_id: user.id,
+    p_target_user_id: userId,
+    p_new_role: newRole,
+  });
+
+  if (error || !data) {
+    return {
+      success: false,
+      error: error?.message || "Failed to update user role.",
+    };
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath("/admin");
+
+  return { success: true };
+}
+
+

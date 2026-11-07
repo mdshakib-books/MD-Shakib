@@ -561,3 +561,73 @@ export async function getCustomerReplacements(): Promise<EnrichedOrder[]> {
   return enriched;
 }
 
+/**
+ * Automatically releases expired unpaid inventory reservations (prepaid orders pending > 15 minutes).
+ * Safe, idempotent, restores inventory and marks abandoned orders cancelled.
+ */
+export async function releaseExpiredReservations(limit: number = 50): Promise<{
+  success: boolean;
+  releasedCount?: number;
+  orderIds?: string[];
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("release_expired_reservations_atomic", {
+    p_limit: limit,
+  });
+
+  if (error) {
+    console.error("Failed to release expired reservations:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  const res = data as any;
+  return {
+    success: true,
+    releasedCount: res?.released_orders_count || 0,
+    orderIds: res?.order_ids || [],
+  };
+}
+
+/**
+ * Calculates server-authoritative cart pricing breakdown from database catalog & discounts.
+ */
+export async function calculateAuthoritativeCartPricing(
+  items: Array<{ bookId: string; quantity: number }>,
+  couponCode?: string
+): Promise<{
+  success: boolean;
+  subtotal?: number;
+  platformFee?: number;
+  deliveryFee?: number;
+  discountAmount?: number;
+  totalAmount?: number;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const payload = items.map((i) => ({ book_id: i.bookId, quantity: i.quantity }));
+  const { data, error } = await supabase.rpc("calculate_cart_pricing", {
+    p_items: payload,
+    p_coupon_code: couponCode || undefined,
+  });
+
+  if (error || !data) {
+    return { success: false, error: error?.message || "Failed to calculate pricing" };
+  }
+
+  const res = data as any;
+  if (!res.success) {
+    return { success: false, error: res.error };
+  }
+
+  return {
+    success: true,
+    subtotal: res.subtotal,
+    platformFee: res.platform_fee,
+    deliveryFee: res.delivery_fee,
+    discountAmount: res.discount_amount,
+    totalAmount: res.total_amount,
+  };
+}
+
+
