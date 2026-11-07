@@ -65,7 +65,7 @@ export function AdminDiscountsClient({ initialDiscounts }: AdminDiscountsClientP
   const openEditModal = (d: DiscountRow) => {
     setEditingDiscount(d);
     setCode(d.code);
-    setDiscountType(d.discount_type);
+    setDiscountType(d.discount_type as "fixed" | "percentage");
     setDiscountValue(Number(d.discount_value));
     setMinOrderAmount(Number(d.min_order_amount));
     setMaxDiscountAmount(d.max_discount_amount ? Number(d.max_discount_amount) : "");

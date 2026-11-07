@@ -56,74 +56,136 @@ export async function processRazorpayWebhook(rawBody: string, signature: string)
   const eventType = event.event;
   const payload = event.payload;
 
-  switch (eventType) {
-    case "order.paid":
-    case "payment.captured": {
-      const paymentEntity = payload?.payment?.entity;
-      const orderEntity = payload?.order?.entity;
+  // Durable Webhook Idempotency Check (Feature 0.5 & Remediation 6)
+  if (event?.id) {
+    const { data: existingEvent } = await adminDb
+      .from("webhook_events")
+      .select("id, status")
+      .eq("event_id", event.id)
+      .maybeSingle();
 
-      const rzpOrderId = paymentEntity?.order_id || orderEntity?.id;
-      const rzpPaymentId = paymentEntity?.id;
-
-      if (!rzpOrderId) {
-        return { status: "ignored", reason: "Missing Razorpay order ID in payload" };
+    if (existingEvent) {
+      if (existingEvent.status === "completed") {
+        return { status: "idempotent_ok", reason: "Webhook event already processed" };
       }
-
-      // 1. Execute atomic database settlement with pessimistic row-level locking
-      const { data: rpcRes, error: rpcErr } = await adminDb.rpc("settle_payment_atomic", {
-        p_razorpay_order_id: rzpOrderId,
-        p_razorpay_payment_id: rzpPaymentId || "webhook_captured",
-        p_signature: signature,
-        p_raw_response: payload,
+    } else {
+      await adminDb.from("webhook_events").insert({
+        event_id: event.id,
+        provider: "Razorpay",
+        event_type: eventType,
+        status: "processing",
+        payload: event,
       });
-
-      if (rpcErr) {
-        throw new Error(`Atomic webhook settlement failed: ${rpcErr.message}`);
-      }
-
-      const result = rpcRes as any;
-      if (!result?.success) {
-        return { status: "ignored", reason: result?.message || "Settlement failed" };
-      }
-
-      // 2. Concurrency & Idempotency: if already paid, safely return without duplicate emails
-      if (result.status === "already_paid" || !result.settled) {
-        return { status: "idempotent_ok", orderId: result.order_id };
-      }
-
-      // 3. Trigger email side effect ONLY after confirmed first atomic settlement
-      sendOrderEmails({
-        orderId: result.order_id,
-        userId: result.user_id,
-        eventType: "payment_success",
-      }).catch((err) => console.error("Webhook async email error:", err));
-
-      return { status: "settled", orderId: result.order_id };
     }
+  }
 
-    case "payment.failed": {
-      const paymentEntity = payload?.payment?.entity;
-      const rzpOrderId = paymentEntity?.order_id;
+  try {
+    switch (eventType) {
+      case "order.paid":
+      case "payment.captured": {
+        const paymentEntity = payload?.payment?.entity;
+        const orderEntity = payload?.order?.entity;
 
-      if (!rzpOrderId) {
-        return { status: "ignored", reason: "Missing order_id in payment.failed payload" };
+        const rzpOrderId = paymentEntity?.order_id || orderEntity?.id;
+        const rzpPaymentId = paymentEntity?.id;
+
+        // Strict provider payload validation (Remediation 6)
+        if (!rzpOrderId || typeof rzpOrderId !== "string" || !rzpOrderId.trim()) {
+          return { status: "ignored", reason: "Missing or invalid Razorpay order ID in payload" };
+        }
+
+        if (!rzpPaymentId || typeof rzpPaymentId !== "string" || !rzpPaymentId.trim()) {
+          return { status: "ignored", reason: "Missing or invalid Razorpay payment ID in payload" };
+        }
+
+        // Verify that payment ID belongs to the expected Razorpay order
+        if (paymentEntity?.order_id && orderEntity?.id && paymentEntity.order_id !== orderEntity.id) {
+          return { status: "rejected", reason: "Payment order ID mismatch with webhook order entity" };
+        }
+
+        // Verify payment currency: INR required
+        const currency = (paymentEntity?.currency || orderEntity?.currency || "").toUpperCase();
+        if (currency && currency !== "INR") {
+          return { status: "rejected", reason: `Unsupported payment currency: ${currency}. Only INR is accepted.` };
+        }
+
+        // Verify amount in paise exists and is positive
+        const amountPaise = paymentEntity?.amount ?? orderEntity?.amount;
+        if (typeof amountPaise !== "number" || amountPaise <= 0) {
+          return { status: "rejected", reason: "Missing or non-positive payment amount in webhook payload" };
+        }
+
+        // 1. Execute atomic database settlement with pessimistic row-level locking
+        const { data: rpcRes, error: rpcErr } = await adminDb.rpc("settle_payment_atomic", {
+          p_razorpay_order_id: rzpOrderId,
+          p_razorpay_payment_id: rzpPaymentId,
+          p_signature: signature,
+          p_raw_response: payload,
+        });
+
+        if (rpcErr) {
+          throw new Error(`Atomic webhook settlement failed: ${rpcErr.message}`);
+        }
+
+        const result = rpcRes as any;
+        if (!result?.success) {
+          return { status: "ignored", reason: result?.message || "Settlement failed" };
+        }
+
+        // Mark webhook event completed
+        if (event?.id) {
+          await adminDb
+            .from("webhook_events")
+            .update({ status: "completed", updated_at: new Date().toISOString() })
+            .eq("event_id", event.id);
+        }
+
+        // 2. Concurrency & Idempotency: if already paid, safely return without duplicate emails
+        if (result.status === "already_paid" || !result.settled) {
+          return { status: "idempotent_ok", orderId: result.order_id };
+        }
+
+        // 3. Trigger email side effect ONLY after confirmed first atomic settlement
+        sendOrderEmails({
+          orderId: result.order_id,
+          userId: result.user_id,
+          eventType: "payment_success",
+        }).catch((err) => console.error("Webhook async email error:", err));
+
+        return { status: "settled", orderId: result.order_id };
       }
 
-      // Execute atomic failure recording that rejects downgrading already-paid records
-      const { data: rpcRes, error: rpcErr } = await adminDb.rpc("record_payment_failure_atomic", {
-        p_razorpay_order_id: rzpOrderId,
-        p_raw_response: payload,
-      });
+      case "payment.failed": {
+        const paymentEntity = payload?.payment?.entity;
+        const rzpOrderId = paymentEntity?.order_id;
 
-      if (rpcErr) {
-        throw new Error(`Atomic payment failure recording failed: ${rpcErr.message}`);
+        if (!rzpOrderId) {
+          return { status: "ignored", reason: "Missing order_id in payment.failed payload" };
+        }
+
+        // Execute atomic failure recording that rejects downgrading already-paid records
+        const { data: rpcRes, error: rpcErr } = await adminDb.rpc("record_payment_failure_atomic", {
+          p_razorpay_order_id: rzpOrderId,
+          p_raw_response: payload,
+        });
+
+        if (rpcErr) {
+          throw new Error(`Atomic payment failure recording failed: ${rpcErr.message}`);
+        }
+
+        // Mark webhook event completed
+        if (event?.id) {
+          await adminDb
+            .from("webhook_events")
+            .update({ status: "completed", updated_at: new Date().toISOString() })
+            .eq("event_id", event.id);
+        }
+
+        const result = rpcRes as any;
+        return result;
       }
 
-      const result = rpcRes as any;
-      return result;
-    }
-
-    case "refund.processed":
+      case "refund.processed":
     case "refund.created":
     case "refund.failed": {
       const refundEntity = payload?.refund?.entity;
@@ -184,8 +246,17 @@ export async function processRazorpayWebhook(rawBody: string, signature: string)
       return { status: "refund_recorded", orderId: targetOrderId, refundStatus };
     }
 
-    default:
-      return { status: "unhandled_event", event: eventType };
+      default:
+        return { status: "unhandled_event", event: eventType };
+    }
+  } catch (err: any) {
+    if (event?.id) {
+      await adminDb
+        .from("webhook_events")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("event_id", event.id);
+    }
+    throw err;
   }
 }
 

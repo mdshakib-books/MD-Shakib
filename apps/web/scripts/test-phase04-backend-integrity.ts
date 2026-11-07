@@ -368,7 +368,7 @@ async function main() {
   await runTest("Idempotent order retry returns existing order without double-decrementing stock", async () => {
     const idempotencyKey = `ord_idemp_${timestamp}_1`; // Same key
     const items = [{ book_id: testBook.id, quantity: 2, price: 449.10 }];
-    const addressSnapshot = { full_name: "Customer Alpha" };
+    const addressSnapshot = { full_name: "Customer Alpha", phone: "9876543210", pincode: "110025", city: "Delhi", state: "Delhi", house_no: "12", area: "Okhla" };
 
     const { data: secondOrderId, error } = await clientA.rpc("create_order_atomic", {
       p_user_id: custAId,

@@ -433,7 +433,7 @@ export async function mergeGuestCart(
       book_id: i.bookId,
       quantity: Number(i.quantity) || 1,
     })),
-    p_merge_token: mergeToken || null,
+    p_merge_token: mergeToken || undefined,
   });
 
   if (!rpcErr && rpcRes) {

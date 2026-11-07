@@ -33,7 +33,7 @@ export async function createRazorpayOrder(
   // 1. Fetch authoritative order from database
   const { data: order, error: orderError } = await adminDb
     .from("orders")
-    .select("id, user_id, total_amount, payment_status, payment_method, razorpay_order_id")
+    .select("id, user_id, total_amount, payment_status, payment_method, razorpay_order_id, order_status")
     .eq("id", orderId)
     .single();
 
@@ -48,6 +48,10 @@ export async function createRazorpayOrder(
 
   if (order.payment_status === "Paid") {
     throw new Error("Order is already paid.");
+  }
+
+  if (order.order_status === "Cancelled") {
+    throw new Error("Cannot initiate payment for a cancelled order.");
   }
 
   // If a Razorpay order was already generated, return the existing provider order

@@ -381,8 +381,17 @@ async function runIntegrationAndDatabaseSuite() {
     await test("Idempotent retry with same key returns existing order without re-decrementing stock", async () => {
       const orderItems = [
         { book_id: testBook1.id, quantity: 2, price: 450 },
+        { book_id: testBook2.id, quantity: 1, price: 300 },
       ];
-      const addressSnap = { full_name: "Customer Alpha", phone: "9876543210", pincode: "110025", city: "Delhi", state: "Delhi", house_no: "101" };
+      const addressSnap = {
+        full_name: "Customer Alpha",
+        phone: "9876543210",
+        pincode: "110025",
+        city: "Delhi",
+        state: "Delhi",
+        house_no: "101",
+        area: "Okhla",
+      };
 
       const { data: retryOrderId, error: retryErr } = await clientA.rpc("create_order_atomic", {
         p_user_id: custAId,
