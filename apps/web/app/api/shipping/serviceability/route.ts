@@ -21,9 +21,16 @@ export async function GET(req: Request) {
     }
 
     const result = await checkPincodeServiceability(pincode);
-    return NextResponse.json(result, {
-      headers: createRateLimitHeaders(rl),
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: result,
+        ...result,
+      },
+      {
+        headers: createRateLimitHeaders(rl),
+      }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Failed to check pincode serviceability." },

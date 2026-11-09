@@ -171,6 +171,16 @@ async function main() {
       });
       assert(orderId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", orderId);
+      await adminDb.from("payments").insert({
+        order_id: orderId,
+        user_id: custId,
+        payment_id: rzpOrderId,
+        provider_order_id: rzpOrderId,
+        amount: 245,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Attempt settlement with ₹100 instead of ₹245 (10000 paise)
       const { data: settleRes, error } = await adminDb.rpc("settle_payment_atomic", {
@@ -204,6 +214,16 @@ async function main() {
       });
       assert(orderId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", orderId);
+      await adminDb.from("payments").insert({
+        order_id: orderId,
+        user_id: custId,
+        payment_id: rzpOrderId,
+        provider_order_id: rzpOrderId,
+        amount: 245,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Attempt settlement with USD currency
       const { data: settleRes, error } = await adminDb.rpc("settle_payment_atomic", {
@@ -264,6 +284,16 @@ async function main() {
       });
       assert(orderId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", orderId);
+      await adminDb.from("payments").insert({
+        order_id: orderId,
+        user_id: custId,
+        payment_id: rzpOrderId,
+        provider_order_id: rzpOrderId,
+        amount: 245,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Settle payment first
       const { data: sRes } = await adminDb.rpc("settle_payment_atomic", {

@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { User } from "@supabase/supabase-js";
 
+import { isStaffRole, hasPermission, type StaffPermission } from "./permissions";
+
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
 export interface AdminContext {
@@ -12,8 +14,8 @@ export interface AdminContext {
 }
 
 /**
- * Checks whether the currently logged-in user is an authorized active admin.
- * Returns the admin context or null if unauthenticated or not an admin.
+ * Checks whether the currently logged-in user is an authorized active admin or staff member.
+ * Returns the admin context or null if unauthenticated or not staff.
  */
 export async function getAdminContext(): Promise<AdminContext | null> {
   const supabase = await createClient();
@@ -36,7 +38,7 @@ export async function getAdminContext(): Promise<AdminContext | null> {
     return null;
   }
 
-  if (profile.role !== "admin" || profile.is_blocked || profile.is_deleted) {
+  if (!isStaffRole(profile.role) || profile.is_blocked || profile.is_deleted) {
     return null;
   }
 
@@ -45,7 +47,7 @@ export async function getAdminContext(): Promise<AdminContext | null> {
 
 /**
  * Server-side guard for Admin Server Components and Server Actions.
- * Redirects unauthenticated users to /login and unauthorized non-admins to /?error=forbidden.
+ * Redirects unauthenticated users to /login and unauthorized non-staff to /?error=forbidden.
  */
 export async function requireAdmin(): Promise<AdminContext> {
   const supabase = await createClient();
@@ -68,11 +70,33 @@ export async function requireAdmin(): Promise<AdminContext> {
     redirect("/login?redirect=/admin");
   }
 
-  if (profile.role !== "admin" || profile.is_blocked || profile.is_deleted) {
+  if (!isStaffRole(profile.role) || profile.is_blocked || profile.is_deleted) {
     redirect("/?error=forbidden");
   }
 
   return { user, profile };
+}
+
+/**
+ * Server-side guard enforcing granular least-privilege staff permissions.
+ */
+export async function requireStaffPermission(permission: StaffPermission): Promise<AdminContext> {
+  const ctx = await requireAdmin();
+  if (!hasPermission(ctx.profile.role, permission)) {
+    redirect("/admin?error=unauthorized_permission");
+  }
+  return ctx;
+}
+
+/**
+ * Server-side guard requiring Super Admin authority.
+ */
+export async function requireSuperAdmin(): Promise<AdminContext> {
+  const ctx = await requireAdmin();
+  if (ctx.profile.role !== "super_admin") {
+    redirect("/admin?error=super_admin_required");
+  }
+  return ctx;
 }
 
 /**
@@ -109,7 +133,7 @@ export async function verifyAdminApi(): Promise<
     };
   }
 
-  if (profile.role !== "admin" || profile.is_blocked || profile.is_deleted) {
+  if (!isStaffRole(profile.role) || profile.is_blocked || profile.is_deleted) {
     return {
       authorized: false,
       response: NextResponse.json(

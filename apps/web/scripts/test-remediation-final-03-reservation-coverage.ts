@@ -110,6 +110,16 @@ async function main() {
       });
       assert(!oErr1 && oId1);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId1 }).eq("id", oId1);
+      await adminDb.from("payments").insert({
+        order_id: oId1,
+        user_id: userId,
+        payment_id: rzpOrderId1,
+        provider_order_id: rzpOrderId1,
+        amount: 745,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // (2*200 + 1*300 = 700 + 45 = 74500 paise)
       const { data: sRes1, error: sErr1 } = await adminDb.rpc("settle_payment_atomic", {
@@ -139,6 +149,16 @@ async function main() {
       });
       assert(!oErr2 && oId2);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId2 }).eq("id", oId2);
+      await adminDb.from("payments").insert({
+        order_id: oId2,
+        user_id: userId,
+        payment_id: rzpOrderId2,
+        provider_order_id: rzpOrderId2,
+        amount: 745,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Manually delete the reservation for book2
       await adminDb.from("inventory_reservations")
@@ -179,6 +199,16 @@ async function main() {
       });
       assert(!oErr3 && oId3);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId3 }).eq("id", oId3);
+      await adminDb.from("payments").insert({
+        order_id: oId3,
+        user_id: userId,
+        payment_id: rzpOrderId3,
+        provider_order_id: rzpOrderId3,
+        amount: 645,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Alter reservation quantity from 3 to 2
       await adminDb.from("inventory_reservations")
@@ -222,6 +252,16 @@ async function main() {
         p_idempotency_key: `deadlock_a_${timestamp}`,
       });
       await adminDb.from("orders").update({ razorpay_order_id: rzpA }).eq("id", oIdA);
+      await adminDb.from("payments").insert({
+        order_id: oIdA,
+        user_id: userId,
+        payment_id: rzpA,
+        provider_order_id: rzpA,
+        amount: 545,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Order B: [book2, book1] (inverted client input order)
       const { data: oIdB } = await adminDb.rpc("create_order_atomic", {
@@ -235,6 +275,16 @@ async function main() {
         p_idempotency_key: `deadlock_b_${timestamp}`,
       });
       await adminDb.from("orders").update({ razorpay_order_id: rzpB }).eq("id", oIdB);
+      await adminDb.from("payments").insert({
+        order_id: oIdB,
+        user_id: userId,
+        payment_id: rzpB,
+        provider_order_id: rzpB,
+        amount: 545,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Settle concurrently
       const [resA, resB] = await Promise.all([

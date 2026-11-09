@@ -111,6 +111,16 @@ async function main() {
       });
       assert(!oErr && oId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", oId);
+      await adminDb.from("payments").insert({
+        order_id: oId,
+        user_id: userId,
+        payment_id: rzpOrderId,
+        provider_order_id: rzpOrderId,
+        amount: 295,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Verify coupon is reserved
       const { data: oMid } = await adminDb.from("orders").select("coupon_status").eq("id", oId).single();

@@ -210,6 +210,18 @@ async function main() {
       assert(oId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", oId);
 
+      // Create matching pending payment record
+      await adminDb.from("payments").insert({
+        order_id: oId,
+        user_id: userId,
+        payment_id: rzpOrderId,
+        provider_order_id: rzpOrderId,
+        amount: 295,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
+
       const webhookPayload = JSON.stringify({
         id: webhookEventId,
         event: "order.paid",
@@ -234,6 +246,7 @@ async function main() {
 
   } finally {
     await adminDb.from("webhook_events").delete().ilike("event_id", `%${timestamp}%`);
+    await adminDb.from("payments").delete().eq("user_id", userId);
     await adminDb.from("inventory_reservations").delete().in("book_id", [book.id]);
     await adminDb.from("order_items").delete().in("book_id", [book.id]);
     await adminDb.from("orders").delete().eq("user_id", userId);

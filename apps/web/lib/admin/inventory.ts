@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "./auth";
+import { sendLowStockAlertEmail } from "@/lib/integrations/resend/service";
 import type { Database } from "@/types/database.types";
 
 export type InventoryAdjustmentRow = Database["public"]["Tables"]["inventory_adjustments"]["Row"];
@@ -246,5 +248,70 @@ export async function getInventoryAdjustmentHistory(params?: {
     bookTitle: bookTitleMap[adj.book_id] || "Unknown Title",
     adminEmail: adminEmailMap[adj.admin_id] || "Admin",
   }));
+}
+
+/**
+ * Checks books for low stock (<= 5 units), prevents spam via 24-hr deduplication in stock_alerts,
+ * and notifies admin staff via email (Feature 1.22).
+ */
+export async function checkAndTriggerLowStockAlerts(bookIds: string[]): Promise<{
+  triggeredCount: number;
+  alerts: Array<{ bookId: string; title: string; stock: number }>;
+}> {
+  if (!bookIds || bookIds.length === 0) return { triggeredCount: 0, alerts: [] };
+
+  const adminDb = createAdminClient();
+
+  // 1. Fetch books that are at or below low stock threshold (<= 5)
+  const { data: books, error } = await adminDb
+    .from("books")
+    .select("id, title, stock")
+    .in("id", bookIds)
+    .lte("stock", 5);
+
+  if (error || !books || books.length === 0) {
+    return { triggeredCount: 0, alerts: [] };
+  }
+
+  // 2. Query recent alerts within 24 hours to deduplicate
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentAlerts } = await adminDb
+    .from("stock_alerts")
+    .select("book_id")
+    .in("book_id", books.map((b) => b.id))
+    .gte("notified_at", twentyFourHoursAgo);
+
+  const recentlyAlertedSet = new Set((recentAlerts || []).map((r) => r.book_id));
+  const newAlerts = books.filter((b) => !recentlyAlertedSet.has(b.id));
+
+  if (newAlerts.length === 0) {
+    return { triggeredCount: 0, alerts: [] };
+  }
+
+  // 3. Record in stock_alerts table
+  const alertInserts = newAlerts.map((b) => ({
+    book_id: b.id,
+    stock_level: b.stock,
+    threshold: 5,
+    status: "active" as const,
+  }));
+
+  await adminDb.from("stock_alerts").insert(alertInserts);
+
+  // 4. Dispatch alert email
+  const formattedAlerts = newAlerts.map((b) => ({
+    bookId: b.id,
+    title: b.title,
+    stock: b.stock,
+  }));
+
+  sendLowStockAlertEmail(formattedAlerts).catch((err) =>
+    console.error("Async low stock alert dispatch error:", err)
+  );
+
+  return {
+    triggeredCount: formattedAlerts.length,
+    alerts: formattedAlerts,
+  };
 }
 

@@ -49,6 +49,7 @@ const scripts = [
   { name: "FINAL REMEDIATION 7: PAID CANCELLATION & REFUNDS LIFECYCLE", file: "scripts/test-remediation-final-07-paid-cancellation-refunds.ts" },
   { name: "PHASE 04 REGRESSION: BACKEND INTEGRITY", file: "scripts/test-phase04-backend-integrity.ts" },
   { name: "PHASE 09 REGRESSION: INTEGRATION & DATABASE", file: "scripts/test-phase09-integration-and-database.ts" },
+  { name: "PHASE 00 FINAL SECURITY REMEDIATION: EVIDENCE, RECORD & IDEMPOTENCY", file: "scripts/test-phase00-final-security-remediation.ts" },
 ];
 
 const webDir = path.resolve(__dirname, "..");

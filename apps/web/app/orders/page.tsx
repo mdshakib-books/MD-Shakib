@@ -99,7 +99,7 @@ export default async function OrdersPage() {
                     <div>
                       <div className="flex items-center space-x-3">
                         <span className="font-mono text-xs text-neutral-200 font-bold">
-                          Order #{order.id.slice(0, 8).toUpperCase()}
+                          Order #{order.order_number || order.id.slice(0, 8).toUpperCase()}
                         </span>
                         <Badge variant={getStatusBadgeVariant(order.order_status)}>
                           {order.order_status}

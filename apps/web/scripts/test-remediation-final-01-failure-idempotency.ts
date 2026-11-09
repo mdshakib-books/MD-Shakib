@@ -231,6 +231,16 @@ async function main() {
       });
       assert(!pOrdErr && paidOrderId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderIdPaid }).eq("id", paidOrderId);
+      await adminDb.from("payments").insert({
+        order_id: paidOrderId,
+        user_id: userId,
+        payment_id: rzpOrderIdPaid,
+        provider_order_id: rzpOrderIdPaid,
+        amount: 345,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Settle the order (300 + 45 = 34500 paise)
       const { data: sRes, error: sErr } = await adminDb.rpc("settle_payment_atomic", {

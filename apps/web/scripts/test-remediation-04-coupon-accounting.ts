@@ -319,6 +319,17 @@ async function main() {
       assert(orderId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", orderId);
 
+      await adminDb.from("payments").insert({
+        order_id: orderId,
+        user_id: custAId,
+        payment_id: rzpOrderId,
+        provider_order_id: rzpOrderId,
+        amount: 295,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
+
       // Settle payment (300 - 50 + 45 = 295 -> 29500 paise)
       await adminDb.rpc("settle_payment_atomic", {
         p_razorpay_order_id: rzpOrderId,
@@ -334,6 +345,7 @@ async function main() {
 
   } finally {
     // Cleanup
+    await adminDb.from("payments").delete().in("user_id", [custAId, custBId]);
     await adminDb.from("inventory_reservations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     await adminDb.from("order_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     await adminDb.from("orders").delete().in("user_id", [custAId, custBId]);
