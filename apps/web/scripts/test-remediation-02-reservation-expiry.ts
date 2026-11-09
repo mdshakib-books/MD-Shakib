@@ -123,6 +123,16 @@ async function main() {
       assert(!error && orderId);
 
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", orderId);
+      await adminDb.from("payments").insert({
+        order_id: orderId,
+        user_id: cust1Id,
+        payment_id: rzpOrderId,
+        provider_order_id: rzpOrderId,
+        amount: 645,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Backdate reservation expiry to the past
       await adminDb
@@ -201,6 +211,16 @@ async function main() {
       });
       assert(!c1Err && c1OrderId);
       await adminDb.from("orders").update({ razorpay_order_id: cust1RzpOrderId }).eq("id", c1OrderId);
+      await adminDb.from("payments").insert({
+        order_id: c1OrderId,
+        user_id: cust1Id,
+        payment_id: cust1RzpOrderId,
+        provider_order_id: cust1RzpOrderId,
+        amount: 545,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Customer 1's reservation expires
       await adminDb
@@ -287,6 +307,16 @@ async function main() {
       });
       assert(orderId);
       await adminDb.from("orders").update({ razorpay_order_id: raceRzpId }).eq("id", orderId);
+      await adminDb.from("payments").insert({
+        order_id: orderId,
+        user_id: cust1Id,
+        payment_id: raceRzpId,
+        provider_order_id: raceRzpId,
+        amount: 245,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Backdate reservation to expired threshold
       await adminDb

@@ -460,7 +460,7 @@ async function runIntegrationAndDatabaseSuite() {
         p_razorpay_order_id: rzpOrderId,
         p_razorpay_payment_id: rzpPayId,
         p_signature: "test_verified_sig",
-        p_raw_response: { method: "test_integration" },
+        p_raw_response: { method: "test_integration", amount: 124500, currency: "INR" },
       });
 
       assert(!settleErr, `Settlement failed: ${settleErr?.message}`);
@@ -480,6 +480,7 @@ async function runIntegrationAndDatabaseSuite() {
         p_razorpay_order_id: rzpOrderId,
         p_razorpay_payment_id: rzpPayId,
         p_signature: "test_verified_sig",
+        p_raw_response: { method: "test_integration", amount: 124500, currency: "INR" },
       });
 
       assert(!dupErr, `Duplicate settlement should not throw: ${dupErr?.message}`);

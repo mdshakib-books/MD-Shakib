@@ -98,6 +98,16 @@ async function main() {
       });
       assert(!oErr && oId);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId1 }).eq("id", oId);
+      await adminDb.from("payments").insert({
+        order_id: oId,
+        user_id: userId,
+        payment_id: rzpOrderId1,
+        provider_order_id: rzpOrderId1,
+        amount: 445,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Force reservation expired
       await adminDb.from("inventory_reservations")
@@ -141,6 +151,16 @@ async function main() {
       });
       assert(!oErr2 && oId2);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId2 }).eq("id", oId2);
+      await adminDb.from("payments").insert({
+        order_id: oId2,
+        user_id: userId,
+        payment_id: rzpOrderId2,
+        provider_order_id: rzpOrderId2,
+        amount: 445,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Customer cancels order explicitly
       const { data: cancelSuccess, error: cErr } = await adminDb.rpc("cancel_order_atomic", {
@@ -194,6 +214,16 @@ async function main() {
       });
       assert(!oErr3 && oId3);
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId3 }).eq("id", oId3);
+      await adminDb.from("payments").insert({
+        order_id: oId3,
+        user_id: userId,
+        payment_id: rzpOrderId3,
+        provider_order_id: rzpOrderId3,
+        amount: 445,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Admin cancels order explicitly due to suspected fraud
       await adminDb.from("orders").update({

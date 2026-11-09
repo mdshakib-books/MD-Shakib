@@ -1,9 +1,10 @@
 export const ORDER_STATUS_TRANSITIONS: Record<string, string[]> = {
   Pending: ["Confirmed", "Cancelled"],
-  Confirmed: ["Packed", "Cancelled"],
+  Confirmed: ["Processing", "Packed", "Shipped", "Cancelled"],
+  Processing: ["Packed", "Shipped", "Cancelled"],
   Packed: ["Shipped", "Cancelled"],
-  Shipped: ["Out for Delivery", "Cancelled"],
-  "Out for Delivery": ["Delivered", "Cancelled"],
+  Shipped: ["Out for Delivery", "Delivered", "Cancelled", "Returned"],
+  "Out for Delivery": ["Delivered", "Cancelled", "Returned"],
   Delivered: ["Replacement Requested"],
   Cancelled: [],
   Returned: [],

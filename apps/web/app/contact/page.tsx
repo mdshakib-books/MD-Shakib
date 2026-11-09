@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { submitContactForm } from "@/lib/support/contact";
 
 export default function ContactPage() {
   const [name, setName] = useState("");
@@ -15,10 +16,27 @@ export default function ContactPage() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setErrorMsg(null);
+
+    startTransition(async () => {
+      const res = await submitContactForm({
+        name,
+        email,
+        subject,
+        message,
+      });
+
+      if (!res.success && res.error) {
+        setErrorMsg(res.error);
+      } else {
+        setSubmitted(true);
+      }
+    });
   };
 
   return (
@@ -137,8 +155,21 @@ export default function ContactPage() {
                 Fill in the details below and our team will get back to you within 24 hours.
               </p>
 
+              {errorMsg && (
+                <div role="alert" className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center justify-between">
+                  <span>{errorMsg}</span>
+                  <button
+                    type="button"
+                    onClick={() => setErrorMsg(null)}
+                    className="text-neutral-400 hover:text-white ml-2 text-xs underline focus:outline-none"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
               {submitted ? (
-                <div className="p-8 rounded-xl bg-emerald-950/20 border border-emerald-800/30 text-center">
+                <div className="p-8 rounded-xl bg-emerald-950/20 border border-emerald-800/30 text-center animate-fade-in-up">
                   <div className="w-12 h-12 rounded-full bg-emerald-900/30 text-emerald-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -148,7 +179,7 @@ export default function ContactPage() {
                     Message Received
                   </h4>
                   <p className="text-neutral-300 text-xs mt-2 max-w-xs mx-auto">
-                    JazakAllah Khair for reaching out. We will respond to your email shortly.
+                    JazakAllah Khair for reaching out. We have sent an email acknowledgement and will respond shortly.
                   </p>
                   <Button
                     type="button"
@@ -160,6 +191,7 @@ export default function ContactPage() {
                       setEmail("");
                       setSubject("");
                       setMessage("");
+                      setErrorMsg(null);
                     }}
                     className="mt-5"
                   >
@@ -177,6 +209,7 @@ export default function ContactPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Ahmad Khan"
+                    disabled={isPending}
                   />
 
                   <Input
@@ -188,6 +221,7 @@ export default function ContactPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="e.g. ahmad@example.com"
+                    disabled={isPending}
                   />
 
                   <Input
@@ -198,7 +232,8 @@ export default function ContactPage() {
                     required
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    placeholder="Subject (e.g. Order #ORD-1234 Status)"
+                    placeholder="Subject (e.g. Order Status, Title Availability)"
+                    disabled={isPending}
                   />
 
                   <Textarea
@@ -210,6 +245,7 @@ export default function ContactPage() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="How can we assist you today?"
+                    disabled={isPending}
                   />
 
                   <Button
@@ -217,8 +253,9 @@ export default function ContactPage() {
                     variant="primary"
                     size="lg"
                     className="w-full mt-2"
+                    disabled={isPending}
                   >
-                    Send Message
+                    {isPending ? "Sending Inquiry..." : "Send Message"}
                   </Button>
                 </form>
               )}

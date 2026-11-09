@@ -119,6 +119,18 @@ async function main() {
       paidOrderId = oId as string;
       await adminDb.from("orders").update({ razorpay_order_id: rzpOrderIdPaid }).eq("id", paidOrderId);
 
+      // Create matching pending payment record
+      await adminDb.from("payments").insert({
+        order_id: paidOrderId,
+        user_id: userId,
+        payment_id: rzpOrderIdPaid,
+        provider_order_id: rzpOrderIdPaid,
+        amount: 445,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
+
       // Settle
       await adminDb.rpc("settle_payment_atomic", {
         p_razorpay_order_id: rzpOrderIdPaid,
@@ -261,6 +273,7 @@ async function main() {
     });
 
   } finally {
+    await adminDb.from("payments").delete().eq("user_id", userId);
     await adminDb.from("order_idempotency_keys").delete().eq("user_id", userId);
     await adminDb.from("inventory_reservations").delete().in("book_id", [book.id]);
     await adminDb.from("order_items").delete().in("book_id", [book.id]);

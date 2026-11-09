@@ -137,6 +137,26 @@ isOneToOne: true
                   Relationships: [
                     
                   ]
+                },"contact_submissions": {
+                  Row: {
+                    "admin_notes": string | null,"created_at": string,"email": string,"id": string,"ip_address": string | null,"message": string,"name": string,"responded_at": string | null,"status": string,"subject": string,"updated_at": string,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "admin_notes"?: string | null,"created_at"?: string,"email": string,"id"?: string,"ip_address"?: string | null,"message": string,"name": string,"responded_at"?: string | null,"status"?: string,"subject": string,"updated_at"?: string,"user_id"?: string | null
+                  }
+                  Update: {
+                    "admin_notes"?: string | null,"created_at"?: string,"email"?: string,"id"?: string,"ip_address"?: string | null,"message"?: string,"name"?: string,"responded_at"?: string | null,"status"?: string,"subject"?: string,"updated_at"?: string,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "contact_submissions_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"discounts": {
                   Row: {
                     "code": string,"created_at": string,"discount_type": string,"discount_value": number,"id": string,"is_active": boolean,"max_discount_amount": number | null,"min_order_amount": number,"updated_at": string,"usage_limit": number | null,"used_count": number,"valid_from": string,"valid_until": string | null
@@ -297,14 +317,14 @@ isOneToOne: false
                   ]
                 },"orders": {
                   Row: {
-                    "address_snapshot": NonNullable<Json>,"cancel_reason": string | null,"coupon_code": string | null,"coupon_status": string,"created_at": string,"delivered_at": string | null,"delivery_fee": number | null,"discount_amount": number | null,"id": string,"idempotency_key": string | null,"is_paid": boolean,"order_status": string,"paid_at": string | null,"payment_method": string,"payment_status": string,"platform_fee": number | null,"razorpay_order_id": string | null,"razorpay_payment_id": string | null,"razorpay_refund_id": string | null,"refund_amount": number | null,"refund_status": string | null,"refunded_at": string | null,"replacement_reason": string | null,"replacement_rejected_at": string | null,"replacement_rejection_reason": string | null,"replacement_requested": boolean,"replacement_requested_at": string | null,"replacement_status": string,"request_fingerprint": string | null,"shipping_awb": string | null,"shipping_courier": string,"shipping_delivered_at": string | null,"shipping_pickup_scheduled": boolean,"shipping_shipped_at": string | null,"shipping_tracking_url": string | null,"subtotal": number | null,"total_amount": number,"updated_at": string,"user_id": string
+                    "address_snapshot": NonNullable<Json>,"cancel_reason": string | null,"cod_settlement_ref": string | null,"cod_settlement_status": string,"cod_settled_amount": number | null,"cod_settled_at": string | null,"coupon_code": string | null,"coupon_status": string,"created_at": string,"delivered_at": string | null,"delivery_fee": number | null,"discount_amount": number | null,"id": string,"idempotency_key": string | null,"is_paid": boolean,"order_number": string,"order_status": string,"paid_at": string | null,"payment_method": string,"payment_status": string,"platform_fee": number | null,"razorpay_order_id": string | null,"razorpay_payment_id": string | null,"razorpay_refund_id": string | null,"refund_amount": number | null,"refund_status": string | null,"refunded_at": string | null,"replacement_reason": string | null,"replacement_rejected_at": string | null,"replacement_rejection_reason": string | null,"replacement_requested": boolean,"replacement_requested_at": string | null,"replacement_status": string,"request_fingerprint": string | null,"shipping_awb": string | null,"shipping_courier": string,"shipping_delivered_at": string | null,"shipping_label_url": string | null,"shipping_pickup_request_id": string | null,"shipping_pickup_scheduled": boolean,"shipping_pickup_scheduled_at": string | null,"shipping_shipped_at": string | null,"shipping_tracking_url": string | null,"subtotal": number | null,"total_amount": number,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "address_snapshot": NonNullable<Json>,"cancel_reason"?: string | null,"coupon_code"?: string | null,"coupon_status"?: string,"created_at"?: string,"delivered_at"?: string | null,"delivery_fee"?: number | null,"discount_amount"?: number | null,"id"?: string,"idempotency_key"?: string | null,"is_paid"?: boolean,"order_status"?: string,"paid_at"?: string | null,"payment_method": string,"payment_status"?: string,"platform_fee"?: number | null,"razorpay_order_id"?: string | null,"razorpay_payment_id"?: string | null,"razorpay_refund_id"?: string | null,"refund_amount"?: number | null,"refund_status"?: string | null,"refunded_at"?: string | null,"replacement_reason"?: string | null,"replacement_rejected_at"?: string | null,"replacement_rejection_reason"?: string | null,"replacement_requested"?: boolean,"replacement_requested_at"?: string | null,"replacement_status"?: string,"request_fingerprint"?: string | null,"shipping_awb"?: string | null,"shipping_courier"?: string,"shipping_delivered_at"?: string | null,"shipping_pickup_scheduled"?: boolean,"shipping_shipped_at"?: string | null,"shipping_tracking_url"?: string | null,"subtotal"?: number | null,"total_amount": number,"updated_at"?: string,"user_id": string
+                    "address_snapshot": NonNullable<Json>,"cancel_reason"?: string | null,"cod_settlement_ref"?: string | null,"cod_settlement_status"?: string,"cod_settled_amount"?: number | null,"cod_settled_at"?: string | null,"coupon_code"?: string | null,"coupon_status"?: string,"created_at"?: string,"delivered_at"?: string | null,"delivery_fee"?: number | null,"discount_amount"?: number | null,"id"?: string,"idempotency_key"?: string | null,"is_paid"?: boolean,"order_number"?: string,"order_status"?: string,"paid_at"?: string | null,"payment_method": string,"payment_status"?: string,"platform_fee"?: number | null,"razorpay_order_id"?: string | null,"razorpay_payment_id"?: string | null,"razorpay_refund_id"?: string | null,"refund_amount"?: number | null,"refund_status"?: string | null,"refunded_at"?: string | null,"replacement_reason"?: string | null,"replacement_rejected_at"?: string | null,"replacement_rejection_reason"?: string | null,"replacement_requested"?: boolean,"replacement_requested_at"?: string | null,"replacement_status"?: string,"request_fingerprint"?: string | null,"shipping_awb"?: string | null,"shipping_courier"?: string,"shipping_delivered_at"?: string | null,"shipping_label_url"?: string | null,"shipping_pickup_request_id"?: string | null,"shipping_pickup_scheduled"?: boolean,"shipping_pickup_scheduled_at"?: string | null,"shipping_shipped_at"?: string | null,"shipping_tracking_url"?: string | null,"subtotal"?: number | null,"total_amount": number,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "address_snapshot"?: NonNullable<Json>,"cancel_reason"?: string | null,"coupon_code"?: string | null,"coupon_status"?: string,"created_at"?: string,"delivered_at"?: string | null,"delivery_fee"?: number | null,"discount_amount"?: number | null,"id"?: string,"idempotency_key"?: string | null,"is_paid"?: boolean,"order_status"?: string,"paid_at"?: string | null,"payment_method"?: string,"payment_status"?: string,"platform_fee"?: number | null,"razorpay_order_id"?: string | null,"razorpay_payment_id"?: string | null,"razorpay_refund_id"?: string | null,"refund_amount"?: number | null,"refund_status"?: string | null,"refunded_at"?: string | null,"replacement_reason"?: string | null,"replacement_rejected_at"?: string | null,"replacement_rejection_reason"?: string | null,"replacement_requested"?: boolean,"replacement_requested_at"?: string | null,"replacement_status"?: string,"request_fingerprint"?: string | null,"shipping_awb"?: string | null,"shipping_courier"?: string,"shipping_delivered_at"?: string | null,"shipping_pickup_scheduled"?: boolean,"shipping_shipped_at"?: string | null,"shipping_tracking_url"?: string | null,"subtotal"?: number | null,"total_amount"?: number,"updated_at"?: string,"user_id"?: string
+                    "address_snapshot"?: NonNullable<Json>,"cancel_reason"?: string | null,"cod_settlement_ref"?: string | null,"cod_settlement_status"?: string,"cod_settled_amount"?: number | null,"cod_settled_at"?: string | null,"coupon_code"?: string | null,"coupon_status"?: string,"created_at"?: string,"delivered_at"?: string | null,"delivery_fee"?: number | null,"discount_amount"?: number | null,"id"?: string,"idempotency_key"?: string | null,"is_paid"?: boolean,"order_number"?: string,"order_status"?: string,"paid_at"?: string | null,"payment_method"?: string,"payment_status"?: string,"platform_fee"?: number | null,"razorpay_order_id"?: string | null,"razorpay_payment_id"?: string | null,"razorpay_refund_id"?: string | null,"refund_amount"?: number | null,"refund_status"?: string | null,"refunded_at"?: string | null,"replacement_reason"?: string | null,"replacement_rejected_at"?: string | null,"replacement_rejection_reason"?: string | null,"replacement_requested"?: boolean,"replacement_requested_at"?: string | null,"replacement_status"?: string,"request_fingerprint"?: string | null,"shipping_awb"?: string | null,"shipping_courier"?: string,"shipping_delivered_at"?: string | null,"shipping_label_url"?: string | null,"shipping_pickup_request_id"?: string | null,"shipping_pickup_scheduled"?: boolean,"shipping_pickup_scheduled_at"?: string | null,"shipping_shipped_at"?: string | null,"shipping_tracking_url"?: string | null,"subtotal"?: number | null,"total_amount"?: number,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -415,12 +435,35 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"stock_alerts": {
+                  Row: {
+                    "book_id": string,"created_at": string,"id": string,"notified_at": string,"resolved_at": string | null,"status": string,"stock_level": number,"threshold": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "book_id": string,"created_at"?: string,"id"?: string,"notified_at"?: string,"resolved_at"?: string | null,"status"?: string,"stock_level": number,"threshold"?: number
+                  }
+                  Update: {
+                    "book_id"?: string,"created_at"?: string,"id"?: string,"notified_at"?: string,"resolved_at"?: string | null,"status"?: string,"stock_level"?: number,"threshold"?: number
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "stock_alerts_book_id_fkey"
+                      columns: ["book_id"]
+                      isOneToOne: false
+                      referencedRelation: "books"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 }
           }
           Views: {
             [_ in never]: never
           }
           Functions: {
+            "get_admin_dashboard_metrics":
+{ Args: { "p_date_from"?: string,"p_date_to"?: string }; Returns: Json
+                           },
             "adjust_inventory_atomic":
 { Args: { "p_admin_id": string,"p_book_id": string,"p_quantity": number,"p_reason": string,"p_type": string }; Returns: Json
                            },

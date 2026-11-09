@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/session";
 import { getCustomerCart } from "./cart";
 import { createRazorpayOrder, type CreatePaymentOrderResult } from "@/lib/integrations/razorpay/service";
-import { sendOrderEmails } from "@/lib/integrations/resend/service";
+import { sendOrderEmails, sendAdminNewOrderNotification } from "@/lib/integrations/resend/service";
+import { checkPincodeServiceability } from "@/lib/integrations/delhivery/service";
+import { checkAndTriggerLowStockAlerts } from "@/lib/admin/inventory";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import type { Database } from "@/types/database.types";
 
@@ -23,7 +25,8 @@ export interface EnrichedOrder extends OrderRow {
  */
 export async function placeOrderCOD(
   addressId: string,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  couponCode?: string
 ): Promise<{ success: boolean; error?: string; orderId?: string }> {
   const user = await getAuthenticatedUser();
   if (!user) {
@@ -61,6 +64,19 @@ export async function placeOrderCOD(
 
   if (addrErr || !address) {
     return { success: false, error: "Please select a valid delivery address." };
+  }
+
+  // 1.5 Server-side Delhivery pincode serviceability check
+  try {
+    const pinCheck = await checkPincodeServiceability(address.pincode);
+    if (!pinCheck.serviceable || !pinCheck.cod) {
+      return {
+        success: false,
+        error: `Cash on Delivery is not available for pincode ${address.pincode}. Please choose Online Payment or another address.`,
+      };
+    }
+  } catch (pinErr: any) {
+    console.warn("Pincode check error (COD):", pinErr?.message);
   }
 
   // 2. Fetch customer cart and calculate authoritative total
@@ -104,6 +120,7 @@ export async function placeOrderCOD(
     p_address_snapshot: addressSnapshot,
     p_payment_method: "COD",
     p_total_amount: cart.totalAmount,
+    p_coupon_code: couponCode?.trim() || null,
   };
   if (idempotencyKey) {
     rpcParams.p_idempotency_key = idempotencyKey;
@@ -138,12 +155,22 @@ export async function placeOrderCOD(
   revalidatePath("/cart");
   revalidatePath("/checkout");
 
-  // Asynchronously dispatch order confirmation email (non-blocking)
+  // Asynchronously dispatch customer order confirmation email (non-blocking)
   sendOrderEmails({
     orderId: orderId as string,
     userId: user.id,
     eventType: "order_confirmation",
   }).catch((e) => console.error("Async COD order email dispatch error:", e));
+
+  // Asynchronously dispatch admin new order alert (non-blocking)
+  sendAdminNewOrderNotification(orderId as string).catch((e) =>
+    console.error("Async admin new order alert error:", e)
+  );
+
+  // Asynchronously check and trigger low stock alerts (non-blocking)
+  checkAndTriggerLowStockAlerts(cart.items.map((i) => i.bookId)).catch((e) =>
+    console.error("Async low stock alert check error:", e)
+  );
 
   return { success: true, orderId: orderId as string };
 }
@@ -154,7 +181,8 @@ export async function placeOrderCOD(
  */
 export async function placeOrderOnline(
   addressId: string,
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  couponCode?: string
 ): Promise<{
   success: boolean;
   error?: string;
@@ -212,6 +240,19 @@ export async function placeOrderOnline(
     return { success: false, error: "Please select a valid delivery address." };
   }
 
+  // 1.5 Server-side Delhivery pincode serviceability check
+  try {
+    const pinCheck = await checkPincodeServiceability(address.pincode);
+    if (!pinCheck.serviceable || !pinCheck.prepaid) {
+      return {
+        success: false,
+        error: `Courier delivery is not serviceable for pincode ${address.pincode}. Please select another delivery address.`,
+      };
+    }
+  } catch (pinErr: any) {
+    console.warn("Pincode check error (Online):", pinErr?.message);
+  }
+
   // 2. Fetch customer cart and calculate authoritative total
   const cart = await getCustomerCart();
   if (!cart || cart.items.length === 0) {
@@ -253,6 +294,7 @@ export async function placeOrderOnline(
     p_address_snapshot: addressSnapshot,
     p_payment_method: "ONLINE",
     p_total_amount: cart.totalAmount,
+    p_coupon_code: couponCode?.trim() || null,
   };
   if (idempotencyKey) {
     rpcParams.p_idempotency_key = idempotencyKey;
@@ -295,6 +337,11 @@ export async function placeOrderOnline(
     };
   }
 
+  // Asynchronously check and trigger low stock alerts (non-blocking)
+  checkAndTriggerLowStockAlerts(cart.items.map((i) => i.bookId)).catch((e) =>
+    console.error("Async low stock alert check error:", e)
+  );
+
   revalidatePath("/orders");
   revalidatePath("/cart");
   revalidatePath("/checkout");
@@ -330,22 +377,25 @@ export async function getCustomerOrders(): Promise<OrderRow[]> {
 
 /**
  * Retrieves an order and its line items, enforcing customer ownership.
+ * Supports lookup by internal UUID or public order number (e.g. MDS-100001) (Feature 1.3).
  */
-export async function getCustomerOrderById(orderId: string): Promise<EnrichedOrder | null> {
+export async function getCustomerOrderById(orderIdentifier: string): Promise<EnrichedOrder | null> {
   const user = await getAuthenticatedUser();
-  if (!user) return null;
+  if (!user || !orderIdentifier) return null;
 
+  const cleanIdentifier = orderIdentifier.trim();
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!orderId || !uuidRegex.test(orderId)) return null;
 
   const supabase = await createClient();
 
-  const { data: order, error: orderErr } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("id", orderId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  let query = supabase.from("orders").select("*").eq("user_id", user.id);
+  if (uuidRegex.test(cleanIdentifier)) {
+    query = query.eq("id", cleanIdentifier);
+  } else {
+    query = query.eq("order_number", cleanIdentifier);
+  }
+
+  const { data: order, error: orderErr } = await query.maybeSingle();
 
   if (orderErr || !order) {
     return null;
@@ -354,7 +404,7 @@ export async function getCustomerOrderById(orderId: string): Promise<EnrichedOrd
   const { data: items, error: itemsErr } = await supabase
     .from("order_items")
     .select("*")
-    .eq("order_id", orderId);
+    .eq("order_id", order.id);
 
   if (itemsErr) {
     console.error("Error fetching order items:", itemsErr.message);
@@ -365,6 +415,86 @@ export async function getCustomerOrderById(orderId: string): Promise<EnrichedOrd
     ...order,
     items: items || [],
   };
+}
+
+/**
+ * Retries payment for an eligible unpaid online order (Feature 1.5).
+ * Validates ownership, online payment method, pending status, stock availability,
+ * and initializes a new Razorpay checkout session.
+ */
+export async function retryOrderPayment(
+  orderIdentifier: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  orderId?: string;
+  razorpayOrder?: CreatePaymentOrderResult;
+}> {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { success: false, error: "Authentication required to retry payment." };
+  }
+
+  const order = await getCustomerOrderById(orderIdentifier);
+  if (!order) {
+    return { success: false, error: "Order not found or unauthorized." };
+  }
+
+  // 1. Eligibility checks
+  if (order.payment_method !== "ONLINE") {
+    return {
+      success: false,
+      error: "Only online payment orders are eligible for payment retry. COD orders do not require upfront payment.",
+    };
+  }
+
+  if (order.payment_status === "Paid" || order.is_paid) {
+    return {
+      success: false,
+      error: "This order is already marked as paid.",
+    };
+  }
+
+  if (order.order_status !== "Pending") {
+    return {
+      success: false,
+      error: `Payment cannot be retried for order in "${order.order_status}" status.`,
+    };
+  }
+
+  // 2. Validate current stock availability for the order items
+  const supabase = await createClient();
+  for (const item of order.items) {
+    const { data: book } = await supabase
+      .from("books")
+      .select("id, title, stock, is_active")
+      .eq("id", item.book_id)
+      .maybeSingle();
+
+    if (!book || !book.is_active) {
+      return {
+        success: false,
+        error: `"${item.title || "A book in this order"}" is no longer available.`,
+      };
+    }
+  }
+
+  // 3. Re-create or reuse Razorpay gateway order
+  try {
+    const razorpayOrder = await createRazorpayOrder(order.id, user.id);
+    return {
+      success: true,
+      orderId: order.id,
+      razorpayOrder,
+    };
+  } catch (err: any) {
+    console.error("Failed to re-initialize Razorpay payment attempt:", err?.message || err);
+    return {
+      success: false,
+      error: `Payment initialization failed: ${err?.message || "Unknown error"}`,
+      orderId: order.id,
+    };
+  }
 }
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -13,7 +13,13 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
 import { formatPrice } from "@/lib/utils";
-import { cancelOrder, requestOrderReplacement, type EnrichedOrder } from "@/lib/commerce/orders";
+import {
+  cancelOrder,
+  requestOrderReplacement,
+  retryOrderPayment,
+  type EnrichedOrder,
+} from "@/lib/commerce/orders";
+import type { NormalizedTrackingResult } from "@/lib/integrations/delhivery/service";
 
 interface OrderDetailClientProps {
   order: EnrichedOrder;
@@ -22,6 +28,7 @@ interface OrderDetailClientProps {
 const ORDER_STEPS = [
   "Pending",
   "Confirmed",
+  "Processing",
   "Packed",
   "Shipped",
   "Out for Delivery",
@@ -59,8 +66,22 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
   const [replacementReasonSelect, setReplacementReasonSelect] = useState(REPLACEMENT_REASONS[0]);
   const [replacementDetails, setReplacementDetails] = useState("");
 
+  // Retry payment state
+  const [isRetryingPayment, setIsRetryingPayment] = useState(false);
+
+  // Tracking state
+  const [trackingData, setTrackingData] = useState<NormalizedTrackingResult | null>(null);
+  const [loadingTracking, setLoadingTracking] = useState(() => Boolean(order.shipping_awb));
+
   const isCancelled = order.order_status === "Cancelled";
-  const canCancel = ["Pending", "Confirmed", "Processing"].includes(order.order_status);
+  // Customer can cancel only before dispatch (Pending, Confirmed, Processing, Packed)
+  const canCancel = ["Pending", "Confirmed", "Processing", "Packed"].includes(order.order_status);
+
+  // Payment retry eligibility (Feature 1.5)
+  const canRetryPayment =
+    order.payment_method === "ONLINE" &&
+    order.payment_status !== "Paid" &&
+    order.order_status === "Pending";
 
   const [currentTime] = useState(() => Date.now());
   const isDelivered = order.order_status === "Delivered" || order.order_status === "Replacement Delivered";
@@ -84,6 +105,31 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
   } | null;
 
   const currentStepIndex = ORDER_STEPS.indexOf(order.order_status);
+  const displayOrderNum = order.order_number || order.id.slice(0, 8).toUpperCase();
+
+  // Load live tracking scans when AWB is present (Feature 1.14)
+  useEffect(() => {
+    if (!order.shipping_awb) return;
+
+    let isMounted = true;
+
+    fetch(`/api/shipping/track?awb=${encodeURIComponent(order.shipping_awb)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+        if (data && !data.error) {
+          setTrackingData(data);
+        }
+      })
+      .catch((err) => console.warn("Failed to load tracking:", err))
+      .finally(() => {
+        if (isMounted) setLoadingTracking(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [order.shipping_awb]);
 
   const handleCancelSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +171,87 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
     });
   };
 
+  // Feature 1.5: Payment Retry Workflow
+  const handleRetryPayment = async () => {
+    if (isRetryingPayment) return;
+    setErrorMsg(null);
+    setIsRetryingPayment(true);
+
+    try {
+      const res = await retryOrderPayment(order.id);
+      if (!res.success || !res.razorpayOrder) {
+        setErrorMsg(res.error || "Unable to initialize payment retry.");
+        setIsRetryingPayment(false);
+        return;
+      }
+
+      const { razorpayOrder } = res;
+
+      // Load Razorpay checkout script
+      const loadScript = (src: string) =>
+        new Promise<boolean>((resolve) => {
+          if (typeof window === "undefined") return resolve(false);
+          if ((window as any).Razorpay) return resolve(true);
+          const script = document.createElement("script");
+          script.src = src;
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+
+      const isLoaded = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+
+      if (!isLoaded || !(window as any).Razorpay) {
+        setErrorMsg("Payment gateway checkout script could not be loaded. Please refresh or check ad-blocker.");
+        setIsRetryingPayment(false);
+        return;
+      }
+
+      const options = {
+        key: razorpayOrder.keyId,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: "MD Shakib Islamic Books",
+        description: `Retry Payment for Order #${displayOrderNum}`,
+        order_id: razorpayOrder.razorpayOrderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(response),
+            });
+            const data = await verifyRes.json();
+            if (data.success) {
+              setSuccessMsg("Payment successfully verified! Your order is confirmed.");
+              router.refresh();
+            } else {
+              setErrorMsg(data.error || "Payment verification failed.");
+            }
+          } catch (err: any) {
+            setErrorMsg(err?.message || "Error verifying payment signature.");
+          } finally {
+            setIsRetryingPayment(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsRetryingPayment(false);
+          },
+        },
+        theme: {
+          color: "#C9A24A",
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Unexpected error during payment retry.");
+      setIsRetryingPayment(false);
+    }
+  };
+
   return (
     <PageContainer size="md">
       {/* Header and Back Link */}
@@ -134,15 +261,32 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
             <span>&larr;</span>
             <span>Back to All Orders</span>
           </Link>
-          <h1 className="font-serif text-2xl md:text-3xl text-white uppercase font-bold tracking-wide">
-            Order #{order.id.slice(0, 8).toUpperCase()}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="font-serif text-2xl md:text-3xl text-white uppercase font-bold tracking-wide">
+              Order #{displayOrderNum}
+            </h1>
+            <Badge variant={order.order_status === "Delivered" ? "success" : isCancelled ? "danger" : "gold"}>
+              {order.order_status}
+            </Badge>
+          </div>
           <p className="text-xs text-neutral-400 mt-1 font-mono font-light">
-            Placed on {new Date(order.created_at).toLocaleString("en-IN")}
+            Internal Ref: {order.id} • Placed on {new Date(order.created_at).toLocaleString("en-IN")}
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
+          {canRetryPayment && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleRetryPayment}
+              disabled={isRetryingPayment}
+              className="bg-[#C9A24A] hover:bg-[#B89139] text-black font-bold uppercase tracking-wider text-xs"
+            >
+              {isRetryingPayment ? "Opening Gateway..." : "Retry Payment"}
+            </Button>
+          )}
+
           {canCancel && (
             <Button
               variant="danger"
@@ -170,8 +314,15 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
       <AccountNav />
 
       {errorMsg && (
-        <div className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs">
-          {errorMsg}
+        <div role="alert" className="mb-6 p-3.5 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center justify-between">
+          <span>{errorMsg}</span>
+          <button
+            type="button"
+            onClick={() => setErrorMsg(null)}
+            className="text-neutral-400 hover:text-white ml-2 text-xs underline focus:outline-none"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -283,6 +434,59 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
         )}
       </div>
 
+      {/* Feature 1.14: Logistics & Live Shipment Tracking Card */}
+      {order.shipping_awb && (
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8 shadow-luxury">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-[#222222] mb-4 gap-2">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200">
+                Logistics &amp; Tracking Information
+              </h2>
+              <p className="text-xs text-neutral-400 mt-0.5 font-light">
+                Fulfilled via <strong>{order.shipping_courier || "Delhivery"}</strong> • Waybill Number:{" "}
+                <span className="font-mono text-[#C9A24A]">{order.shipping_awb}</span>
+              </p>
+            </div>
+            {order.shipping_tracking_url && (
+              <a
+                href={order.shipping_tracking_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold text-[#C9A24A] hover:underline inline-flex items-center gap-1 self-start sm:self-auto"
+              >
+                <span>Live Delhivery Portal</span>
+                <span>↗</span>
+              </a>
+            )}
+          </div>
+
+          {loadingTracking ? (
+            <p className="text-xs text-neutral-500 italic py-2">Loading live tracking events...</p>
+          ) : trackingData && trackingData.scans && trackingData.scans.length > 0 ? (
+            <div className="space-y-3 pt-1">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                Activity Timeline
+              </h3>
+              <div className="space-y-2 border-l border-[#2A2A2A] ml-2 pl-4">
+                {trackingData.scans.map((scan, idx) => (
+                  <div key={idx} className="relative text-xs">
+                    <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-[#C9A24A]" />
+                    <p className="font-medium text-neutral-200">{scan.status}</p>
+                    <p className="text-[11px] text-neutral-400 font-light">
+                      {scan.location} • {new Date(scan.timestamp).toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-neutral-500 font-light">
+              Package registered with Delhivery logistics. Live scan events will appear as your consignment moves through transit hubs.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="grid md:grid-cols-3 gap-8">
         {/* Left 2 Cols: Order Items */}
         <div className="md:col-span-2 space-y-4">
@@ -318,7 +522,7 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
           </div>
         </div>
 
-        {/* Right Col: Delivery Address & Summary */}
+        {/* Right Col: Delivery Address & Financial Breakdown */}
         <div className="space-y-6">
           {/* Shipping Address Card */}
           <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 text-xs shadow-luxury">
@@ -338,25 +542,67 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
             )}
           </div>
 
-          {/* Payment & Price Summary */}
+          {/* Payment & Price Summary Breakdown (Feature 1.1) */}
           <div className="bg-[#141414] border border-[#262626] rounded-xl p-5 text-xs space-y-3 shadow-luxury">
             <h2 className="font-semibold text-neutral-300 uppercase tracking-wider pb-2 border-b border-[#222222]">
-              Payment Summary
+              Payment &amp; Price Breakdown
             </h2>
             <div className="flex justify-between text-neutral-400 font-light">
               <span>Payment Method</span>
               <span className="text-neutral-200 font-medium">{order.payment_method}</span>
             </div>
-            <div className="flex justify-between text-neutral-400 font-light">
+            <div className="flex justify-between text-neutral-400 font-light items-center">
               <span>Payment Status</span>
-              <Badge variant={order.payment_status === "Paid" ? "success" : "muted"} size="sm">
+              <Badge variant={order.payment_status === "Paid" ? "success" : "gold"} size="sm">
                 {order.payment_status}
               </Badge>
             </div>
+
+            <div className="border-t border-[#222222] pt-3 space-y-2 text-neutral-400 font-light">
+              <div className="flex justify-between">
+                <span>Items Subtotal</span>
+                <span className="text-neutral-200 font-mono font-medium">
+                  {formatPrice(Number(order.subtotal || order.total_amount))}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Platform Fee</span>
+                <span className="text-neutral-200 font-mono font-medium">
+                  {formatPrice(Number(order.platform_fee || 10))}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Delivery Charge</span>
+                <span className="text-neutral-200 font-mono font-medium">
+                  {formatPrice(Number(order.delivery_fee || 35))}
+                </span>
+              </div>
+              {order.discount_amount && Number(order.discount_amount) > 0 ? (
+                <div className="flex justify-between text-[#E5C87B]">
+                  <span>Coupon Discount ({order.coupon_code || "APPLIED"})</span>
+                  <span className="font-mono font-medium">
+                    -{formatPrice(Number(order.discount_amount))}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
             <div className="border-t border-[#222222] pt-3 flex justify-between font-bold text-sm text-[#C9A24A]">
-              <span>Total Paid</span>
+              <span>Final Total</span>
               <span className="font-mono">{formatPrice(Number(order.total_amount))}</span>
             </div>
+
+            {canRetryPayment && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleRetryPayment}
+                disabled={isRetryingPayment}
+                className="w-full mt-3 bg-[#C9A24A] hover:bg-[#B89139] text-black font-bold uppercase tracking-wider text-xs"
+              >
+                {isRetryingPayment ? "Processing..." : "Complete Payment Now"}
+              </Button>
+            )}
           </div>
         </div>
       </div>

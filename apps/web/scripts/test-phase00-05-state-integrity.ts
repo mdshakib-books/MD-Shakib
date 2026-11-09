@@ -199,13 +199,23 @@ async function main() {
       paidOrderId = orderId;
 
       await adminDb.from("orders").update({ razorpay_order_id: paidRzpOrderId }).eq("id", paidOrderId);
+      await adminDb.from("payments").insert({
+        order_id: paidOrderId,
+        user_id: custId,
+        payment_id: paidRzpOrderId,
+        provider_order_id: paidRzpOrderId,
+        amount: 245,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Settle payment (200 + 45 = 245 -> 24500 paise)
       const { data: settleRes, error: sErr } = await adminDb.rpc("settle_payment_atomic", {
         p_razorpay_order_id: paidRzpOrderId,
         p_razorpay_payment_id: `pay_state_${timestamp}`,
         p_signature: `sig_state_${timestamp}`,
-        p_raw_response: { amount: 24500 },
+        p_raw_response: { amount: 24500, currency: "INR" },
       });
       assert(!sErr && settleRes?.success, `Settle payment failed: ${sErr?.message}`);
 

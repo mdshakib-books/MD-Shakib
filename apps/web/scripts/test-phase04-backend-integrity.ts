@@ -464,6 +464,11 @@ async function main() {
   });
   assert(onlineOrderId, "Failed to create online order");
 
+  // Fetch authoritative total amount
+  const { data: ordCreated } = await adminDb.from("orders").select("total_amount").eq("id", onlineOrderId).single();
+  const authoritativeTotal = Number(ordCreated?.total_amount);
+  const totalPaise = Math.round(authoritativeTotal * 100);
+
   // Associate razorpay_order_id and seed payment intention
   await adminDb.from("orders").update({ razorpay_order_id: rzpOrderId }).eq("id", onlineOrderId);
   await adminDb.from("payments").insert({
@@ -471,7 +476,7 @@ async function main() {
     user_id: custAId,
     payment_id: rzpOrderId,
     provider_order_id: rzpOrderId,
-    amount: 449.10,
+    amount: authoritativeTotal,
     currency: "INR",
     provider: "Razorpay",
     status: "Pending",
@@ -485,7 +490,7 @@ async function main() {
       p_razorpay_order_id: rzpOrderId,
       p_razorpay_payment_id: rzpPaymentId,
       p_signature: signature,
-      p_raw_response: { status: "captured" },
+      p_raw_response: { status: "captured", amount: totalPaise, currency: "INR" },
     });
     assert(!settleErr, `Settlement RPC error: ${settleErr?.message}`);
     const res = settleRes as any;
@@ -508,6 +513,7 @@ async function main() {
       p_razorpay_order_id: rzpOrderId,
       p_razorpay_payment_id: `pay_test_${timestamp}`,
       p_signature: "valid_test_signature_hex",
+      p_raw_response: { status: "captured", amount: totalPaise, currency: "INR" },
     });
     const res = dupRes as any;
     assert.strictEqual(res.success, true);

@@ -53,9 +53,9 @@ export default async function OrderSuccessPage({ searchParams }: OrderSuccessPag
             {/* Order Metadata Card */}
             <div className="bg-[#1C1C1C] border border-[#282828] rounded-xl p-5 mb-8 text-left space-y-3">
               <div className="flex justify-between items-center text-xs border-b border-[#282828] pb-2.5">
-                <span className="text-neutral-400 font-light">Order ID:</span>
-                <span className="font-mono text-white font-medium truncate max-w-[200px]" title={orderId}>
-                  #{orderId.slice(0, 8).toUpperCase()}...
+                <span className="text-neutral-400 font-light">Order Number:</span>
+                <span className="font-mono text-[#C9A24A] font-bold truncate max-w-[200px]" title={order?.order_number || orderId}>
+                  #{order?.order_number || orderId.slice(0, 8).toUpperCase()}
                 </span>
               </div>
 

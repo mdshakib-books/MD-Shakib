@@ -16,6 +16,7 @@ import {
 
 interface AdminOrderSummary {
   id: string;
+  order_number?: string | null;
   user_id: string;
   order_status: string;
   payment_status: string;
@@ -296,6 +297,7 @@ export function AdminOrdersClient({
             <option value="ALL">All Order Statuses</option>
             <option value="Pending">Pending</option>
             <option value="Confirmed">Confirmed</option>
+            <option value="Processing">Processing</option>
             <option value="Packed">Packed</option>
             <option value="Shipped">Shipped</option>
             <option value="Out for Delivery">Out for Delivery</option>
@@ -392,7 +394,7 @@ export function AdminOrdersClient({
                           href={`/admin/orders/${order.id}`}
                           className="font-mono text-xs text-[var(--color-primary-gold,#C9A24A)] hover:underline font-semibold block"
                         >
-                          {order.id.slice(0, 8)}...
+                          {order.order_number || `${order.id.slice(0, 8)}...`}
                         </Link>
                         <span className="text-[11px] text-gray-500 block mt-0.5">
                           {new Date(order.created_at).toLocaleDateString("en-IN", {

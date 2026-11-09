@@ -105,8 +105,8 @@ export async function processRazorpayWebhook(rawBody: string, signature: string)
 
         // Verify payment currency: INR required
         const currency = (paymentEntity?.currency || orderEntity?.currency || "").toUpperCase();
-        if (currency && currency !== "INR") {
-          return { status: "rejected", reason: `Unsupported payment currency: ${currency}. Only INR is accepted.` };
+        if (!currency || currency !== "INR") {
+          return { status: "rejected", reason: `Unsupported payment currency: ${currency || "NONE"}. Only INR is accepted.` };
         }
 
         // Verify amount in paise exists and is positive

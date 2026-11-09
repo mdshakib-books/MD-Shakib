@@ -9,8 +9,14 @@ import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboardPage() {
-  const stats = await getAdminDashboardStats();
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ dateRange?: string }>;
+}) {
+  const resolvedParams = searchParams ? await searchParams : {};
+  const filter = (resolvedParams.dateRange || "all") as any;
+  const stats = await getAdminDashboardStats(filter);
 
   const getOrderStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -57,6 +63,29 @@ export default async function AdminDashboardPage() {
           <p className="text-xs sm:text-sm text-neutral-400 mt-1">
             Real-time catalog, inventory, order lifecycle, and customer activity metrics.
           </p>
+
+          {/* Date Range Filters */}
+          <div className="flex items-center gap-1.5 mt-3 pt-2">
+            {[
+              { label: "All Time", value: "all" },
+              { label: "Today", value: "today" },
+              { label: "Last 7 Days", value: "7d" },
+              { label: "Last 30 Days", value: "30d" },
+              { label: "This Month", value: "month" },
+            ].map((f) => (
+              <Link
+                key={f.value}
+                href={f.value === "all" ? "/admin/dashboard" : `/admin/dashboard?dateRange=${f.value}`}
+                className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                  filter === f.value
+                    ? "bg-[#C9A24A] text-black font-bold border-[#C9A24A]"
+                    : "bg-[#141414] text-neutral-400 border-[#262626] hover:border-neutral-500"
+                }`}
+              >
+                {f.label}
+              </Link>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Link href="/admin/books">
@@ -242,7 +271,7 @@ export default async function AdminDashboardPage() {
               {stats.recentOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-mono text-xs text-white">
-                    #{order.id.slice(0, 8)}
+                    {order.orderNumber || `#${order.id.slice(0, 8).toUpperCase()}`}
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-white">{order.customerName}</div>

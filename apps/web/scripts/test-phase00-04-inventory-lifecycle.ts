@@ -182,8 +182,18 @@ async function main() {
       assert(!error && orderId, `Online order failed: ${error?.message}`);
       onlineOrderId = orderId;
 
-      // Attach mock Razorpay order ID to order
+      // Attach mock Razorpay order ID to order and create pending payment record
       await adminDb.from("orders").update({ razorpay_order_id: razorpayOrderId }).eq("id", onlineOrderId);
+      await adminDb.from("payments").insert({
+        order_id: onlineOrderId,
+        user_id: custAId,
+        payment_id: razorpayOrderId,
+        provider_order_id: razorpayOrderId,
+        amount: 845,
+        currency: "INR",
+        provider: "Razorpay",
+        status: "Pending",
+      });
 
       // Check stock decremented to 3
       const { data: bookAfter } = await adminDb.from("books").select("stock").eq("id", book.id).single();
@@ -220,7 +230,7 @@ async function main() {
         p_razorpay_order_id: razorpayOrderId,
         p_razorpay_payment_id: `pay_test_${timestamp}`,
         p_signature: `sig_test_${timestamp}`,
-        p_raw_response: { amount: 84500 }, // 845.00 INR in paise
+        p_raw_response: { amount: 84500, currency: "INR" }, // 845.00 INR in paise
       });
       assert(!error && settleResult?.success, `Settle payment failed: ${error?.message}`);
 
