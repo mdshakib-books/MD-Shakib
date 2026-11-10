@@ -245,6 +245,7 @@ export async function verifyAndSettlePayment(params: VerifySignatureParams) {
 
 export interface InitiateRefundParams {
   orderId: string;
+  amount?: number; // In Rupees (supports partial refunds)
   reason?: string;
   notes?: Record<string, string>;
 }
@@ -265,7 +266,7 @@ export interface InitiateRefundResult {
 export async function initiateRazorpayRefund(
   params: InitiateRefundParams
 ): Promise<InitiateRefundResult> {
-  const { orderId, reason, notes } = params;
+  const { orderId, amount, reason, notes } = params;
   const adminDb = createAdminClient();
   const { razorpay } = getIntegrationsConfig();
 
@@ -289,7 +290,7 @@ export async function initiateRazorpayRefund(
     };
   }
 
-  // 3. Idempotency check: if already refunded or in progress
+  // 3. Idempotency check: if already fully refunded or in progress
   if (order.payment_status === "Refunded" || order.refund_status === "processed") {
     return {
       success: true,
@@ -308,7 +309,7 @@ export async function initiateRazorpayRefund(
     };
   }
 
-  if (order.payment_status !== "Paid") {
+  if (order.payment_status !== "Paid" && order.payment_status !== "Partially Refunded") {
     return {
       success: false,
       status: "not_eligible",
@@ -334,8 +335,30 @@ export async function initiateRazorpayRefund(
     };
   }
 
-  const authoritativeAmount = paymentRecord?.amount ?? order.total_amount;
-  const amountInPaise = Math.round(Number(authoritativeAmount) * 100);
+  const maxRefundable = Number(paymentRecord?.amount ?? order.total_amount);
+
+  let targetRefundAmount: number;
+  if (amount !== undefined) {
+    if (typeof amount !== "number" || isNaN(amount) || amount <= 0) {
+      return {
+        success: false,
+        status: "failed",
+        error: "Refund amount must be a positive number.",
+      };
+    }
+    if (amount > maxRefundable) {
+      return {
+        success: false,
+        status: "not_eligible",
+        error: `Requested refund amount ₹${amount} exceeds captured payment balance ₹${maxRefundable}.`,
+      };
+    }
+    targetRefundAmount = Number(amount.toFixed(2));
+  } else {
+    targetRefundAmount = maxRefundable;
+  }
+
+  const amountInPaise = Math.round(targetRefundAmount * 100);
 
   // 5. Execute gateway refund call
   let refundId: string;
@@ -344,6 +367,7 @@ export async function initiateRazorpayRefund(
 
   try {
     const isMock = razorpay.keyId.startsWith("rzp_test_mock") || razorpay.keyId.startsWith("mock");
+    const refundReceipt = (notes as any)?.refund_record_id || `rcpt_${orderId.slice(0, 8)}`;
     if (isMock) {
       refundId = `rfnd_mock_${Date.now()}`;
       gatewayStatus = "processed";
@@ -353,12 +377,14 @@ export async function initiateRazorpayRefund(
         amount: amountInPaise,
         currency: "INR",
         status: "processed",
-        notes: { order_id: orderId, reason: reason || "Admin order cancellation" },
+        receipt: refundReceipt,
+        notes: { order_id: orderId, reason: reason || "Admin order cancellation", ...(notes || {}) },
       };
     } else {
       const client = getRazorpayClient();
       const res = await client.payments.refund(paymentId, {
         amount: amountInPaise,
+        receipt: refundReceipt,
         notes: {
           order_id: orderId,
           reason: reason || "Admin order cancellation",
@@ -375,7 +401,7 @@ export async function initiateRazorpayRefund(
     await adminDb.rpc("record_refund_atomic", {
       p_order_id: orderId,
       p_refund_id: `rfnd_err_${Date.now()}`,
-      p_refund_amount: Number(authoritativeAmount),
+      p_refund_amount: targetRefundAmount,
       p_refund_status: "failed",
       p_raw_response: { error: err?.message || String(err) },
     });
@@ -391,7 +417,7 @@ export async function initiateRazorpayRefund(
   const { error: rpcErr } = await adminDb.rpc("record_refund_atomic", {
     p_order_id: orderId,
     p_refund_id: refundId,
-    p_refund_amount: Number(authoritativeAmount),
+    p_refund_amount: targetRefundAmount,
     p_refund_status: gatewayStatus,
     p_raw_response: rawRefundResponse,
   });
@@ -405,7 +431,7 @@ export async function initiateRazorpayRefund(
     success: true,
     refundId,
     status: gatewayStatus,
-    amount: Number(authoritativeAmount),
+    amount: targetRefundAmount,
   };
 }
 

@@ -315,3 +315,126 @@ export async function checkAndTriggerLowStockAlerts(bookIds: string[]): Promise<
   };
 }
 
+export interface InventoryHistoryEntry {
+  id: string;
+  bookId: string;
+  bookTitle?: string;
+  variantId?: string | null;
+  movementType: string;
+  quantityChange: number;
+  previousStock: number;
+  newStock: number;
+  reason: string;
+  relatedOrderId?: string | null;
+  actorId?: string | null;
+  actorName?: string | null;
+  createdAt: string;
+}
+
+/**
+ * Retrieves the comprehensive inventory audit history ledger (2.33).
+ */
+export async function getInventoryMovementHistory(params?: {
+  bookId?: string;
+  movementType?: string;
+  limit?: number;
+}): Promise<InventoryHistoryEntry[]> {
+  const adminDb = createAdminClient();
+  const limit = Math.max(1, Math.min(200, params?.limit || 50));
+
+  let query = adminDb
+    .from("inventory_history")
+    .select(`
+      id,
+      book_id,
+      variant_id,
+      movement_type,
+      quantity_change,
+      previous_stock,
+      new_stock,
+      reason,
+      related_order_id,
+      actor_id,
+      created_at,
+      books (title),
+      profiles!inventory_history_actor_id_fkey (name)
+    `)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (params?.bookId) {
+    query = query.eq("book_id", params.bookId);
+  }
+  if (params?.movementType && params.movementType !== "ALL") {
+    query = query.eq("movement_type", params.movementType);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  return data.map((row: any) => ({
+    id: row.id,
+    bookId: row.book_id,
+    bookTitle: row.books?.title || "Unknown Book",
+    variantId: row.variant_id,
+    movementType: row.movement_type,
+    quantityChange: row.quantity_change,
+    previousStock: row.previous_stock,
+    newStock: row.new_stock,
+    reason: row.reason,
+    relatedOrderId: row.related_order_id,
+    actorId: row.actor_id,
+    actorName: row.profiles?.name || null,
+    createdAt: row.created_at,
+  }));
+}
+
+/**
+ * Records an authoritative atomic stock change into the inventory history ledger (2.33).
+ */
+export async function recordInventoryMovement(params: {
+  bookId: string;
+  variantId?: string | null;
+  movementType: "PURCHASE" | "SALE" | "RETURN" | "DAMAGE" | "ADJUSTMENT" | "REPLACEMENT";
+  quantityChange: number;
+  reason: string;
+  orderId?: string | null;
+  returnId?: string | null;
+  actorId?: string | null;
+}): Promise<{
+  success: boolean;
+  historyId?: string;
+  previousStock?: number;
+  newStock?: number;
+  error?: string;
+}> {
+  const { bookId, variantId, movementType, quantityChange, reason, orderId, returnId, actorId } = params;
+  const adminDb = createAdminClient();
+
+  const { data, error } = await adminDb.rpc("record_inventory_movement_atomic", {
+    p_book_id: bookId,
+    p_variant_id: variantId || undefined,
+    p_movement_type: movementType,
+    p_quantity_change: quantityChange,
+    p_reason: reason,
+    p_order_id: orderId || undefined,
+    p_return_id: returnId || undefined,
+    p_actor_id: actorId || undefined,
+  } as any);
+
+  if (error || !(data as any)?.success) {
+    return {
+      success: false,
+      error: (data as any)?.error || error?.message || "Failed to record inventory movement.",
+    };
+  }
+
+  return {
+    success: true,
+    historyId: (data as any).history_id,
+    previousStock: (data as any).previous_stock,
+    newStock: (data as any).new_stock,
+  };
+}
+
+

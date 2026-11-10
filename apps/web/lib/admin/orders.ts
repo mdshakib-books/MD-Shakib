@@ -445,101 +445,27 @@ export async function cancelAdminOrder(payload: {
 
 /**
  * Approves a customer's replacement request.
+ * (Deprecated: Replacement workflow is unsupported; all return claims must use Return for Refund).
  */
-export async function approveAdminReplacement(orderId: string): Promise<{ success: boolean; error?: string }> {
-  const { user } = await requireAdmin();
-  const supabase = await createClient();
-
-  const { data: order, error: fetchErr } = await supabase
-    .from("orders")
-    .select("order_status")
-    .eq("id", orderId)
-    .maybeSingle();
-
-  if (fetchErr || !order) return { success: false, error: "Order not found." };
-  if (order.order_status !== "Replacement Requested") {
-    return { success: false, error: "No replacement requested for this order." };
-  }
-
-  const { error: updateErr } = await supabase
-    .from("orders")
-    .update({
-      order_status: "Replacement Approved",
-      replacement_status: "Approved",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", orderId);
-
-  if (updateErr) return { success: false, error: updateErr.message };
-
-  await supabase.from("audit_logs").insert({
-    action: "APPROVE_REPLACEMENT",
-    model_name: "orders",
-    model_id: orderId,
-    user_id: user.id,
-    new_values: { order_status: "Replacement Approved", replacement_status: "Approved" },
-  });
-
-  revalidatePath(`/admin/orders`);
-  revalidatePath(`/admin/orders/${orderId}`);
-  return { success: true };
+export async function approveAdminReplacement(_orderId: string): Promise<{ success: boolean; error?: string }> {
+  return {
+    success: false,
+    error: "Replacement fulfillment workflow is unsupported. Please process returns via the Return for Refund workflow.",
+  };
 }
 
 /**
- * Rejects a customer's replacement request with a mandatory reason.
+ * Rejects a customer's replacement request.
+ * (Deprecated: Replacement workflow is unsupported; all return claims must use Return for Refund).
  */
 export async function rejectAdminReplacement(
-  orderId: string,
-  reason: string
+  _orderId: string,
+  _reason: string
 ): Promise<{ success: boolean; error?: string }> {
-  const { user } = await requireAdmin();
-
-  const trimmedReason = String(reason || "").trim();
-  if (!trimmedReason) {
-    return { success: false, error: "A rejection reason is required." };
-  }
-
-  const supabase = await createClient();
-
-  const { data: order, error: fetchErr } = await supabase
-    .from("orders")
-    .select("order_status")
-    .eq("id", orderId)
-    .maybeSingle();
-
-  if (fetchErr || !order) return { success: false, error: "Order not found." };
-  if (order.order_status !== "Replacement Requested") {
-    return { success: false, error: "No replacement requested for this order." };
-  }
-
-  const { error: updateErr } = await supabase
-    .from("orders")
-    .update({
-      order_status: "Replacement Rejected",
-      replacement_status: "Rejected",
-      replacement_rejection_reason: trimmedReason,
-      replacement_rejected_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", orderId);
-
-  if (updateErr) return { success: false, error: updateErr.message };
-
-  await supabase.from("audit_logs").insert({
-    action: "REJECT_REPLACEMENT",
-    model_name: "orders",
-    model_id: orderId,
-    user_id: user.id,
-    new_values: {
-      order_status: "Replacement Rejected",
-      replacement_status: "Rejected",
-      replacement_rejection_reason: trimmedReason,
-    },
-  });
-
-  revalidatePath(`/admin/orders`);
-  revalidatePath(`/admin/orders/${orderId}`);
-  return { success: true };
+  return {
+    success: false,
+    error: "Replacement workflow is unsupported. Please manage return claims via the Return for Refund workflow.",
+  };
 }
 
 /**

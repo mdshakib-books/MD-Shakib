@@ -11,8 +11,6 @@ import { ORDER_STATUS_TRANSITIONS } from "@/lib/admin/constants";
 import {
   updateAdminOrderStatus,
   cancelAdminOrder,
-  approveAdminReplacement,
-  rejectAdminReplacement,
   bookAdminOrderShipment,
   scheduleAdminPickup,
   getAdminShippingLabel,
@@ -39,10 +37,6 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 
-  // Reject replacement modal
-  const [rejectReplacementModalOpen, setRejectReplacementModalOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-
   // Schedule pickup modal
   const [schedulePickupModalOpen, setSchedulePickupModalOpen] = useState(false);
   const [pickupDate, setPickupDate] = useState(() => {
@@ -60,11 +54,10 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
 
   const allowedTransitions = ORDER_STATUS_TRANSITIONS[order.order_status] || [];
   const primaryTransitions = allowedTransitions.filter(
-    (s) => !["Cancelled", "Replacement Rejected", "Shipped"].includes(s)
+    (s) => !["Cancelled", "Shipped"].includes(s)
   );
   const canShip = allowedTransitions.includes("Shipped") || ["Confirmed", "Processing", "Packed"].includes(order.order_status);
   const canCancel = allowedTransitions.includes("Cancelled");
-  const isReplacementRequested = order.order_status === "Replacement Requested";
 
   const canReconcileCOD =
     order.payment_method === "COD" &&
@@ -261,47 +254,6 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
     }
   };
 
-  const handleApproveReplacement = async () => {
-    setBusy(true);
-    try {
-      const res = await approveAdminReplacement(order.id);
-      if (!res.success) {
-        setFeedback({ type: "error", message: res.error || "Failed to approve replacement." });
-      } else {
-        setFeedback({ type: "success", message: "Replacement request approved." });
-        router.refresh();
-      }
-    } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Approval failed." });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleConfirmRejectReplacement = async () => {
-    if (!rejectReason.trim()) {
-      setFeedback({ type: "error", message: "Rejection reason is required." });
-      return;
-    }
-
-    setBusy(true);
-    setRejectReplacementModalOpen(false);
-    try {
-      const res = await rejectAdminReplacement(order.id, rejectReason.trim());
-      if (!res.success) {
-        setFeedback({ type: "error", message: res.error || "Failed to reject replacement." });
-      } else {
-        setFeedback({ type: "success", message: "Replacement request rejected." });
-        router.refresh();
-      }
-    } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Rejection failed." });
-    } finally {
-      setBusy(false);
-      setRejectReason("");
-    }
-  };
-
   const getOrderStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "Delivered":
@@ -398,24 +350,32 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
             </button>
           )}
 
-          {isReplacementRequested && (
-            <>
-              <button
-                onClick={handleApproveReplacement}
-                disabled={busy}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
-              >
-                Approve Replacement
-              </button>
-              <button
-                onClick={() => setRejectReplacementModalOpen(true)}
-                disabled={busy}
-                className="px-4 py-2 bg-red-950 hover:bg-red-900 border border-red-700 text-red-300 rounded-lg text-sm font-medium transition disabled:opacity-50"
-              >
-                Reject Replacement
-              </button>
-            </>
-          )}
+          <a
+            href={`/api/documents/invoice/${order.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-2 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#C9A24A]/40 text-[#C9A24A] rounded-lg text-sm font-medium transition inline-flex items-center gap-1.5"
+          >
+            <span>Invoice</span>
+          </a>
+
+          <a
+            href={`/api/documents/packing-slip/${order.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-2 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-gray-200 rounded-lg text-sm font-medium transition inline-flex items-center gap-1.5"
+          >
+            <span>Packing Slip</span>
+          </a>
+
+          <a
+            href={`/api/documents/receipt/${order.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-2 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-gray-200 rounded-lg text-sm font-medium transition inline-flex items-center gap-1.5"
+          >
+            <span>Receipt</span>
+          </a>
 
           {canCancel && (
             <button
@@ -850,44 +810,6 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
               className="border-red-600 text-red-400 hover:bg-red-950"
             >
               Cancel Order
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Reject Replacement Modal */}
-      <Modal
-        isOpen={rejectReplacementModalOpen}
-        onClose={() => setRejectReplacementModalOpen(false)}
-        title="Reject Replacement Request"
-        description="Provide a justification for rejecting the customer's replacement request."
-      >
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              Rejection Reason (Required)
-            </label>
-            <textarea
-              rows={3}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g. Book return period exceeded or physical damage not covered..."
-              className="w-full bg-[#161616] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-3">
-            <button
-              onClick={() => setRejectReplacementModalOpen(false)}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-            >
-              Close
-            </button>
-            <Button
-              onClick={handleConfirmRejectReplacement}
-              variant="outline"
-              className="border-red-600 text-red-400 hover:bg-red-950"
-            >
-              Reject Replacement
             </Button>
           </div>
         </div>

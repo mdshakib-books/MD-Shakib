@@ -36,9 +36,9 @@ export default function TermsPage() {
               </div>
 
               <div>
-                <h2 className="font-serif text-lg text-neutral-100 font-semibold mb-2">3. Delivery &amp; Replacements</h2>
+                <h2 className="font-serif text-lg text-neutral-100 font-semibold mb-2">3. Delivery &amp; Returns</h2>
                 <p className="text-neutral-400">
-                  Delivery times are estimates provided by logistics partners. In accordance with our replacement policy, damaged or defective books are eligible for a replacement within 7 days of verified delivery.
+                  Delivery times are estimates provided by logistics partners. In accordance with our return policy, damaged or defective books are eligible for return and full refund within 7 days of verified delivery.
                 </p>
               </div>
             </div>
