@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { submitContactForm } from "@/lib/support/contact";
+import { BUSINESS_CONFIG, getBusinessDisclosures } from "@/lib/config/business";
 
 export default function ContactPage() {
   const [name, setName] = useState("");
@@ -18,6 +20,8 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const disclosures = getBusinessDisclosures();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,16 +47,16 @@ export default function ContactPage() {
     <div className="min-h-screen flex flex-col bg-dark-bg text-[#F5F5F5]">
       <Navbar />
 
-      <main className="flex-grow">
+      <main id="main-content" className="flex-grow">
         {/* HERO SECTION */}
         <section className="relative py-16 md:py-24 text-center border-b border-dark-border overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-black/80 to-black/95" />
           <div className="relative z-10 max-w-[800px] mx-auto px-6">
             <h1 className="font-serif text-3xl md:text-5xl font-bold text-[var(--color-primary-gold)] mb-4 tracking-wide uppercase">
-              Contact Us
+              Contact &amp; Customer Support
             </h1>
             <p className="text-neutral-300 text-sm md:text-base leading-relaxed font-light">
-              We are here to assist you with book inquiries, order tracking, authentic scholarly titles, and customer support.
+              We are dedicated to authentic Islamic scholarship. Reach out to our customer support desk or statutory grievance redressal officer.
             </p>
           </div>
         </section>
@@ -64,44 +68,16 @@ export default function ContactPage() {
             <div className="space-y-6">
               <div>
                 <h2 className="font-serif text-2xl text-[var(--color-primary-gold)] mb-2 uppercase tracking-wide">
-                  Get in Touch
+                  Official Channels
                 </h2>
                 <p className="text-neutral-400 text-sm leading-relaxed font-light">
-                  Have a question about our classical Islamic collection or need help with your recent order? Reach out through any of our official support channels.
+                  Have a question regarding book availability, classical editions, or order tracking? Contact us through our verified channels.
                 </p>
               </div>
 
               {/* Channels Grid */}
               <div className="space-y-4 pt-2">
-                {/* WhatsApp */}
-                <div className="flex items-start gap-4 p-5 rounded-xl bg-dark-surface border border-dark-border hover:border-[var(--color-primary-gold)] transition-colors">
-                  <div className="w-12 h-12 rounded-full bg-dark-card border border-dark-border flex items-center justify-center text-[var(--color-primary-gold)] shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-base text-neutral-100 font-semibold">
-                      WhatsApp Support
-                    </h3>
-                    <p className="text-neutral-400 text-xs mt-1">
-                      Direct customer assistance for order updates and quick queries.
-                    </p>
-                    <a
-                      href="https://wa.me/919876543210"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary-gold)] hover:text-[var(--color-accent-gold)] transition-colors mt-2"
-                    >
-                      <span>Chat on WhatsApp</span>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Email */}
+                {/* Email Help Desk */}
                 <div className="flex items-start gap-4 p-5 rounded-xl bg-dark-surface border border-dark-border hover:border-[var(--color-primary-gold)] transition-colors">
                   <div className="w-12 h-12 rounded-full bg-dark-card border border-dark-border flex items-center justify-center text-[var(--color-primary-gold)] shrink-0">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -110,36 +86,86 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-serif text-base text-neutral-100 font-semibold">
-                      Email Help Desk
+                      Customer Support Email
                     </h3>
                     <p className="text-neutral-400 text-xs mt-1">
-                      For institutional book sourcing, publishing queries, and order concerns.
+                      For order tracking, book sourcing, and general inquiries.
                     </p>
                     <a
-                      href="mailto:support@mdshakib.com"
-                      className="inline-block text-xs font-semibold text-[var(--color-primary-gold)] hover:underline mt-2"
+                      href={`mailto:${disclosures.supportEmail}`}
+                      className="inline-block text-xs font-semibold text-[var(--color-primary-gold)] hover:underline mt-2 font-mono"
                     >
-                      support@mdshakib.com
+                      {disclosures.supportEmail}
                     </a>
                   </div>
                 </div>
 
-                {/* Operating Hours */}
-                <div className="flex items-start gap-4 p-5 rounded-xl bg-dark-surface border border-dark-border">
+                {/* Telephone Support */}
+                <div className="flex items-start gap-4 p-5 rounded-xl bg-dark-surface border border-dark-border hover:border-[var(--color-primary-gold)] transition-colors">
                   <div className="w-12 h-12 rounded-full bg-dark-card border border-dark-border flex items-center justify-center text-[var(--color-primary-gold)] shrink-0">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
                   </div>
                   <div>
                     <h3 className="font-serif text-base text-neutral-100 font-semibold">
-                      Operating Hours
+                      Telephone Support
                     </h3>
                     <p className="text-neutral-400 text-xs mt-1">
-                      Monday to Saturday: 9:00 AM – 7:00 PM IST
+                      Available during operating hours: Monday – Saturday, 9:00 AM – 7:00 PM IST.
                     </p>
-                    <p className="text-neutral-500 text-[11px] mt-0.5">
-                      Closed on Sundays and major Islamic holidays.
+                    {disclosures.displayPhone ? (
+                      <a
+                        href={`tel:${disclosures.displayPhone}`}
+                        className="inline-block text-xs font-semibold text-[var(--color-primary-gold)] hover:underline mt-2 font-mono"
+                      >
+                        {disclosures.displayPhone}
+                      </a>
+                    ) : (
+                      <span className="inline-block text-xs text-neutral-400 mt-2 font-mono">
+                        Direct helpline details available upon request
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Registered Office */}
+                <div className="flex items-start gap-4 p-5 rounded-xl bg-dark-surface border border-dark-border">
+                  <div className="w-12 h-12 rounded-full bg-dark-card border border-dark-border flex items-center justify-center text-[var(--color-primary-gold)] shrink-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base text-neutral-100 font-semibold">
+                      Registered Business Address
+                    </h3>
+                    <p className="text-neutral-400 text-xs mt-1 leading-relaxed">
+                      {disclosures.displayAddress}
+                    </p>
+                    {disclosures.gstin && (
+                      <p className="text-neutral-400 text-[11px] mt-1 font-mono">
+                        GSTIN: {disclosures.gstin}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Statutory Grievance Redressal (Rule 4(5)) */}
+                <div className="p-5 rounded-xl bg-[#C9A24A]/5 border border-[#C9A24A]/30">
+                  <h3 className="font-serif text-sm font-bold text-[#E5C87B] uppercase tracking-wide">
+                    Statutory Grievance Redressal Officer
+                  </h3>
+                  <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                    Under Rule 4(5) of Consumer Protection (E-Commerce) Rules, 2020:
+                  </p>
+                  <div className="mt-2 text-xs text-neutral-300 space-y-1">
+                    <p><strong>Officer:</strong> {BUSINESS_CONFIG.grievanceOfficer.name || "Grievance Redressal Officer"}</p>
+                    <p><strong>Designation:</strong> {BUSINESS_CONFIG.grievanceOfficer.designation}</p>
+                    <p><strong>Email:</strong> <a href={`mailto:${BUSINESS_CONFIG.grievanceOfficer.email}`} className="text-[#C9A24A] underline font-mono">{BUSINESS_CONFIG.grievanceOfficer.email}</a></p>
+                    <p className="text-[11px] text-neutral-400 pt-1">
+                      Statutory SLA: Ticket acknowledged within 48 hours; resolved within 30 days.
                     </p>
                   </div>
                 </div>
@@ -149,10 +175,10 @@ export default function ContactPage() {
             {/* Inquiry Form */}
             <div className="p-8 rounded-2xl bg-dark-surface border border-dark-border shadow-luxury">
               <h3 className="font-serif text-xl text-neutral-100 font-semibold mb-2 uppercase tracking-wide">
-                Send a Message
+                Send an Inquiry
               </h3>
               <p className="text-neutral-400 text-xs mb-6 font-light">
-                Fill in the details below and our team will get back to you within 24 hours.
+                Fill in the details below and our bookstore team will respond within 24 hours.
               </p>
 
               {errorMsg && (

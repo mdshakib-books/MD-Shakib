@@ -3,6 +3,7 @@ import {
   processDelhiveryWebhook,
   verifyDelhiveryWebhookAuth,
 } from "@/lib/integrations/delhivery/service";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -17,6 +18,13 @@ export async function POST(req: Request) {
       const isMissingConfig =
         authCheck.reason?.includes("is not configured") ?? false;
       const statusCode = isMissingConfig ? 500 : 401;
+
+      logger.alert(
+        "HIGH",
+        "Delhivery Webhook Unauthorized Access",
+        authCheck.reason || "Unauthorized courier webhook call",
+        { endpoint: "/api/webhooks/delhivery" }
+      );
 
       return NextResponse.json(
         {

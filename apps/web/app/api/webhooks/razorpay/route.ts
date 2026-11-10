@@ -15,6 +15,12 @@ export async function POST(req: Request) {
     const signature = req.headers.get("x-razorpay-signature");
 
     if (!signature) {
+      logger.alert(
+        "HIGH",
+        "Razorpay Webhook Missing Signature",
+        "Incoming webhook omitted required x-razorpay-signature header",
+        { clientIp, endpoint: "/api/webhooks/razorpay" }
+      );
       return NextResponse.json(
         { error: "Missing x-razorpay-signature header" },
         { status: 400 }
@@ -26,7 +32,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (error: any) {
-    logger.error("Razorpay webhook processing error", { endpoint: "/api/webhooks/razorpay" }, error);
+    logger.alert(
+      "CRITICAL",
+      "Razorpay Webhook Failure",
+      error?.message || "Webhook processing failed",
+      { endpoint: "/api/webhooks/razorpay" },
+      error
+    );
     return NextResponse.json(
       { error: error?.message || "Webhook processing failed" },
       { status: 400 }
