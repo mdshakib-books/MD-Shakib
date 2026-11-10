@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminApi } from "@/lib/admin/auth";
 import { processReturnRefund } from "@/lib/commerce/returns";
 import { hasPermission } from "@/lib/admin/permissions";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,12 +30,16 @@ export async function POST(req: NextRequest) {
     });
 
     if (!result.success) {
+      logger.alert("HIGH", "Return Refund Failed", result.error || "Refund processing error", {
+        returnId,
+        adminId: auth.profile.id,
+      });
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }
 
     return NextResponse.json(result);
   } catch (err: any) {
-    console.error("Return refund processing error:", err?.message || err);
+    logger.alert("CRITICAL", "Return Refund Uncaught Exception", err?.message || String(err), {}, err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

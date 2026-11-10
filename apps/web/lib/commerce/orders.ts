@@ -19,15 +19,33 @@ export interface EnrichedOrder extends OrderRow {
   items: OrderItemRow[];
 }
 
+export interface CheckoutConsentPayload {
+  termsAccepted: boolean;
+  termsVersion?: string;
+  privacyVersion?: string;
+  shippingVersion?: string;
+  returnsVersion?: string;
+}
+
 /**
  * Places a Cash on Delivery (COD) order atomically.
  * Prevents duplicate orders via server-side validation and idempotency keys.
+ * Strictly verifies statutory purchase consent server-side.
  */
 export async function placeOrderCOD(
   addressId: string,
   idempotencyKey?: string,
-  couponCode?: string
+  couponCode?: string,
+  consent?: CheckoutConsentPayload
 ): Promise<{ success: boolean; error?: string; orderId?: string }> {
+  // Statutory purchase consent verification (Requirement 3.6 / Rule 4(11))
+  if (!consent || !consent.termsAccepted) {
+    return {
+      success: false,
+      error: "Statutory purchase consent is required. You must review and agree to the Terms & Conditions and Policies before completing your order.",
+    };
+  }
+
   const user = await getAuthenticatedUser();
   if (!user) {
     return { success: false, error: "Authentication required to place order." };
@@ -151,6 +169,21 @@ export async function placeOrderCOD(
     return { success: false, error: rpcErr?.message || "Failed to create order." };
   }
 
+  // 3.5 Persist statutory checkout consent audit record
+  try {
+    await supabase.rpc("record_order_consent_atomic", {
+      p_order_id: orderId as string,
+      p_user_id: user.id,
+      p_terms_accepted: true,
+      p_terms_version: consent?.termsVersion || "2026.11-v1",
+      p_privacy_version: consent?.privacyVersion || "2026.11-v1",
+      p_shipping_version: consent?.shippingVersion || "2026.11-v1",
+      p_returns_version: consent?.returnsVersion || "2026.11-v1",
+    });
+  } catch (consentErr: any) {
+    console.warn("Consent record persistence notice:", consentErr?.message);
+  }
+
   revalidatePath("/orders");
   revalidatePath("/cart");
   revalidatePath("/checkout");
@@ -178,17 +211,27 @@ export async function placeOrderCOD(
 /**
  * Places an Online order atomically and initializes the Razorpay payment session.
  * Prevents duplicate orders via server-side validation and idempotency keys.
+ * Strictly verifies statutory purchase consent server-side.
  */
 export async function placeOrderOnline(
   addressId: string,
   idempotencyKey?: string,
-  couponCode?: string
+  couponCode?: string,
+  consent?: CheckoutConsentPayload
 ): Promise<{
   success: boolean;
   error?: string;
   orderId?: string;
   razorpayOrder?: CreatePaymentOrderResult;
 }> {
+  // Statutory purchase consent verification (Requirement 3.6 / Rule 4(11))
+  if (!consent || !consent.termsAccepted) {
+    return {
+      success: false,
+      error: "Statutory purchase consent is required. You must review and agree to the Terms & Conditions and Policies before completing your order.",
+    };
+  }
+
   const user = await getAuthenticatedUser();
   if (!user) {
     return { success: false, error: "Authentication required to place order." };
@@ -322,6 +365,21 @@ export async function placeOrderOnline(
   if (rpcErr || !orderId) {
     console.error("Atomic online order creation failed:", rpcErr?.message);
     return { success: false, error: rpcErr?.message || "Failed to create order." };
+  }
+
+  // 3.5 Persist statutory checkout consent audit record
+  try {
+    await supabase.rpc("record_order_consent_atomic", {
+      p_order_id: orderId as string,
+      p_user_id: user.id,
+      p_terms_accepted: true,
+      p_terms_version: consent?.termsVersion || "2026.11-v1",
+      p_privacy_version: consent?.privacyVersion || "2026.11-v1",
+      p_shipping_version: consent?.shippingVersion || "2026.11-v1",
+      p_returns_version: consent?.returnsVersion || "2026.11-v1",
+    });
+  } catch (consentErr: any) {
+    console.warn("Consent record persistence notice (Online):", consentErr?.message);
   }
 
   // 4. Create Razorpay payment order

@@ -24,6 +24,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
     addresses.find((a) => a.is_default)?.id || addresses[0]?.id || ""
   );
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "ONLINE">("COD");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const idempotencyKeyRef = useRef<string>("");
 
@@ -143,6 +144,11 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
       return;
     }
 
+    if (!termsAccepted) {
+      setErrorMsg("Please review and agree to the Terms & Conditions and Policies to complete your purchase.");
+      return;
+    }
+
     if (!idempotencyKeyRef.current) {
       idempotencyKeyRef.current =
         typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -153,10 +159,17 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
     setErrorMsg(null);
     const key = idempotencyKeyRef.current;
     const couponCode = appliedCoupon?.code;
+    const consentPayload = {
+      termsAccepted: true,
+      termsVersion: "2026.11-v1",
+      privacyVersion: "2026.11-v1",
+      shippingVersion: "2026.11-v1",
+      returnsVersion: "2026.11-v1",
+    };
 
     startTransition(async () => {
       if (paymentMethod === "COD") {
-        const res = await placeOrderCOD(selectedAddressId, key, couponCode);
+        const res = await placeOrderCOD(selectedAddressId, key, couponCode, consentPayload);
         if (!res.success && res.error) {
           setErrorMsg(res.error);
         } else if (res.orderId) {
@@ -166,7 +179,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
       }
 
       // Online payment via Razorpay
-      const res = await placeOrderOnline(selectedAddressId, key, couponCode);
+      const res = await placeOrderOnline(selectedAddressId, key, couponCode, consentPayload);
       if (!res.success && res.error) {
         setErrorMsg(res.error);
         return;
@@ -503,17 +516,45 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
               </div>
             </div>
 
+            {/* Statutory Checkout Consent (Requirement 3.6 / Consumer Protection Rule 4(11)) */}
+            <div className="border-t border-[#262626] pt-4">
+              <label className="flex items-start gap-2.5 text-xs text-neutral-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  id="checkout-consent-checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-[#383838] bg-[#1A1A1A] text-[#C9A24A] focus:ring-[#C9A24A] cursor-pointer shrink-0 accent-[#C9A24A]"
+                />
+                <span className="leading-relaxed text-[11px] text-neutral-400">
+                  I have read and agree to the{" "}
+                  <Link href="/terms" target="_blank" className="text-[#C9A24A] underline font-medium hover:text-[#E5C87B]">
+                    Terms &amp; Conditions
+                  </Link>
+                  ,{" "}
+                  <Link href="/shipping-policy" target="_blank" className="text-[#C9A24A] underline font-medium hover:text-[#E5C87B]">
+                    Shipping Policy
+                  </Link>
+                  , and{" "}
+                  <Link href="/returns-policy" target="_blank" className="text-[#C9A24A] underline font-medium hover:text-[#E5C87B]">
+                    Return &amp; Refund Policy
+                  </Link>
+                  .
+                </span>
+              </label>
+            </div>
+
             <Button
               variant="primary"
               className="w-full mt-4 uppercase tracking-wider text-xs font-bold"
               onClick={handlePlaceOrder}
-              disabled={isPending || addresses.length === 0}
+              disabled={isPending || addresses.length === 0 || !termsAccepted}
             >
               {isPending ? "Placing Order..." : `Confirm Order (${formatPrice(finalPayable)})`}
             </Button>
 
             <p className="text-[10px] text-neutral-500 text-center leading-tight">
-              By placing your order, you agree to MD Shakib Books Terms and Conditions.
+              100% Secure Checkout | Encrypted Payment Processing
             </p>
           </div>
         </div>
