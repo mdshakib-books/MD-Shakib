@@ -24,6 +24,13 @@ export interface BookInput {
   cover_image?: string;
   images?: string[];
   is_active?: boolean;
+  isbn_10?: string | null;
+  isbn_13?: string | null;
+  sku?: string | null;
+  weight_grams?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
 }
 
 /**
@@ -161,6 +168,13 @@ export async function createAdminBook(input: BookInput): Promise<{
     cover_image: primaryImage,
     images: input.images && Array.isArray(input.images) ? input.images.filter(Boolean) : [primaryImage],
     is_active: input.is_active ?? true,
+    isbn_10: input.isbn_10?.trim() || null,
+    isbn_13: input.isbn_13?.trim() || null,
+    sku: input.sku?.trim() || null,
+    weight_grams: input.weight_grams ? Math.max(1, Math.floor(input.weight_grams)) : null,
+    length_cm: input.length_cm ? Number(input.length_cm) : null,
+    width_cm: input.width_cm ? Number(input.width_cm) : null,
+    height_cm: input.height_cm ? Number(input.height_cm) : null,
   };
 
   const { data: newBook, error } = await supabase
@@ -289,6 +303,28 @@ export async function updateAdminBook(
 
   if (input.is_active !== undefined) {
     updateData.is_active = Boolean(input.is_active);
+  }
+
+  if (input.isbn_10 !== undefined) {
+    updateData.isbn_10 = input.isbn_10?.trim() || null;
+  }
+  if (input.isbn_13 !== undefined) {
+    updateData.isbn_13 = input.isbn_13?.trim() || null;
+  }
+  if (input.sku !== undefined) {
+    updateData.sku = input.sku?.trim() || null;
+  }
+  if (input.weight_grams !== undefined) {
+    updateData.weight_grams = input.weight_grams ? Math.max(1, Math.floor(input.weight_grams)) : null;
+  }
+  if (input.length_cm !== undefined) {
+    updateData.length_cm = input.length_cm ? Number(input.length_cm) : null;
+  }
+  if (input.width_cm !== undefined) {
+    updateData.width_cm = input.width_cm ? Number(input.width_cm) : null;
+  }
+  if (input.height_cm !== undefined) {
+    updateData.height_cm = input.height_cm ? Number(input.height_cm) : null;
   }
 
   const { data: updated, error: updateErr } = await supabase

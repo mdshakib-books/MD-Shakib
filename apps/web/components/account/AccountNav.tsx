@@ -16,6 +16,8 @@ const NAV_ITEMS = [
   { label: "Payments", href: "/account/payments", aliases: ["/account/payments"] },
   { label: "Refunds", href: "/account/refunds", aliases: ["/account/refunds"] },
   { label: "Replacements", href: "/account/replacements", aliases: ["/account/replacements"] },
+  { label: "Support Tickets", href: "/account/support", aliases: ["/account/support"] },
+  { label: "Wishlist", href: "/wishlist", aliases: ["/wishlist"] },
   { label: "Account Security", href: "/account/security", aliases: ["/account/security"] },
 ];
 

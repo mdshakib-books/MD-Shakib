@@ -245,9 +245,11 @@ export function AdminOrdersClient({
             Track, filter, and transition customer orders through the fulfillment lifecycle.
           </p>
         </div>
-        <div className="text-sm text-gray-400">
-          Showing <span className="font-semibold text-white">{initialOrders.length}</span> of{" "}
-          <span className="font-semibold text-white">{total}</span> orders
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-400">
+            Showing <span className="font-semibold text-white">{initialOrders.length}</span> of{" "}
+            <span className="font-semibold text-white">{total}</span> orders
+          </div>
         </div>
       </div>
 
@@ -303,11 +305,6 @@ export function AdminOrdersClient({
             <option value="Out for Delivery">Out for Delivery</option>
             <option value="Delivered">Delivered</option>
             <option value="Cancelled">Cancelled</option>
-            <option value="Replacement Requested">Replacement Requested</option>
-            <option value="Replacement Approved">Replacement Approved</option>
-            <option value="Replacement Rejected">Replacement Rejected</option>
-            <option value="Replacement Shipped">Replacement Shipped</option>
-            <option value="Replacement Delivered">Replacement Delivered</option>
           </select>
         </div>
 

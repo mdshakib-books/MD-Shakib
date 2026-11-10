@@ -65,3 +65,29 @@ export async function getCustomerAccountOverview(): Promise<CustomerAccountOverv
   };
 }
 
+/**
+ * Self-service customer account deletion and PII anonymization (2.25).
+ * Invokes atomic PostgreSQL RPC to scrub personal data while maintaining financial audit history.
+ */
+export async function anonymizeCustomerAccount(userId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const adminDb = createAdminClient();
+
+  const { data, error } = await adminDb.rpc("anonymize_customer_account", {
+    p_user_id: userId,
+  });
+
+  if (error || !(data as any)?.success) {
+    return {
+      success: false,
+      error: (data as any)?.error || error?.message || "Failed to anonymize account.",
+    };
+  }
+
+  return { success: true };
+}
+
+

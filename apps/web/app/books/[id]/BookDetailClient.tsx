@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { formatPrice } from "@/lib/utils";
 import { ProductGrid } from "@/components/commerce/ProductGrid";
+import { BookReviewsSection } from "@/components/commerce/BookReviewsSection";
 import { useCart } from "@/lib/commerce/cart-context";
 import type { CatalogBook } from "@/lib/data/catalog";
 
@@ -347,6 +348,9 @@ export function BookDetailClient({ book, similarBooks }: BookDetailClientProps) 
             </div>
           </div>
         </div>
+
+        {/* Feature 2.23: Verified Customer Reviews */}
+        <BookReviewsSection bookId={book.id} />
 
         {/* Similar Books Section */}
         {similarBooks.length > 0 && (

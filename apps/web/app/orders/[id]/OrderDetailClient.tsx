@@ -15,14 +15,15 @@ import { Badge } from "@/components/ui/Badge";
 import { formatPrice } from "@/lib/utils";
 import {
   cancelOrder,
-  requestOrderReplacement,
   retryOrderPayment,
   type EnrichedOrder,
 } from "@/lib/commerce/orders";
 import type { NormalizedTrackingResult } from "@/lib/integrations/delhivery/service";
+import { DeliveryOtpCard } from "@/components/commerce/DeliveryOtpCard";
 
 interface OrderDetailClientProps {
   order: EnrichedOrder;
+  initialReturnRequest?: any | null;
 }
 
 const ORDER_STEPS = [
@@ -43,28 +44,34 @@ const CANCEL_REASONS = [
   "Other reason",
 ];
 
-const REPLACEMENT_REASONS = [
+const RETURN_REASONS = [
   "Damaged cover or binding in transit",
   "Printing defect or illegible text",
   "Missing pages or inverted binding",
   "Wrong edition or book delivered",
-  "Defective copy",
+  "Defective copy or quality issue",
+  "Changed mind / No longer needed",
+  "Other reason",
 ];
 
-export function OrderDetailClient({ order }: OrderDetailClientProps) {
+export function OrderDetailClient({ order, initialReturnRequest = null }: OrderDetailClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Return & Refund state
+  const [returnRequest, setReturnRequest] = useState<any | null>(initialReturnRequest);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState(RETURN_REASONS[0]);
+  const [returnDetails, setReturnDetails] = useState("");
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(order.items.map((i) => i.id));
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+
   // Modal states
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReasonSelect, setCancelReasonSelect] = useState(CANCEL_REASONS[0]);
   const [cancelReasonDetails, setCancelReasonDetails] = useState("");
-
-  const [showReplacementModal, setShowReplacementModal] = useState(false);
-  const [replacementReasonSelect, setReplacementReasonSelect] = useState(REPLACEMENT_REASONS[0]);
-  const [replacementDetails, setReplacementDetails] = useState("");
 
   // Retry payment state
   const [isRetryingPayment, setIsRetryingPayment] = useState(false);
@@ -90,7 +97,7 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
   const isWithin7Days = deliveryTime
     ? currentTime - deliveryTime <= 7 * 24 * 60 * 60 * 1000 && currentTime >= deliveryTime
     : false;
-  const canRequestReplacement = isDelivered && !order.replacement_requested && isWithin7Days;
+  const canRequestReturn = isDelivered && isWithin7Days && !returnRequest;
 
   // Address Snapshot
   const address = order.address_snapshot as unknown as {
@@ -151,24 +158,60 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
     });
   };
 
-  const handleReplacementSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitReturn = async () => {
+    if (!returnReason.trim()) return;
+    setIsSubmittingReturn(true);
     setErrorMsg(null);
     setSuccessMsg(null);
-    startTransition(async () => {
-      const res = await requestOrderReplacement(
-        order.id,
-        replacementReasonSelect,
-        replacementDetails
-      );
-      if (!res.success && res.error) {
-        setErrorMsg(res.error);
+
+    try {
+      const itemsPayload = order.items
+        .filter((i) => selectedItemIds.includes(i.id))
+        .map((i) => ({
+          orderItemId: i.id,
+          bookId: i.book_id,
+          quantity: i.quantity,
+        }));
+
+      if (itemsPayload.length === 0) {
+        setErrorMsg("Please select at least one item to return.");
+        setIsSubmittingReturn(false);
+        return;
+      }
+
+      const res = await fetch("/api/returns/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.id,
+          requestType: "return_refund",
+          reason: returnReason,
+          description: returnDetails,
+          items: itemsPayload,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.error || "Failed to submit return request.");
       } else {
-        setShowReplacementModal(false);
-        setSuccessMsg("Replacement request submitted successfully. Our team will review it shortly.");
+        setSuccessMsg("Return request submitted successfully. Our team will review it shortly.");
+        setReturnRequest({
+          return_number: data.returnNumber || `RET-${Date.now().toString().slice(-6)}`,
+          request_type: "return_refund",
+          reason: returnReason,
+          description: returnDetails,
+          status: "submitted",
+          created_at: new Date().toISOString(),
+        });
+        setShowReturnModal(false);
         router.refresh();
       }
-    });
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Network error submitting return request.");
+    } finally {
+      setIsSubmittingReturn(false);
+    }
   };
 
   // Feature 1.5: Payment Retry Workflow
@@ -274,7 +317,28 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center flex-wrap gap-2.5">
+          <a
+            href={`/api/documents/invoice/${order.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C9A24A]/40 text-[#C9A24A] hover:bg-[#C9A24A]/10 text-xs font-semibold uppercase tracking-wider transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Invoice</span>
+          </a>
+
+          <a
+            href={`/api/documents/receipt/${order.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700 text-neutral-300 hover:text-white hover:bg-neutral-800 text-xs font-semibold uppercase tracking-wider transition-colors"
+          >
+            <span>Receipt</span>
+          </a>
+
           {canRetryPayment && (
             <Button
               variant="primary"
@@ -298,16 +362,27 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
             </Button>
           )}
 
-          {canRequestReplacement && (
+          {canRequestReturn && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowReplacementModal(true)}
-              disabled={isPending}
+              onClick={() => setShowReturnModal(true)}
+              disabled={isPending || isSubmittingReturn}
+              className="border-[#C9A24A]/60 text-[#C9A24A] hover:bg-[#C9A24A]/10 text-xs font-semibold uppercase tracking-wider"
             >
-              Request Replacement
+              Request Return / Refund
             </Button>
           )}
+
+          <Link
+            href={`/account/support?orderId=${order.id}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2A2A2A] text-neutral-300 hover:text-white hover:border-[#C9A24A] text-xs font-medium transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Need Help?
+          </Link>
         </div>
       </div>
 
@@ -335,52 +410,56 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
         </div>
       )}
 
-      {/* Replacement Status Card (If already requested) */}
-      {order.replacement_requested && (
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8 shadow-luxury">
-          <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-[#222222]">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-200">
-              Replacement Request Status
-            </h2>
+      {/* Return & Refund Status Card */}
+      {returnRequest && (
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8 shadow-luxury space-y-3 animate-fade-in">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-[#222222]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase font-bold tracking-wider text-[#C9A24A]">
+                Return & Refund Request
+              </span>
+              <span className="text-xs font-mono text-neutral-400">
+                #{returnRequest.return_number}
+              </span>
+            </div>
             <Badge
               variant={
-                order.replacement_status === "Approved"
+                returnRequest.status === "completed"
                   ? "success"
-                  : order.replacement_status === "Rejected"
+                  : returnRequest.status === "approved" || returnRequest.status === "pickup_scheduled"
+                  ? "gold"
+                  : returnRequest.status === "rejected"
                   ? "danger"
-                  : "gold"
+                  : "info"
               }
             >
-              {order.replacement_status}
+              {returnRequest.status.replace(/_/g, " ").toUpperCase()}
             </Badge>
           </div>
 
-          <div className="text-xs space-y-1.5 text-neutral-400 font-light">
-            <p>
-              <strong className="text-neutral-300 font-medium">Reason:</strong> {order.replacement_reason}
+          <div className="text-xs text-neutral-300 space-y-2">
+            <p><span className="text-neutral-500 font-medium">Claim Reason:</span> {returnRequest.reason}</p>
+            {returnRequest.description && (
+              <p><span className="text-neutral-500 font-medium">Customer Details:</span> {returnRequest.description}</p>
+            )}
+            {returnRequest.rejection_reason && (
+              <p className="text-red-400"><span className="font-semibold">Rejection Note:</span> {returnRequest.rejection_reason}</p>
+            )}
+            {returnRequest.pickup_awb && (
+              <p className="text-neutral-400 font-mono"><span className="text-neutral-500 font-sans font-medium">Reverse Courier AWB:</span> {returnRequest.pickup_awb}</p>
+            )}
+            {returnRequest.refund_amount > 0 && (
+              <p className="text-[#C9A24A] font-semibold">Refund Amount: ₹{Number(returnRequest.refund_amount).toFixed(2)}</p>
+            )}
+            <p className="text-[11px] text-neutral-500">
+              Submitted on {new Date(returnRequest.created_at).toLocaleString("en-IN")}
             </p>
-            {order.replacement_requested_at && (
-              <p>
-                <strong className="text-neutral-300 font-medium">Requested On:</strong>{" "}
-                {new Date(order.replacement_requested_at).toLocaleString("en-IN")}
-              </p>
-            )}
-            {order.replacement_status === "Rejected" && order.replacement_rejection_reason && (
-              <div className="mt-3 p-3 rounded-lg bg-red-950/30 border border-red-900/50 text-red-300">
-                <strong>Rejection Reason:</strong> {order.replacement_rejection_reason}
-              </div>
-            )}
-            {order.replacement_status === "Approved" && (
-              <div className="mt-3 p-3 rounded-lg bg-emerald-950/30 border border-emerald-900/50 text-emerald-300 flex items-center gap-2">
-                <svg className="w-4 h-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Replacement approved. Our logistics team will dispatch your replacement copy.</span>
-              </div>
-            )}
           </div>
         </div>
       )}
+
+      {/* Feature 2.4: Delivery Handover OTP */}
+      <DeliveryOtpCard orderId={order.id} orderStatus={order.order_status} />
 
       {/* Visual Tracking Progress Bar */}
       <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8 shadow-luxury">
@@ -653,38 +732,66 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
         </form>
       </Modal>
 
-      {/* Replacement Request Modal */}
+      {/* Return & Refund Request Modal */}
       <Modal
-        isOpen={showReplacementModal}
-        onClose={() => setShowReplacementModal(false)}
-        title="Request Replacement"
-        description="Under our 7-day replacement guarantee, eligible damaged or defective books can be replaced free of charge."
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        title="Request Return for Refund"
+        description="Under our 7-day policy, authentic Islamic books delivered in defective or damaged condition are eligible for return and full refund."
         size="md"
       >
-        <form onSubmit={handleReplacementSubmit} className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmitReturn();
+          }}
+          className="space-y-4"
+        >
           <Select
-            label="Reason for Replacement"
-            value={replacementReasonSelect}
-            onChange={(e) => setReplacementReasonSelect(e.target.value)}
-            options={REPLACEMENT_REASONS.map((r) => ({ label: r, value: r }))}
+            label="Reason for Return"
+            value={returnReason}
+            onChange={(e) => setReturnReason(e.target.value)}
+            options={RETURN_REASONS.map((r) => ({ label: r, value: r }))}
           />
 
           <Textarea
-            label="Describe Defect or Damage"
-            value={replacementDetails}
-            onChange={(e) => setReplacementDetails(e.target.value)}
-            placeholder="Describe the issue in detail (e.g. printing defect, cover damage)..."
+            label="Additional Details (Optional)"
+            value={returnDetails}
+            onChange={(e) => setReturnDetails(e.target.value)}
+            placeholder="Please share any helpful details regarding the condition of the book..."
             rows={3}
-            required
           />
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-300">Select Item(s)</label>
+            <div className="space-y-2 border border-neutral-800 rounded-lg p-2.5 max-h-36 overflow-y-auto">
+              {order.items.map((it) => (
+                <label key={it.id} className="flex items-center gap-2.5 text-xs text-neutral-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedItemIds.includes(it.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedItemIds([...selectedItemIds, it.id]);
+                      } else {
+                        setSelectedItemIds(selectedItemIds.filter((id) => id !== it.id));
+                      }
+                    }}
+                    className="accent-[#C9A24A] rounded"
+                  />
+                  <span className="truncate flex-1">{it.title} (Qty: {it.quantity})</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="flex justify-end gap-3 pt-3">
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => setShowReplacementModal(false)}
-              disabled={isPending}
+              onClick={() => setShowReturnModal(false)}
+              disabled={isSubmittingReturn}
             >
               Cancel
             </Button>
@@ -692,9 +799,10 @@ export function OrderDetailClient({ order }: OrderDetailClientProps) {
               type="submit"
               variant="primary"
               size="sm"
-              disabled={isPending}
+              disabled={isSubmittingReturn || selectedItemIds.length === 0}
+              className="bg-[#C9A24A] hover:bg-[#B89139] text-black font-bold uppercase tracking-wider text-xs"
             >
-              {isPending ? "Submitting..." : "Submit Request"}
+              {isSubmittingReturn ? "Submitting..." : "Submit Return Request"}
             </Button>
           </div>
         </form>

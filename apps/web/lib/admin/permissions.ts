@@ -13,6 +13,11 @@ export type StaffPermission =
   | "orders.cancel"
   | "orders.ship"
   | "orders.settle_cod"
+  | "orders.export"
+  | "customers.export"
+  | "reports.view"
+  | "returns.manage"
+  | "delivery.verify"
   | "books.view"
   | "books.manage"
   | "inventory.view"
@@ -32,6 +37,11 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "orders.cancel",
     "orders.ship",
     "orders.settle_cod",
+    "orders.export",
+    "customers.export",
+    "reports.view",
+    "returns.manage",
+    "delivery.verify",
     "books.view",
     "books.manage",
     "inventory.view",
@@ -50,6 +60,11 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "orders.cancel",
     "orders.ship",
     "orders.settle_cod",
+    "orders.export",
+    "customers.export",
+    "reports.view",
+    "returns.manage",
+    "delivery.verify",
     "books.view",
     "books.manage",
     "inventory.view",
@@ -66,6 +81,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "orders.manage",
     "orders.cancel",
     "orders.settle_cod",
+    "orders.export",
+    "returns.manage",
     "books.view",
     "inventory.view",
     "support.manage",
@@ -75,12 +92,15 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "orders.view",
     "orders.manage",
     "orders.ship",
+    "returns.manage",
+    "delivery.verify",
     "inventory.view",
     "books.view",
   ],
   support_staff: [
     "dashboard.view",
     "orders.view",
+    "returns.manage",
     "reviews.manage",
     "support.manage",
   ],

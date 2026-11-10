@@ -521,6 +521,35 @@ export async function processDelhiveryWebhook(payload: any) {
   }
 
   const now = new Date().toISOString();
+
+  // D-2 Remediation: Prevent courier tracking webhooks from bypassing mandatory merchant OTP verification
+  if (internalStatus === "Delivered") {
+    const { data: otps } = await adminDb
+      .from("delivery_otps")
+      .select("id, status, verified_at")
+      .eq("order_id", order.id);
+
+    const hasUnverifiedOtp = otps && otps.length > 0 && !otps.some((o) => o.status === "verified" || o.verified_at !== null);
+
+    if (hasUnverifiedOtp) {
+      // Record courier delivered timestamp milestone without bypassing merchant OTP gate
+      await adminDb
+        .from("orders")
+        .update({
+          shipping_delivered_at: now,
+          updated_at: now,
+        })
+        .eq("id", order.id);
+
+      return {
+        status: "otp_verification_required",
+        orderId: order.id,
+        currentStatus: order.order_status,
+        message: "Courier marked delivered, but mandatory merchant doorstep OTP verification is required before order completion.",
+      };
+    }
+  }
+
   const updateData: any = {
     order_status: internalStatus,
     updated_at: now,
