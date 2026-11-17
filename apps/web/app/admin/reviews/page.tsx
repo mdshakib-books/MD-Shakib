@@ -1,12 +1,12 @@
 import React from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminReviews } from "@/lib/admin/reviews";
 import { AdminReviewsClient } from "./AdminReviewsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminReviewsPage() {
-  await requireAdmin();
+  await requireStaffPermission("reviews.manage");
 
   const { reviews, total, pendingCount } = await getAdminReviews({ limit: 100 });
 

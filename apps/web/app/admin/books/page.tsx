@@ -1,5 +1,5 @@
 import React from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminBooks } from "@/lib/admin/books";
 import { getAdminCategories } from "@/lib/admin/categories";
 import { AdminBooksClient } from "./AdminBooksClient";
@@ -7,7 +7,7 @@ import { AdminBooksClient } from "./AdminBooksClient";
 export const dynamic = "force-dynamic";
 
 export default async function AdminBooksPage() {
-  await requireAdmin();
+  await requireStaffPermission("books.view");
 
   const [{ books, total }, categories] = await Promise.all([
     getAdminBooks({ limit: 100 }),

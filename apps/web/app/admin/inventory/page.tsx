@@ -1,12 +1,12 @@
 import React from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminInventory } from "@/lib/admin/inventory";
 import { AdminInventoryClient } from "./AdminInventoryClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminInventoryPage() {
-  await requireAdmin();
+  await requireStaffPermission("inventory.view");
 
   const { items, total, summary } = await getAdminInventory({ limit: 100 });
 

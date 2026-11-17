@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyAdminApi } from "@/lib/admin/auth";
 import { exportOrdersToCsv } from "@/lib/admin/reports";
-import { hasPermission } from "@/lib/admin/permissions";
+import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
+import { NO_STORE_HEADERS, serverErrorResponse } from "@/lib/security/http";
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await verifyAdminApi("orders.export");
+    if (!auth.authorized) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!hasPermission(profile?.role || "user", "orders.export")) {
-      return NextResponse.json({ error: "Forbidden: orders.export permission required" }, { status: 403 });
+    const rl = await checkRateLimit(`admin:orders-export:${auth.user.id}`, "admin");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
     }
 
     const { searchParams } = new URL(req.url);
@@ -40,9 +34,10 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="md-shakib-orders-${new Date().toISOString().slice(0, 10)}.csv"`,
+        ...NO_STORE_HEADERS,
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Export failed" }, { status: 500 });
+    return serverErrorResponse("/api/admin/orders/export", err, "Order export failed.", req);
   }
 }

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "./auth";
+import { requireStaffPermission } from "./auth";
 import type { Database } from "@/types/database.types";
 
 export interface DashboardMetrics {
@@ -40,7 +40,7 @@ export type DashboardDateFilter = "all" | "today" | "7d" | "30d" | "month";
  * Uses bounded date ranges and PostgreSQL aggregation RPC rather than loading every order into Node memory.
  */
 export async function getAdminDashboardStats(filter: DashboardDateFilter = "all"): Promise<DashboardMetrics> {
-  await requireAdmin();
+  await requireStaffPermission("dashboard.view");
   const supabase = await createClient();
 
   let dateFrom: string | undefined = undefined;

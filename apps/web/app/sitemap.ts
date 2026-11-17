@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { getCanonicalSiteUrl } from "@/lib/auth/session";
 import { createPublicClient } from "@/lib/supabase/server";
+import { isMockCatalogAllowed } from "@/lib/env/server";
 import { MOCK_BOOKS } from "@/data/mockCatalog";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -64,8 +65,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly" as const,
         priority: 0.8,
       }));
-    } else {
-      // Fallback to active mock catalogue books when database is unreachable
+    } else if (isMockCatalogAllowed()) {
+      // Fallback to active mock catalogue books ONLY when mock services are explicitly allowed in dev/test
       bookRoutes = MOCK_BOOKS.map((b) => ({
         url: `${baseUrl}/books/${b.id}`,
         lastModified: currentDate,
@@ -74,12 +75,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }));
     }
   } catch {
-    bookRoutes = MOCK_BOOKS.map((b) => ({
-      url: `${baseUrl}/books/${b.id}`,
-      lastModified: currentDate,
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    }));
+    if (isMockCatalogAllowed()) {
+      bookRoutes = MOCK_BOOKS.map((b) => ({
+        url: `${baseUrl}/books/${b.id}`,
+        lastModified: currentDate,
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      }));
+    }
   }
 
   return [...staticRoutes, ...bookRoutes];

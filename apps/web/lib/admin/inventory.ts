@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "./auth";
+import { invalidateCatalogCache } from "@/lib/cache/catalog";
+import { requireStaffPermission, verifyStaffActionPermission } from "./auth";
 import { sendLowStockAlertEmail } from "@/lib/integrations/resend/service";
 import type { Database } from "@/types/database.types";
 
@@ -42,7 +43,7 @@ export async function getAdminInventory(params?: {
     totalUnits: number;
   };
 }> {
-  await requireAdmin();
+  await requireStaffPermission("inventory.view");
   const supabase = await createClient();
 
   const page = Math.max(1, params?.page || 1);
@@ -137,7 +138,9 @@ export async function adjustAdminStock(payload: AdjustStockPayload): Promise<{
   quantityChange?: number;
   error?: string;
 }> {
-  const { user } = await requireAdmin();
+  const perm = await verifyStaffActionPermission("inventory.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
+  const { user } = perm;
   const supabase = await createClient();
 
   const { bookId, type, quantity, reason } = payload;
@@ -175,10 +178,7 @@ export async function adjustAdminStock(payload: AdjustStockPayload): Promise<{
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/books");
   revalidatePath("/admin");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
-  revalidatePath(`/books/${bookId}`);
+  invalidateCatalogCache(bookId);
 
   return {
     success: true,
@@ -203,7 +203,7 @@ export async function getInventoryAdjustmentHistory(params?: {
     }
   >
 > {
-  await requireAdmin();
+  await requireStaffPermission("inventory.view");
   const supabase = await createClient();
 
   const limit = Math.max(1, Math.min(100, params?.limit || 30));

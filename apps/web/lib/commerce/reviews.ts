@@ -193,24 +193,25 @@ export async function getBookReviews(
   total: number;
 }> {
   const adminDb = createAdminClient();
+  const safePage = Math.max(1, Math.floor(Number(page) || 1));
+  const safeLimit = Math.min(50, Math.max(1, Math.floor(Number(limit) || 10)));
+  const offset = (safePage - 1) * safeLimit;
 
-  const offset = (page - 1) * limit;
-
-  // 1. Fetch approved reviews paginated
-  const { data: reviewsData, count, error } = await adminDb
-    .from("reviews")
-    .select("*, profiles!reviews_user_id_fkey(name)", { count: "exact" })
-    .eq("book_id", bookId)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  // 2. Fetch all ratings to compute exact distribution and average
-  const { data: allRatings } = await adminDb
-    .from("reviews")
-    .select("rating")
-    .eq("book_id", bookId)
-    .eq("status", "approved");
+  // Execute paginated reviews + rating aggregation queries concurrently
+  const [{ data: reviewsData, count }, { data: allRatings }] = await Promise.all([
+    adminDb
+      .from("reviews")
+      .select("*, profiles!reviews_user_id_fkey(name)", { count: "exact" })
+      .eq("book_id", bookId)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + safeLimit - 1),
+    adminDb
+      .from("reviews")
+      .select("rating")
+      .eq("book_id", bookId)
+      .eq("status", "approved"),
+  ]);
 
   const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let sum = 0;

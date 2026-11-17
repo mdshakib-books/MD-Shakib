@@ -18,6 +18,13 @@ yarn-error.log*
 # Environment files
 .env*.local
 .env
+.env.development
+.env.staging
+.env.production
+.env.test
+.env*.bak
+*.pre-phase01.bak
+!.env.example
 
 # TypeScript cache
 *.tsbuildinfo

@@ -11,7 +11,7 @@ interface BookDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // ISR with tag-backed invalidation from catalog mutations
 
 export async function generateMetadata({ params }: BookDetailPageProps): Promise<Metadata> {
   const { id } = await params;

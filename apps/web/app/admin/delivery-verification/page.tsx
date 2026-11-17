@@ -6,7 +6,7 @@ import { DeliveryVerificationClient } from "./DeliveryVerificationClient";
 export const dynamic = "force-dynamic";
 
 export default async function DeliveryVerificationPage() {
-  const admin = await requireStaffPermission("orders.ship");
+  const admin = await requireStaffPermission("delivery.verify");
 
   return (
     <div className="min-h-screen bg-[#0B0B0B] text-neutral-100 flex flex-col md:flex-row">

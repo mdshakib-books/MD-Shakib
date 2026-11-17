@@ -1,12 +1,12 @@
 import React from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminAuditLogs } from "@/lib/admin/audit";
 import { AdminAuditLogsClient } from "./AdminAuditLogsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAuditLogsPage() {
-  await requireAdmin();
+  await requireStaffPermission("audit.view");
 
   const { logs, total } = await getAdminAuditLogs({ limit: 100 });
 

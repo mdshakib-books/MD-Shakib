@@ -58,7 +58,7 @@ export function AccountRefundsClient({ refunds }: AccountRefundsClientProps) {
           </div>
           <h2 className="text-base font-serif text-neutral-200 uppercase font-semibold">No active or historical refunds</h2>
           <p className="text-xs text-neutral-400 mt-2 max-w-sm mx-auto mb-6 leading-relaxed">
-            Refunds are initiated when eligible prepaid orders are cancelled or returned. Cash on Delivery (COD) orders do not generate online refund records.
+            Refunds are initiated when eligible prepaid orders are cancelled or when paid/collected orders (including delivered COD orders with verified payment collection) have approved returns. Cancelled uncollected COD orders never generate refund records.
           </p>
           <Link href="/account/orders">
             <Button variant="secondary" size="md">

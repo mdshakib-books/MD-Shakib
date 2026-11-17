@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
 import { formatPrice } from "@/lib/utils";
+import { checkOrderInvoiceEligibility } from "@/lib/commerce/tax";
 import {
   cancelOrder,
   retryOrderPayment,
@@ -79,6 +80,7 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
   // Tracking state
   const [trackingData, setTrackingData] = useState<NormalizedTrackingResult | null>(null);
   const [loadingTracking, setLoadingTracking] = useState(() => Boolean(order.shipping_awb));
+  const [trackingUnavailable, setTrackingUnavailable] = useState(false);
 
   const isCancelled = order.order_status === "Cancelled";
   // Customer can cancel only before dispatch (Pending, Confirmed, Processing, Packed)
@@ -121,14 +123,26 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
     let isMounted = true;
 
     fetch(`/api/shipping/track?awb=${encodeURIComponent(order.shipping_awb)}`)
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        return { ok: res.ok, status: res.status, data };
+      })
+      .then(({ ok, status, data }) => {
         if (!isMounted) return;
-        if (data && !data.error) {
+        if (ok && data && !data.error) {
           setTrackingData(data);
+          setTrackingUnavailable(false);
+        } else {
+          setTrackingData(null);
+          if (status === 503 || data?.configured === false) {
+            setTrackingUnavailable(true);
+          }
         }
       })
-      .catch((err) => console.warn("Failed to load tracking:", err))
+      .catch((err) => {
+        console.warn("Failed to load tracking:", err);
+        if (isMounted) setTrackingData(null);
+      })
       .finally(() => {
         if (isMounted) setLoadingTracking(false);
       });
@@ -148,11 +162,21 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
     setSuccessMsg(null);
     startTransition(async () => {
       const res = await cancelOrder(order.id, finalReason);
-      if (!res.success && res.error) {
-        setErrorMsg(res.error);
+      if (!res.success) {
+        if (res.orderCancelled) {
+          setShowCancelModal(false);
+          router.refresh();
+        }
+        setErrorMsg(res.error || "Unable to cancel order.");
       } else {
         setShowCancelModal(false);
-        setSuccessMsg("Your order has been cancelled successfully. Inventory has been restored.");
+        const successText =
+          res.refundStatus === "PROCESSED"
+            ? "Your order has been cancelled, inventory restored, and refund processed."
+            : res.refundStatus === "PROCESSING" || res.refundStatus === "PENDING"
+            ? "Your order has been cancelled and inventory restored. Your refund has been initiated with Razorpay and is currently processing."
+            : "Your order has been cancelled successfully. Inventory has been restored.";
+        setSuccessMsg(successText);
         router.refresh();
       }
     });
@@ -318,17 +342,19 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
         </div>
 
         <div className="flex items-center flex-wrap gap-2.5">
-          <a
-            href={`/api/documents/invoice/${order.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C9A24A]/40 text-[#C9A24A] hover:bg-[#C9A24A]/10 text-xs font-semibold uppercase tracking-wider transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span>Invoice</span>
-          </a>
+          {checkOrderInvoiceEligibility(order).eligible && (
+            <a
+              href={`/api/documents/invoice/${order.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C9A24A]/40 text-[#C9A24A] hover:bg-[#C9A24A]/10 text-xs font-semibold uppercase tracking-wider transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Invoice</span>
+            </a>
+          )}
 
           <a
             href={`/api/documents/receipt/${order.id}`}
@@ -445,7 +471,7 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
             {returnRequest.rejection_reason && (
               <p className="text-red-400"><span className="font-semibold">Rejection Note:</span> {returnRequest.rejection_reason}</p>
             )}
-            {returnRequest.pickup_awb && (
+            {returnRequest.pickup_awb && !String(returnRequest.pickup_awb).startsWith("REV-") && (
               <p className="text-neutral-400 font-mono"><span className="text-neutral-500 font-sans font-medium">Reverse Courier AWB:</span> {returnRequest.pickup_awb}</p>
             )}
             {returnRequest.refund_amount > 0 && (
@@ -471,11 +497,37 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
         </h2>
 
         {isCancelled ? (
-          <div className="p-4 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center gap-3">
-            <svg className="w-5 h-5 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p>This order was cancelled. Reason: {order.cancel_reason || "Customer requested cancellation."}</p>
+          <div className="space-y-3">
+            <div className="p-4 rounded-xl bg-red-950/20 border border-red-800/40 text-red-400 text-xs flex items-center gap-3">
+              <svg className="w-5 h-5 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p>This order was cancelled. Reason: {order.cancel_reason || "Customer requested cancellation."}</p>
+            </div>
+            {order.payment_method === "ONLINE" &&
+              (order.refund_status || order.payment_status === "Refund Pending" || order.payment_status === "Refunded") && (
+                <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-[#2D2D2D] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-neutral-400 font-medium">Refund Status: </span>
+                    <span className="font-bold uppercase tracking-wide text-[#E5C87B]">
+                      {order.refund_status === "processed" || order.payment_status === "Refunded"
+                        ? "Processed"
+                        : order.refund_status === "processing"
+                        ? "Processing at Razorpay"
+                        : order.refund_status === "failed"
+                        ? "Failed — Support Review Required"
+                        : order.refund_status === "not_required"
+                        ? "Not Required"
+                        : "Pending"}
+                    </span>
+                  </div>
+                  {order.razorpay_refund_id && (
+                    <span className="font-mono text-[11px] text-neutral-400">
+                      Ref ID: {order.razorpay_refund_id}
+                    </span>
+                  )}
+                </div>
+              )}
           </div>
         ) : (
           <div className="relative flex items-center justify-between py-2">
@@ -514,7 +566,7 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
       </div>
 
       {/* Feature 1.14: Logistics & Live Shipment Tracking Card */}
-      {order.shipping_awb && (
+      {(order.shipping_awb || (order.shipping_courier && ["Shipped", "Out for Delivery", "Delivered", "Returned"].includes(order.order_status))) && (
         <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 mb-8 shadow-luxury">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-[#222222] mb-4 gap-2">
             <div>
@@ -522,20 +574,33 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
                 Logistics &amp; Tracking Information
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5 font-light">
-                Fulfilled via <strong>{order.shipping_courier || "Delhivery"}</strong> • Waybill Number:{" "}
-                <span className="font-mono text-[#C9A24A]">{order.shipping_awb}</span>
+                Fulfilled via <strong>{order.shipping_courier || "Courier Partner"}</strong>
+                {order.shipping_awb ? (
+                  <>
+                    {" "}• Tracking / AWB:{" "}
+                    <span className="font-mono text-[#C9A24A]">{order.shipping_awb}</span>
+                  </>
+                ) : (
+                  <> • No AWB provided</>
+                )}
               </p>
             </div>
-            {order.shipping_tracking_url && (
+            {order.shipping_tracking_url ? (
               <a
                 href={order.shipping_tracking_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-semibold text-[#C9A24A] hover:underline inline-flex items-center gap-1 self-start sm:self-auto"
               >
-                <span>Live Delhivery Portal</span>
+                <span>
+                  {(order.shipping_courier || "").toLowerCase() === "delhivery"
+                    ? "Live Delhivery Portal"
+                    : "Track Shipment"}
+                </span>
                 <span>↗</span>
               </a>
+            ) : (
+              <span className="text-[11px] text-neutral-500">Tracking unavailable</span>
             )}
           </div>
 
@@ -558,9 +623,13 @@ export function OrderDetailClient({ order, initialReturnRequest = null }: OrderD
                 ))}
               </div>
             </div>
+          ) : trackingUnavailable ? (
+            <p className="text-xs text-neutral-400 font-light">
+              Live automated courier tracking is currently unavailable. Please refer to the order status timeline below for dispatch updates.
+            </p>
           ) : (
             <p className="text-xs text-neutral-500 font-light">
-              Package registered with Delhivery logistics. Live scan events will appear as your consignment moves through transit hubs.
+              Package registered with {order.shipping_courier || "carrier"} logistics. Updates will appear as your consignment progresses.
             </p>
           )}
         </div>

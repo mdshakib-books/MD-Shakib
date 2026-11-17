@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "./auth";
+import { requireStaffPermission, verifyStaffActionPermission } from "./auth";
 import type { Database } from "@/types/database.types";
 
 export type ReviewRow = Database["public"]["Tables"]["reviews"]["Row"];
@@ -28,7 +28,7 @@ export async function getAdminReviews(params?: {
   totalPages: number;
   pendingCount: number;
 }> {
-  await requireAdmin();
+  await requireStaffPermission("reviews.manage");
   const supabase = await createClient();
 
   const page = Math.max(1, params?.page || 1);
@@ -108,7 +108,9 @@ export async function moderateAdminReview(payload: {
   reviewId: string;
   status: "approved" | "rejected" | "hidden" | "pending";
 }): Promise<{ success: boolean; error?: string }> {
-  const { user } = await requireAdmin();
+  const perm = await verifyStaffActionPermission("reviews.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
+  const { user } = perm;
   const supabase = await createClient();
 
   const { reviewId, status } = payload;

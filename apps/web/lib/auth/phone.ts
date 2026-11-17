@@ -1,12 +1,12 @@
 import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getOtpHmacSecret, isMockOtpExposureAllowed } from "@/lib/env/server";
 
-const OTP_SECRET = process.env.DELIVERY_OTP_HMAC_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "fallback_phone_otp_secret_key";
 const OTP_EXPIRY_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
 
 function hashPhoneOtp(phone: string, otp: string): string {
-  return crypto.createHmac("sha256", OTP_SECRET).update(`${phone}:${otp}`).digest("hex");
+  return crypto.createHmac("sha256", getOtpHmacSecret()).update(`${phone}:${otp}`).digest("hex");
 }
 
 function normalizePhone(rawPhone: string): string {
@@ -86,14 +86,14 @@ export async function sendPhoneVerificationOtp(
     return { success: false, error: insErr.message || "Failed to record phone verification request." };
   }
 
-  // In non-production or test environment, surface OTP for automated test verification
-  const isTestOrDev = process.env.NODE_ENV !== "production";
+  // Only surface mock OTP in explicit local dev/test mode when test/mock OTP exposure is allowed
+  const exposeMockOtp = isMockOtpExposureAllowed();
 
   return {
     success: true,
     phone,
     expiresAt,
-    mockOtpForTesting: isTestOrDev ? otpString : undefined,
+    mockOtpForTesting: exposeMockOtp ? otpString : undefined,
   };
 }
 

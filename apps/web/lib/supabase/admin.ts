@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { getAdminSupabaseConfig } from "./config";
 
 /**
  * Creates an administrative Supabase client using the SERVICE_ROLE_KEY.
@@ -13,14 +14,13 @@ import type { Database } from "@/types/database.types";
  * - NEVER expose this client or SUPABASE_SERVICE_ROLE_KEY to the browser.
  */
 export function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (typeof window !== "undefined") {
     throw new Error(
-      "Missing Supabase admin environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
+      "Security violation: createAdminClient() and SUPABASE_SERVICE_ROLE_KEY cannot be used in browser context."
     );
   }
+
+  const { supabaseUrl, serviceRoleKey } = getAdminSupabaseConfig();
 
   return createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
@@ -29,4 +29,3 @@ export function createAdminClient() {
     },
   });
 }
-

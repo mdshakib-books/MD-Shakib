@@ -42,7 +42,7 @@ export default function ShippingPolicyPage() {
                   2. Shipping Charges &amp; Transparency
                 </h2>
                 <p className="text-neutral-400">
-                  Standard surface shipping across India is charged at a flat rate of <strong>₹{BUSINESS_CONFIG.shipping.standardShippingFee}</strong> per order (inclusive of 18% transportation GST).
+                  Standard surface shipping across India is charged at a flat rate of <strong>₹{BUSINESS_CONFIG.shipping.standardShippingFee}</strong> per order (inclusive of 18% transportation GST), plus a nominal platform handling fee of <strong>₹{BUSINESS_CONFIG.shipping.platformFee}</strong> per order.
                 </p>
                 <p className="text-neutral-400 mt-2">
                   All applicable delivery charges and platform handling fees are transparently displayed in a single figure breakdown during checkout prior to payment. There are zero hidden fees.

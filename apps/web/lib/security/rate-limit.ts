@@ -40,9 +40,10 @@ export interface RateLimitResult {
 interface MemoryRecord {
   timestamps: number[];
 }
+const MAX_MEMORY_ENTRIES = 10000;
 const memoryStore = new Map<string, MemoryRecord>();
 
-// Cleanup stale memory records periodically
+// Cleanup stale memory records periodically and bound memory growth
 function pruneMemoryStore() {
   const now = Date.now();
   for (const [key, record] of memoryStore.entries()) {
@@ -52,25 +53,36 @@ function pruneMemoryStore() {
       memoryStore.delete(key);
     }
   }
+  while (memoryStore.size > MAX_MEMORY_ENTRIES) {
+    const oldestKey = memoryStore.keys().next().value;
+    if (!oldestKey) break;
+    memoryStore.delete(oldestKey);
+  }
 }
 
 /**
- * Extracts the real client IP address from request headers.
+ * Extracts the real client IP address from request headers safely.
  */
 export function getClientIp(requestOrHeaders: Request | Headers): string {
   const headers = "headers" in requestOrHeaders ? requestOrHeaders.headers : requestOrHeaders;
 
+  const sanitizeIpToken = (raw: string | null): string | null => {
+    if (!raw) return null;
+    const token = raw.trim().slice(0, 64);
+    return /^[A-Za-z0-9:._-]+$/.test(token) ? token : null;
+  };
+
+  const cfConnectingIp = sanitizeIpToken(headers.get("cf-connecting-ip"));
+  if (cfConnectingIp) return cfConnectingIp;
+
+  const realIp = sanitizeIpToken(headers.get("x-real-ip"));
+  if (realIp) return realIp;
+
   const forwardedFor = headers.get("x-forwarded-for");
   if (forwardedFor) {
-    const firstIp = forwardedFor.split(",")[0]?.trim();
+    const firstIp = sanitizeIpToken(forwardedFor.split(",")[0] ?? null);
     if (firstIp) return firstIp;
   }
-
-  const realIp = headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
-
-  const cfConnectingIp = headers.get("cf-connecting-ip");
-  if (cfConnectingIp) return cfConnectingIp.trim();
 
   return "127.0.0.1";
 }
@@ -86,6 +98,10 @@ function checkMemoryRateLimit(
   const now = Date.now();
   const windowMs = windowSeconds * 1000;
   const windowStart = now - windowMs;
+
+  if (memoryStore.size >= MAX_MEMORY_ENTRIES && !memoryStore.has(key)) {
+    pruneMemoryStore();
+  }
 
   let record = memoryStore.get(key);
   if (!record) {

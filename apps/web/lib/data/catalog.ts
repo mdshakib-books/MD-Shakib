@@ -1,9 +1,15 @@
+import { cache } from "react";
 import { createPublicClient } from "@/lib/supabase/server";
+import { isMockCatalogAllowed } from "@/lib/env/server";
 import { MOCK_BOOKS } from "@/data/mockCatalog";
+import { CATALOG_CACHE_TAGS, withSafePublicCatalogCache } from "@/lib/cache/catalog";
 import type { Database } from "@/types/database.types";
 import type { BookItem } from "@/components/commerce/BookCard";
 
 export type BookRow = Database["public"]["Tables"]["books"]["Row"];
+
+const PUBLIC_BOOK_SELECT_COLUMNS =
+  "id, title, author, price, discount, stock, category, image_url, cover_image, images, description, publisher, published_date, pages, language, is_active, created_at";
 
 export interface CatalogBook extends BookItem {
   description: string;
@@ -38,7 +44,28 @@ export interface PaginatedCatalogResult {
 /**
  * Safely transforms a PostgreSQL `books` table row into the application's domain model.
  */
-export function mapBookRowToCatalogBook(row: BookRow): CatalogBook {
+export function mapBookRowToCatalogBook(
+  row: Pick<
+    BookRow,
+    | "id"
+    | "title"
+    | "author"
+    | "price"
+    | "discount"
+    | "stock"
+    | "category"
+    | "image_url"
+    | "description"
+    | "publisher"
+    | "published_date"
+    | "pages"
+    | "language"
+    | "images"
+    | "cover_image"
+    | "is_active"
+    | "created_at"
+  >
+): CatalogBook {
   return {
     id: row.id,
     title: row.title,
@@ -61,84 +88,116 @@ export function mapBookRowToCatalogBook(row: BookRow): CatalogBook {
 }
 
 /**
- * Escapes characters with special meaning in PostgreSQL LIKE / ILIKE patterns (% and _).
+ * Escapes characters with special meaning in PostgreSQL LIKE / ILIKE patterns (% and _)
+ * AND strips PostgREST `.or(...)` filter structural delimiters (commas and parentheses)
+ * to prevent filter syntax injection.
  */
-function escapeLikePattern(pattern: string): string {
-  return pattern.replace(/[%_\\]/g, "\\$&");
+function sanitizeSearchPattern(pattern: string): string {
+  return pattern
+    .replace(/[,()]/g, " ")
+    .replace(/[%_\\]/g, "\\$&")
+    .trim()
+    .slice(0, 100);
 }
 
 /**
  * Fetches published active books with filtering, search, sorting, and pagination.
  */
 export async function getBooks(params: CatalogQueryParams = {}): Promise<PaginatedCatalogResult> {
-  const supabase = createPublicClient();
-
   const page = Math.max(1, Number(params.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 8));
   const offset = (page - 1) * pageSize;
 
-  let query = supabase
-    .from("books")
-    .select("*", { count: "exact" })
-    .eq("is_active", true);
+  const cleanCategory = params.category?.trim() || "";
+  const cleanSearch = params.search?.trim() ? sanitizeSearchPattern(params.search) : "";
+  const minPriceVal =
+    params.minPrice !== undefined && !Number.isNaN(params.minPrice) ? Number(params.minPrice) : null;
+  const maxPriceVal =
+    params.maxPrice !== undefined && !Number.isNaN(params.maxPrice) ? Number(params.maxPrice) : null;
+  const sortMode = params.sort || "newest";
 
-  // Category filter
-  if (params.category && params.category.trim() !== "") {
-    query = query.eq("category", params.category.trim());
-  }
-
-  // Price range filters
-  if (params.minPrice !== undefined && !Number.isNaN(params.minPrice)) {
-    query = query.gte("price", params.minPrice);
-  }
-  if (params.maxPrice !== undefined && !Number.isNaN(params.maxPrice)) {
-    query = query.lte("price", params.maxPrice);
-  }
-
-  // Text search across title and author (sanitized pattern matching)
-  if (params.search && params.search.trim() !== "") {
-    const sanitized = escapeLikePattern(params.search.trim().slice(0, 100));
-    query = query.or(`title.ilike.%${sanitized}%,author.ilike.%${sanitized}%`);
-  }
-
-  // Deterministic sorting
-  switch (params.sort) {
-    case "price_asc":
-      query = query.order("price", { ascending: true }).order("id", { ascending: true });
-      break;
-    case "price_desc":
-      query = query.order("price", { ascending: false }).order("id", { ascending: true });
-      break;
-    case "title_asc":
-      query = query.order("title", { ascending: true }).order("id", { ascending: true });
-      break;
-    case "newest":
-    default:
-      query = query.order("created_at", { ascending: false }).order("id", { ascending: true });
-      break;
-  }
-
-  // Pagination boundaries
-  query = query.range(offset, offset + pageSize - 1);
+  const cacheKey = [
+    "catalog:getBooks",
+    cleanCategory,
+    cleanSearch,
+    String(minPriceVal ?? ""),
+    String(maxPriceVal ?? ""),
+    sortMode,
+    String(page),
+    String(pageSize),
+  ];
 
   try {
-    const { data, count, error } = await query;
+    return await withSafePublicCatalogCache(
+      cacheKey,
+      [CATALOG_CACHE_TAGS.books],
+      60,
+      async () => {
+        const supabase = createPublicClient();
 
-    if (!error && data && data.length > 0) {
-      const books = (data || []).map(mapBookRowToCatalogBook);
-      const totalCount = count || books.length;
-      const totalPages = Math.ceil(totalCount / pageSize) || 1;
+        let query = supabase
+          .from("books")
+          .select(PUBLIC_BOOK_SELECT_COLUMNS, { count: "exact" })
+          .eq("is_active", true);
 
-      return {
-        books,
-        totalCount,
-        page,
-        pageSize,
-        totalPages,
-      };
-    }
+        if (cleanCategory) {
+          query = query.eq("category", cleanCategory);
+        }
+
+        if (minPriceVal !== null) {
+          query = query.gte("price", minPriceVal);
+        }
+        if (maxPriceVal !== null) {
+          query = query.lte("price", maxPriceVal);
+        }
+
+        if (cleanSearch) {
+          query = query.or(`title.ilike.%${cleanSearch}%,author.ilike.%${cleanSearch}%`);
+        }
+
+        switch (sortMode) {
+          case "price_asc":
+            query = query.order("price", { ascending: true }).order("id", { ascending: true });
+            break;
+          case "price_desc":
+            query = query.order("price", { ascending: false }).order("id", { ascending: true });
+            break;
+          case "title_asc":
+            query = query.order("title", { ascending: true }).order("id", { ascending: true });
+            break;
+          case "newest":
+          default:
+            query = query.order("created_at", { ascending: false }).order("id", { ascending: true });
+            break;
+        }
+
+        query = query.range(offset, offset + pageSize - 1);
+
+        const { data, count, error } = await query;
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        const books = (data || []).map(mapBookRowToCatalogBook);
+        const totalCount = count ?? books.length;
+        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+        return {
+          books,
+          totalCount,
+          page,
+          pageSize,
+          totalPages,
+        };
+      }
+    );
   } catch (err) {
-    console.warn("Could not query books table, falling back to mock fixtures:", err);
+    if (!isMockCatalogAllowed()) {
+      console.error("Failed to query books table from Supabase:", err);
+      throw err instanceof Error ? err : new Error("Failed to query book catalog.");
+    }
+    console.warn("[MOCK][Catalog] Could not query books table; falling back to dev/test mock fixtures:", err);
   }
 
   // Graceful fallback to verified authentic fixtures if database table is unavailable
@@ -199,9 +258,9 @@ export async function getBooks(params: CatalogQueryParams = {}): Promise<Paginat
 }
 
 /**
- * Fetches a single published active book by its primary UUID.
+ * Fetches a single published active book by its primary UUID (request-memoized + tag-cached).
  */
-export async function getBookById(id: string): Promise<CatalogBook | null> {
+export const getBookById = cache(async function getBookById(id: string): Promise<CatalogBook | null> {
   // Validate UUID structure to avoid database errors
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!id || !uuidRegex.test(id)) {
@@ -209,19 +268,35 @@ export async function getBookById(id: string): Promise<CatalogBook | null> {
   }
 
   try {
-    const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("books")
-      .select("*")
-      .eq("id", id)
-      .eq("is_active", true)
-      .maybeSingle();
+    return await withSafePublicCatalogCache(
+      ["catalog:getBookById", id],
+      [CATALOG_CACHE_TAGS.books, CATALOG_CACHE_TAGS.book(id)],
+      60,
+      async () => {
+        const supabase = createPublicClient();
+        const { data, error } = await supabase
+          .from("books")
+          .select(PUBLIC_BOOK_SELECT_COLUMNS)
+          .eq("id", id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-    if (!error && data) {
-      return mapBookRowToCatalogBook(data);
-    }
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (data) {
+          return mapBookRowToCatalogBook(data);
+        }
+        return null;
+      }
+    );
   } catch (err) {
-    console.warn(`Could not query book ${id} from database, checking fixtures:`, err);
+    if (!isMockCatalogAllowed()) {
+      console.error(`Failed to query book ${id} from database:`, err);
+      throw err instanceof Error ? err : new Error("Failed to load book details.");
+    }
+    console.warn(`[MOCK][Catalog] Could not query book ${id} from database; checking dev/test fixtures:`, err);
   }
 
   const mock = MOCK_BOOKS.find((b) => b.id === id);
@@ -235,29 +310,43 @@ export async function getBookById(id: string): Promise<CatalogBook | null> {
   }
 
   return null;
-}
+});
 
 /**
  * Fetches featured books for storefront presentation.
  */
 export async function getFeaturedBooks(limit: number = 4): Promise<CatalogBook[]> {
+  const safeLimit = Math.min(24, Math.max(1, Number(limit) || 4));
   try {
-    const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("books")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    return await withSafePublicCatalogCache(
+      ["catalog:getFeaturedBooks", String(safeLimit)],
+      [CATALOG_CACHE_TAGS.featured, CATALOG_CACHE_TAGS.books],
+      60,
+      async () => {
+        const supabase = createPublicClient();
+        const { data, error } = await supabase
+          .from("books")
+          .select(PUBLIC_BOOK_SELECT_COLUMNS)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(safeLimit);
 
-    if (!error && data && data.length > 0) {
-      return (data || []).map(mapBookRowToCatalogBook);
-    }
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        return (data || []).map(mapBookRowToCatalogBook);
+      }
+    );
   } catch (err) {
-    console.warn("Could not query featured books from database, checking fixtures:", err);
+    if (!isMockCatalogAllowed()) {
+      console.error("Failed to query featured books from database:", err);
+      throw err instanceof Error ? err : new Error("Failed to load featured books.");
+    }
+    console.warn("[MOCK][Catalog] Could not query featured books from database; using dev/test fixtures:", err);
   }
 
-  return MOCK_BOOKS.slice(0, limit).map((mock) => ({
+  return MOCK_BOOKS.slice(0, safeLimit).map((mock) => ({
     ...mock,
     description: mock.description || "",
     isActive: true,

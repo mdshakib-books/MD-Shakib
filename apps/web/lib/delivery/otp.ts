@@ -1,13 +1,12 @@
 import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const OTP_SECRET = process.env.DELIVERY_OTP_HMAC_SECRET || "md_shakib_delivery_otp_secure_hmac_secret_2026";
+import { getOtpHmacSecret } from "@/lib/env/server";
 
 /**
  * Computes the HMAC-SHA256 hash of a delivery OTP with server-only secret.
  */
 export function hashDeliveryOtp(otp: string): string {
-  return crypto.createHmac("sha256", OTP_SECRET).update(otp.trim()).digest("hex");
+  return crypto.createHmac("sha256", getOtpHmacSecret()).update(otp.trim()).digest("hex");
 }
 
 /**

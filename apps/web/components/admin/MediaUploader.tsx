@@ -185,6 +185,10 @@ export function MediaUploader({
                 <img
                   src={url}
                   alt={`Book preview ${idx + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  width={300}
+                  height={400}
                   className="w-full h-full object-cover"
                 />
 

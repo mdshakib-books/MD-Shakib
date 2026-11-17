@@ -1,4 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { escapeCsvCell } from "@/lib/security/http";
+
+const MAX_EXPORT_ROWS = 5000;
 
 export interface SalesReportData {
   totalOrders: number;
@@ -123,12 +126,7 @@ export async function getInventoryValuationReport(): Promise<InventoryValuationD
 }
 
 function escapeCsv(val: any): string {
-  if (val === null || val === undefined) return "";
-  const str = String(val);
-  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
+  return escapeCsvCell(val);
 }
 
 /**
@@ -160,7 +158,8 @@ export async function exportOrdersToCsv(params?: {
       address_snapshot,
       profiles (name, email, phone)
     `)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(MAX_EXPORT_ROWS);
 
   if (params?.startDate) query = query.gte("created_at", params.startDate);
   if (params?.endDate) query = query.lte("created_at", params.endDate);
@@ -215,7 +214,7 @@ export async function exportOrdersToCsv(params?: {
       escapeCsv(o.discount_amount || 0),
       escapeCsv(o.delivery_fee || 0),
       escapeCsv(o.total_amount),
-      escapeCsv(o.shipping_courier || "Delhivery"),
+      escapeCsv(o.shipping_courier || ""),
       escapeCsv(o.shipping_awb || ""),
       escapeCsv(addr.city || ""),
       escapeCsv(addr.state || ""),
@@ -244,17 +243,25 @@ export async function exportCustomersToCsv(): Promise<string> {
       is_blocked,
       created_at
     `)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(MAX_EXPORT_ROWS);
 
   if (error || !profiles) {
     throw new Error(`Failed to query customers for export: ${error?.message}`);
   }
 
-  // Fetch orders aggregate for customer spend
-  const { data: orders } = await adminDb
-    .from("orders")
-    .select("user_id, total_amount, order_status")
-    .not("order_status", "eq", "Cancelled");
+  const profileIds = profiles.map((p) => p.id);
+
+  // Fetch bounded non-cancelled orders for customer spend aggregation
+  const { data: orders } =
+    profileIds.length > 0
+      ? await adminDb
+          .from("orders")
+          .select("user_id, total_amount, order_status")
+          .in("user_id", profileIds)
+          .not("order_status", "eq", "Cancelled")
+          .limit(20000)
+      : { data: [] };
 
   const spendMap = new Map<string, { totalSpend: number; totalOrders: number }>();
   (orders || []).forEach((o) => {

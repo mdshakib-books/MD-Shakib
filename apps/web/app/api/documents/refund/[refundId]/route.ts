@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/session";
 import { getOrderRefundCreditNote } from "@/lib/commerce/invoices";
+import { escapeHtml } from "@/lib/integrations/resend/templates";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isStaffRole } from "@/lib/admin/permissions";
+import { hasPermission } from "@/lib/admin/permissions";
+import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
+import { isValidUuid, NO_STORE_HEADERS } from "@/lib/security/http";
 
 export async function GET(
   req: NextRequest,
@@ -11,15 +14,25 @@ export async function GET(
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return new NextResponse("Unauthorized", { status: 401, headers: NO_STORE_HEADERS });
+    }
+
+    const rl = await checkRateLimit(`doc:refund:${user.id}`, "api");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
     }
 
     const { refundId } = await params;
+    if (!isValidUuid(refundId)) {
+      return new NextResponse("Invalid refund ID format", { status: 400, headers: NO_STORE_HEADERS });
+    }
     const adminDb = createAdminClient();
 
     const res = await getOrderRefundCreditNote(refundId);
     if (!res.success || !res.creditNote) {
-      return new NextResponse(res.error || "Refund documentation not found", { status: 404 });
+      return new NextResponse(res.error || "Refund documentation not found", {
+        status: res.statusCode || 404,
+      });
     }
 
     const cn = res.creditNote;
@@ -33,11 +46,15 @@ export async function GET(
 
     const { data: profile } = await adminDb
       .from("profiles")
-      .select("role")
+      .select("role, is_blocked, is_deleted")
       .eq("id", user.id)
       .single();
 
-    const isStaff = profile && isStaffRole(profile.role);
+    const isStaff =
+      profile &&
+      !profile.is_blocked &&
+      !profile.is_deleted &&
+      hasPermission(profile.role, "orders.view");
     const isOwner = order && order.user_id === user.id;
 
     if (!isOwner && !isStaff) {
@@ -48,7 +65,7 @@ export async function GET(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Refund Credit Note - ${cn.orderNumber}</title>
+  <title>Refund Credit Note - ${escapeHtml(cn.orderNumber)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #111; line-height: 1.5; font-size: 13px; padding: 24px; max-width: 540px; margin: auto; }
     .card { border: 1px solid #ddd; padding: 24px; border-radius: 8px; }
@@ -75,28 +92,32 @@ export async function GET(
     </div>
 
     <div style="text-align: center; margin-bottom: 18px;">
-      <span class="badge">Status: ${cn.refundStatus}</span>
+      <span class="badge">Status: ${escapeHtml(cn.refundStatus)}</span>
     </div>
 
     <div class="row">
       <span style="color: #6b7280;">Customer:</span>
-      <span style="font-weight: 500;">${cn.customerName}</span>
+      <span style="font-weight: 500;">${escapeHtml(cn.customerName)}</span>
     </div>
     <div class="row">
       <span style="color: #6b7280;">Original Order:</span>
-      <span style="font-weight: 500;">#${cn.orderNumber}</span>
+      <span style="font-weight: 500;">#${escapeHtml(cn.orderNumber)}</span>
     </div>
     <div class="row">
-      <span style="color: #6b7280;">Gateway Refund ID:</span>
-      <span style="font-family: monospace; font-size: 11px;">${cn.gatewayRefundId}</span>
+      <span style="color: #6b7280;">Refund Reference:</span>
+      <span style="font-family: monospace; font-size: 11px;">${escapeHtml(cn.gatewayRefundId)}</span>
+    </div>
+    <div class="row">
+      <span style="color: #6b7280;">Channel:</span>
+      <span style="font-size: 12px;">${escapeHtml(cn.paymentChannel === "cod_offline" ? "COD Offline Payout" : "Razorpay Online")}</span>
     </div>
     <div class="row">
       <span style="color: #6b7280;">Refund Date:</span>
-      <span>${cn.refundDate}</span>
+      <span>${escapeHtml(cn.refundDate)}</span>
     </div>
     <div class="row">
       <span style="color: #6b7280;">Reason:</span>
-      <span>${cn.reason}</span>
+      <span>${escapeHtml(cn.reason)}</span>
     </div>
     <div class="row">
       <span style="color: #6b7280;">Remaining Refundable Balance:</span>
@@ -112,7 +133,10 @@ export async function GET(
 
     return new NextResponse(html, {
       status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        ...NO_STORE_HEADERS,
+      },
     });
   } catch (err: any) {
     console.error("Refund credit note error:", err?.message || err);

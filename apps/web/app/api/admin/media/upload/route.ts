@@ -1,31 +1,24 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { uploadImageBuffer } from "@/lib/integrations/cloudinary/service";
+import { verifyAdminApi } from "@/lib/admin/auth";
+import {
+  CloudinaryConfigurationError,
+  CloudinaryDisabledError,
+  MAX_IMAGE_SIZE_BYTES,
+  uploadImageBuffer,
+} from "@/lib/integrations/cloudinary/service";
+import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
+import { NO_STORE_HEADERS, sanitizeClientErrorMessage } from "@/lib/security/http";
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authErr,
-    } = await supabase.auth.getUser();
-
-    if (authErr || !user) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    const auth = await verifyAdminApi("books.manage");
+    if (!auth.authorized) {
+      return auth.response;
     }
 
-    // Verify active admin role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, is_blocked, is_deleted")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "admin" || profile?.is_blocked || profile?.is_deleted) {
-      return NextResponse.json(
-        { error: "Forbidden: Active administrator privileges required." },
-        { status: 403 }
-      );
+    const rl = await checkRateLimit(`admin:media-upload:${auth.user.id}`, "admin");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
     }
 
     const formData = await req.formData();
@@ -35,12 +28,24 @@ export async function POST(req: Request) {
     if (folder !== "mdshakib_books" && !folder.startsWith("mdshakib_books/")) {
       return NextResponse.json(
         { error: "Invalid target folder: uploads are restricted strictly to 'mdshakib_books'." },
-        { status: 400 }
+        { status: 400, headers: NO_STORE_HEADERS }
       );
     }
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided in form data." }, { status: 400 });
+      return NextResponse.json(
+        { error: "No file provided in form data." },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
+
+    if (file.size <= 0 || file.size > MAX_IMAGE_SIZE_BYTES) {
+      return NextResponse.json(
+        {
+          error: `Image file size must be between 1 byte and ${Math.round(MAX_IMAGE_SIZE_BYTES / (1024 * 1024))}MB.`,
+        },
+        { status: 413, headers: NO_STORE_HEADERS }
+      );
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -48,12 +53,17 @@ export async function POST(req: Request) {
 
     const result = await uploadImageBuffer(buffer, file.type, folder);
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: NO_STORE_HEADERS });
   } catch (error: any) {
+    if (error instanceof CloudinaryDisabledError || error instanceof CloudinaryConfigurationError) {
+      return NextResponse.json(
+        { configured: false, error: error.message },
+        { status: 503, headers: NO_STORE_HEADERS }
+      );
+    }
     return NextResponse.json(
-      { error: error?.message || "Failed to upload media file." },
-      { status: 400 }
+      { error: sanitizeClientErrorMessage(error, "Failed to upload media file.") },
+      { status: 400, headers: NO_STORE_HEADERS }
     );
   }
 }
-

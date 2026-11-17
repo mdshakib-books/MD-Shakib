@@ -4,38 +4,62 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
+import { checkOrderInvoiceEligibility } from "@/lib/commerce/tax";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { ORDER_STATUS_TRANSITIONS } from "@/lib/admin/constants";
+import {
+  DISPATCHED_ORDER_STATUSES,
+  FULFILLMENT_SHIPPING_STATUSES,
+  ORDER_STATUS_TRANSITIONS,
+  isDelhiveryShipment,
+  resolveOrderTrackingUrl,
+} from "@/lib/admin/constants";
+import { hasAnyPermission, hasPermission } from "@/lib/admin/permissions";
 import {
   updateAdminOrderStatus,
-  cancelAdminOrder,
-  bookAdminOrderShipment,
+  retryAdminOrderRefund,
+  verifyUncertainAdminShipment,
   scheduleAdminPickup,
   getAdminShippingLabel,
   reconcileAdminCODSettlement,
   type EnrichedAdminOrder,
 } from "@/lib/admin/orders";
+import { AdminShipmentModal } from "@/components/admin/AdminShipmentModal";
+import { AdminCancelOrderModal } from "@/components/admin/AdminCancelOrderModal";
 
 interface AdminOrderDetailClientProps {
   order: EnrichedAdminOrder;
+  delhiveryConfigured?: boolean;
+  delhiveryMockMode?: boolean;
+  userRole?: string;
 }
 
-export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
+export function AdminOrderDetailClient({
+  order,
+  delhiveryConfigured = false,
+  delhiveryMockMode = false,
+  userRole = "user",
+}: AdminOrderDetailClientProps) {
   const router = useRouter();
+  const delhiveryUnavailable = !delhiveryConfigured && !delhiveryMockMode;
+
+  const canManageOrders = hasPermission(userRole, "orders.manage");
+  const canShipOrders = hasPermission(userRole, "orders.ship");
+  const canCancelPreDispatch = hasPermission(userRole, "orders.cancel");
+  const canCancelDispatched = hasPermission(userRole, "orders.cancel_dispatched");
+  const canSettleCod = hasPermission(userRole, "orders.settle_cod");
+  const canManageRefunds = hasPermission(userRole, "orders.refund");
+  const canViewPackingSlip = hasAnyPermission(userRole, ["orders.ship", "orders.manage"]);
 
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Ship modal (Manual override)
+  // Unified Shipment modal (Delhivery API vs Manual Entry)
   const [shipModalOpen, setShipModalOpen] = useState(false);
-  const [courier, setCourier] = useState(order.shipping_courier || "Delhivery");
-  const [awb, setAwb] = useState(order.shipping_awb || "");
 
-  // Cancel modal
+  // Unified Cancel modal (Pre-dispatch vs Courier-Confirmed Dispatched)
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
 
   // Schedule pickup modal
   const [schedulePickupModalOpen, setSchedulePickupModalOpen] = useState(false);
@@ -53,13 +77,42 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
   const [settlementNotes, setSettlementNotes] = useState("");
 
   const allowedTransitions = ORDER_STATUS_TRANSITIONS[order.order_status] || [];
-  const primaryTransitions = allowedTransitions.filter(
-    (s) => !["Cancelled", "Shipped"].includes(s)
+  const hasActiveShipment =
+    Boolean(order.shipping_awb) || order.shipping_booking_mode === "manual";
+  const isDispatched = DISPATCHED_ORDER_STATUSES.has(order.order_status);
+  const isDelhiveryOrder = isDelhiveryShipment({
+    courier: order.shipping_courier,
+    bookingMode: order.shipping_booking_mode,
+    trackingUrl: order.shipping_tracking_url,
+  });
+  const resolvedTrackingUrl = resolveOrderTrackingUrl({
+    courier: order.shipping_courier,
+    awb: order.shipping_awb,
+    trackingUrl: order.shipping_tracking_url,
+    bookingMode: order.shipping_booking_mode,
+  });
+  const canUseDelhiveryOps = Boolean(
+    canShipOrders && isDelhiveryOrder && order.shipping_awb
   );
-  const canShip = allowedTransitions.includes("Shipped") || ["Confirmed", "Processing", "Packed"].includes(order.order_status);
-  const canCancel = allowedTransitions.includes("Cancelled");
+
+  // Separate status transitions gated by role permissions
+  const primaryTransitions = allowedTransitions.filter((s) => {
+    if (s === "Cancelled") return false;
+    if (s === "Shipped" && !hasActiveShipment) return false;
+    return FULFILLMENT_SHIPPING_STATUSES.has(s) ? canShipOrders : canManageOrders;
+  });
+
+  const canCreateShipment =
+    canShipOrders &&
+    allowedTransitions.includes("Shipped") &&
+    !hasActiveShipment;
+
+  const canCancel = isDispatched
+    ? canCancelDispatched
+    : allowedTransitions.includes("Cancelled") && canCancelPreDispatch;
 
   const canReconcileCOD =
+    canSettleCod &&
     order.payment_method === "COD" &&
     order.order_status === "Delivered" &&
     order.cod_settlement_status !== "reconciled";
@@ -91,23 +144,33 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
     }
   };
 
-  // Feature 1.10: Book Delhivery Consignment
-  const handleBookDelhiveryShipment = async () => {
-    setFeedback(null);
+  // Reconcile COD handled below; manual shipping & cancellation handled by shared modals.
+
+  const handleVerifyUncertainShipment = async () => {
     setBusy(true);
     try {
-      const res = await bookAdminOrderShipment(order.id);
+      const res = await verifyUncertainAdminShipment(order.id);
       if (!res.success) {
-        setFeedback({ type: "error", message: res.error || "Shipment booking failed." });
-      } else {
+        setFeedback({
+          type: "error",
+          message: res.error || "Unable to verify uncertain booking with Delhivery.",
+        });
+      } else if (res.recovered && res.awb) {
         setFeedback({
           type: "success",
-          message: `Shipment booked successfully with Delhivery! Waybill AWB: ${res.awb}`,
+          message: `Recovered existing Delhivery consignment AWB ${res.awb} without creating a duplicate parcel!`,
+        });
+        router.refresh();
+      } else if (res.clearedToRetry) {
+        setFeedback({
+          type: "success",
+          message:
+            "Verified with Delhivery that no shipment was created prior to timeout. Booking unlocked for retry.",
         });
         router.refresh();
       }
     } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Failed to book shipment." });
+      setFeedback({ type: "error", message: err?.message || "Verification error." });
     } finally {
       setBusy(false);
     }
@@ -191,68 +254,41 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
     }
   };
 
-  const handleConfirmManualShipment = async () => {
-    if (!awb.trim()) {
-      setFeedback({ type: "error", message: "AWB tracking number is required." });
-      return;
-    }
+  // Order status progression & refund retry controls below.
 
+  const handleRetryRefund = async () => {
+    setFeedback(null);
     setBusy(true);
-    setShipModalOpen(false);
     try {
-      const res = await updateAdminOrderStatus({
-        orderId: order.id,
-        nextStatus: "Shipped",
-        courier: courier.trim() || "Delhivery",
-        awb: awb.trim(),
-      });
-
+      const res = await retryAdminOrderRefund({ orderId: order.id });
       if (!res.success) {
-        setFeedback({ type: "error", message: res.error || "Failed to ship order." });
+        setFeedback({ type: "error", message: res.error || "Refund retry failed." });
       } else {
         setFeedback({
           type: "success",
-          message: `Order transitioned to Shipped with AWB ${awb}.`,
+          message:
+            res.refundStatus === "PROCESSED"
+              ? `Refund processed successfully (${res.refundId || "confirmed"}).`
+              : `Refund status updated to ${res.refundStatus || "PROCESSING"} (${res.refundId || "pending sync"}).`,
         });
-        router.refresh();
       }
+      router.refresh();
     } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Operation failed." });
+      setFeedback({ type: "error", message: err?.message || "Failed to retry refund." });
     } finally {
       setBusy(false);
     }
   };
 
-  const handleConfirmCancel = async () => {
-    if (!cancelReason.trim()) {
-      setFeedback({ type: "error", message: "Cancellation reason is required." });
-      return;
-    }
-
-    setBusy(true);
-    setCancelModalOpen(false);
-    try {
-      const res = await cancelAdminOrder({
-        orderId: order.id,
-        reason: cancelReason.trim(),
-      });
-
-      if (!res.success) {
-        setFeedback({ type: "error", message: res.error || "Failed to cancel order." });
-      } else {
-        setFeedback({
-          type: "success",
-          message: `Order #${displayOrderNum} cancelled and stock restored.`,
-        });
-        router.refresh();
-      }
-    } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Cancellation failed." });
-    } finally {
-      setBusy(false);
-      setCancelReason("");
-    }
-  };
+  const canRetryOrSyncRefund =
+    canManageRefunds &&
+    order.payment_method === "ONLINE" &&
+    order.order_status === "Cancelled" &&
+    (order.payment_status === "Paid" ||
+      order.payment_status === "Partially Refunded" ||
+      order.payment_status === "Refund Pending") &&
+    order.refund_status !== "processed" &&
+    order.refund_status !== "not_required";
 
   const getOrderStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -283,6 +319,8 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
         return "danger";
       case "Refunded":
         return "muted";
+      case "Partially Refunded":
+        return "gold";
       default:
         return "muted";
     }
@@ -317,14 +355,13 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Feature 1.10: Book Delhivery Consignment CTA */}
-          {canShip && !order.shipping_awb && (
+          {canCreateShipment && (
             <button
-              onClick={handleBookDelhiveryShipment}
+              onClick={() => setShipModalOpen(true)}
               disabled={busy}
               className="px-4 py-2 bg-[#C9A24A] hover:bg-[#B89139] text-black rounded-lg text-sm font-bold uppercase tracking-wider transition disabled:opacity-50"
             >
-              {busy ? "Booking..." : "Book Delhivery Shipment"}
+              Create Shipment / Ship
             </button>
           )}
 
@@ -350,23 +387,27 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
             </button>
           )}
 
-          <a
-            href={`/api/documents/invoice/${order.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-2 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#C9A24A]/40 text-[#C9A24A] rounded-lg text-sm font-medium transition inline-flex items-center gap-1.5"
-          >
-            <span>Invoice</span>
-          </a>
+          {checkOrderInvoiceEligibility(order).eligible && (
+            <a
+              href={`/api/documents/invoice/${order.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#C9A24A]/40 text-[#C9A24A] rounded-lg text-sm font-medium transition inline-flex items-center gap-1.5"
+            >
+              <span>Invoice</span>
+            </a>
+          )}
 
-          <a
-            href={`/api/documents/packing-slip/${order.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-2 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-gray-200 rounded-lg text-sm font-medium transition inline-flex items-center gap-1.5"
-          >
-            <span>Packing Slip</span>
-          </a>
+          {canViewPackingSlip && (
+            <a
+              href={`/api/documents/packing-slip/${order.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-gray-200 rounded-lg text-sm font-medium transition inline-flex items-center gap-1.5"
+            >
+              <span>Packing Slip</span>
+            </a>
+          )}
 
           <a
             href={`/api/documents/receipt/${order.id}`}
@@ -383,7 +424,7 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
               disabled={busy}
               className="px-4 py-2 bg-red-950/70 hover:bg-red-900 border border-red-700/60 text-red-300 rounded-lg text-sm font-medium transition disabled:opacity-50"
             >
-              Cancel Order
+              {isDispatched ? "Cancel with Courier" : "Cancel Order"}
             </button>
           )}
         </div>
@@ -469,7 +510,19 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
             {order.payment_method === "COD" && (
               <div className="border-t border-[#2A2A2A] pt-2 mt-2 space-y-1 text-[11px]">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">COD Settlement:</span>
+                  <span className="text-gray-400">Doorstep Collection:</span>
+                  <Badge variant={order.cod_collection_status === "collected" ? "success" : "muted"} size="sm">
+                    {order.cod_collection_status || "uncollected"}
+                  </Badge>
+                </div>
+                {order.cod_collected_amount !== null && order.cod_collected_amount !== undefined && (
+                  <div className="flex justify-between font-mono">
+                    <span className="text-gray-400">Cash Collected:</span>
+                    <span className="text-emerald-300">{formatPrice(order.cod_collected_amount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-400">COD Remittance:</span>
                   <Badge variant={order.cod_settlement_status === "reconciled" ? "success" : "gold"} size="sm">
                     {order.cod_settlement_status || "unsettled"}
                   </Badge>
@@ -482,8 +535,14 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
                 )}
                 {order.cod_settled_amount && (
                   <div className="flex justify-between font-mono">
-                    <span className="text-gray-400">Settled Amount:</span>
+                    <span className="text-gray-400">Remitted &amp; Settled:</span>
                     <span className="text-emerald-400">{formatPrice(order.cod_settled_amount)}</span>
+                  </div>
+                )}
+                {order.cod_refund_reference && (
+                  <div className="flex justify-between font-mono">
+                    <span className="text-gray-400">COD Refund Ref:</span>
+                    <span className="text-sky-300">{order.cod_refund_reference}</span>
                   </div>
                 )}
               </div>
@@ -507,6 +566,43 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
                 <span>{new Date(order.paid_at).toLocaleString()}</span>
               </div>
             )}
+            {order.refund_status && (
+              <div className="border-t border-[#2A2A2A] pt-2 mt-2 space-y-1 text-[11px]">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Refund Lifecycle:</span>
+                  <span className="font-mono uppercase text-amber-300">{order.refund_status}</span>
+                </div>
+                {order.razorpay_refund_id && (
+                  <div className="flex justify-between font-mono">
+                    <span className="text-gray-400">Gateway Refund ID:</span>
+                    <span className="text-gray-300">{order.razorpay_refund_id}</span>
+                  </div>
+                )}
+                {order.refund_amount !== null && order.refund_amount !== undefined && (
+                  <div className="flex justify-between font-mono">
+                    <span className="text-gray-400">Refund Amount:</span>
+                    <span className="text-gray-200">{formatPrice(order.refund_amount)}</span>
+                  </div>
+                )}
+                {canRetryOrSyncRefund && (
+                  <div className="pt-2">
+                    <Button
+                      onClick={handleRetryRefund}
+                      disabled={busy}
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-amber-500/60 text-amber-300 hover:bg-amber-950/40 text-xs"
+                    >
+                      {busy
+                        ? "Processing..."
+                        : order.refund_status === "processing"
+                        ? "Sync Razorpay Refund Status"
+                        : "Retry Razorpay Refund"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -514,23 +610,73 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
       {/* Shipping & Fulfillment Panel */}
       <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#2A2A2A] mb-4 gap-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-            Delhivery Shipping &amp; Logistics
-          </h3>
-          <div className="flex items-center gap-2">
-            {order.shipping_awb && (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Shipping &amp; Fulfillment Details
+            </h3>
+            <Badge
+              variant={
+                order.shipping_booking_status === "booked" ||
+                order.shipping_booking_status === "manual_entered"
+                  ? "success"
+                  : order.shipping_booking_status === "booking_failed" ||
+                    order.shipping_booking_status === "booking_uncertain" ||
+                    order.shipping_booking_status === "cancelled"
+                  ? "danger"
+                  : "muted"
+              }
+              size="sm"
+            >
+              {order.shipping_booking_mode === "delhivery"
+                ? "Delhivery API"
+                : order.shipping_booking_mode === "manual"
+                ? "Manual Shipment"
+                : "Not Booked"}
+              {order.shipping_booking_status ? ` · ${order.shipping_booking_status}` : ""}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {canCreateShipment && (
+              <button
+                onClick={() => setShipModalOpen(true)}
+                disabled={busy}
+                className="px-3 py-1.5 bg-[#C9A24A] hover:bg-[#B89139] text-black rounded text-xs font-semibold transition disabled:opacity-50"
+              >
+                Book / Enter Shipment
+              </button>
+            )}
+            {canShipOrders && order.shipping_booking_status === "booking_uncertain" && (
+              <button
+                onClick={handleVerifyUncertainShipment}
+                disabled={busy || delhiveryUnavailable}
+                className="px-3 py-1.5 bg-amber-900/50 hover:bg-amber-800/60 border border-amber-500/50 text-amber-200 rounded text-xs font-semibold transition disabled:opacity-50"
+              >
+                Verify Uncertain Delhivery Booking
+              </button>
+            )}
+            {canUseDelhiveryOps && (
               <>
                 <button
                   onClick={handleDownloadLabel}
-                  disabled={busy}
-                  className="px-3 py-1.5 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-white rounded text-xs font-medium transition"
+                  disabled={busy || delhiveryUnavailable}
+                  title={
+                    delhiveryUnavailable
+                      ? "Delhivery credentials are not configured on the server"
+                      : undefined
+                  }
+                  className="px-3 py-1.5 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-white rounded text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Download Label
                 </button>
                 <button
                   onClick={() => setSchedulePickupModalOpen(true)}
-                  disabled={busy}
-                  className="px-3 py-1.5 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-white rounded text-xs font-medium transition"
+                  disabled={busy || delhiveryUnavailable}
+                  title={
+                    delhiveryUnavailable
+                      ? "Delhivery credentials are not configured on the server"
+                      : undefined
+                  }
+                  className="px-3 py-1.5 bg-[#1F1F1F] hover:bg-[#2A2A2A] border border-[#333333] text-white rounded text-xs font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {order.shipping_pickup_scheduled_at ? "Reschedule Pickup" : "Schedule Pickup"}
                 </button>
@@ -539,34 +685,83 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs text-gray-300">
+        {order.shipping_last_error && (
+          <div className="mb-4 p-3 bg-red-950/25 border border-red-500/35 rounded-lg text-xs text-red-200 leading-relaxed">
+            <span className="font-semibold text-red-300">Shipping Error / Alert:</span>{" "}
+            {order.shipping_last_error}
+          </div>
+        )}
+
+        {!delhiveryConfigured && (
+          <div className="mb-4 p-3 bg-amber-950/20 border border-amber-500/30 rounded-lg text-xs text-amber-200 leading-relaxed">
+            {delhiveryUnavailable ? (
+              <>
+                <span className="font-semibold text-amber-300">Delhivery is not configured.</span>{" "}
+                Automated Delhivery shipment booking, pickup requests, and shipping labels are disabled until server credentials are configured. Manual shipment entry for alternative couriers remains available.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-amber-300">Delhivery Sandbox / Mock Mode:</span>{" "}
+                Live Delhivery credentials are not configured; non-production mock responses are active for local testing.
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-xs text-gray-300">
           <div>
-            <span className="text-gray-500 block mb-0.5">Courier</span>
-            <span className="font-semibold text-white">{order.shipping_courier || "Delhivery"}</span>
+            <span className="text-gray-500 block mb-0.5">Courier Partner</span>
+            <span className="font-semibold text-white">
+              {order.shipping_courier || "Not assigned"}
+            </span>
           </div>
           <div>
-            <span className="text-gray-500 block mb-0.5">AWB Tracking Number</span>
+            <span className="text-gray-500 block mb-0.5">AWB / Tracking Ref</span>
             <span className="font-mono text-white font-medium">
-              {order.shipping_awb || "Not booked"}
+              {order.shipping_awb || (order.shipping_booking_mode === "manual" ? "Not provided" : "Not booked")}
             </span>
           </div>
           <div>
-            <span className="text-gray-500 block mb-0.5">Pickup Scheduled</span>
+            <span className="text-gray-500 block mb-0.5">Tracking URL</span>
+            {resolvedTrackingUrl ? (
+              <a
+                href={resolvedTrackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#C9A24A] hover:underline font-medium break-all"
+              >
+                Open Tracking Link ↗
+              </a>
+            ) : (
+              <span className="text-gray-400">Tracking unavailable</span>
+            )}
+          </div>
+          <div>
+            <span className="text-gray-500 block mb-0.5">Shipped Date</span>
             <span>
-              {order.shipping_pickup_scheduled_at
-                ? new Date(order.shipping_pickup_scheduled_at).toLocaleString()
-                : "Not scheduled"}
+              {order.shipping_shipped_at
+                ? new Date(order.shipping_shipped_at).toLocaleString()
+                : "Not dispatched"}
             </span>
           </div>
           <div>
-            <span className="text-gray-500 block mb-0.5">Delivery Date</span>
+            <span className="text-gray-500 block mb-0.5">Pickup / Delivery</span>
             <span>
               {order.delivered_at
-                ? new Date(order.delivered_at).toLocaleString()
+                ? `Delivered ${new Date(order.delivered_at).toLocaleDateString()}`
+                : order.shipping_pickup_scheduled_at
+                ? `Pickup ${new Date(order.shipping_pickup_scheduled_at).toLocaleDateString()}`
                 : "—"}
             </span>
           </div>
         </div>
+
+        {isDispatched && (
+          <div className="mt-4 p-3 bg-neutral-900 border border-[#2A2A2A] rounded-lg text-xs text-gray-300">
+            <span className="font-semibold text-[#C9A24A]">Cancellation Policy Enforcement:</span>{" "}
+            Direct cancellation is blocked once an order is dispatched ({order.order_status}). Only authorized administrators can cancel after confirming courier halt/cancellation.
+          </div>
+        )}
 
         {order.cancel_reason && (
           <div className="mt-4 p-3 bg-red-950/20 border border-red-500/30 rounded-lg text-xs text-red-300">
@@ -641,8 +836,19 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
                 key={h.id}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-[#161616] border border-[#262626] rounded-lg gap-2 text-xs"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {h.previous_status && (
+                    <>
+                      <span className="text-gray-400 font-mono">{h.previous_status}</span>
+                      <span className="text-gray-500">→</span>
+                    </>
+                  )}
                   <Badge variant={getOrderStatusBadgeVariant(h.status)}>{h.status}</Badge>
+                  {h.source && (
+                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#1F1F1F] text-gray-400 border border-[#2E2E2E]">
+                      {h.source}
+                    </span>
+                  )}
                   {h.note && <span className="text-gray-300 italic">— {h.note}</span>}
                 </div>
                 <span className="text-gray-500 font-mono">
@@ -653,6 +859,125 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
                     hour: "2-digit",
                     minute: "2-digit",
                     second: "2-digit",
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Shipment Events Log */}
+      <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-5">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+          Shipment &amp; Courier Event History
+        </h3>
+        {!order.shipmentEvents || order.shipmentEvents.length === 0 ? (
+          <p className="text-xs text-gray-500">No shipment events logged yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {order.shipmentEvents.map((ev) => (
+              <div
+                key={ev.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-[#161616] border border-[#262626] rounded-lg gap-2 text-xs"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="gold" size="sm">
+                      {ev.event_type}
+                    </Badge>
+                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#1F1F1F] text-gray-400 border border-[#2E2E2E]">
+                      {ev.source}
+                    </span>
+                    {ev.actor_role && (
+                      <span className="text-[10px] font-mono text-gray-400">
+                        role: {ev.actor_role}
+                      </span>
+                    )}
+                    {ev.carrier_name && (
+                      <span className="text-gray-300 font-medium">{ev.carrier_name}</span>
+                    )}
+                    {ev.awb && <span className="font-mono text-[#C9A24A]">{ev.awb}</span>}
+                  </div>
+                  {(ev.previous_status || ev.new_status || ev.note) && (
+                    <p className="text-gray-300">
+                      {ev.previous_status && ev.new_status
+                        ? `${ev.previous_status} → ${ev.new_status} · `
+                        : ""}
+                      {ev.note}
+                    </p>
+                  )}
+                </div>
+                <span className="text-gray-500 font-mono">
+                  {new Date(ev.created_at).toLocaleString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Transactional Email Delivery & Suppression Log */}
+      <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-5">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+          Transactional Email Delivery Log
+        </h3>
+        {!order.emailLogs || order.emailLogs.length === 0 ? (
+          <p className="text-xs text-gray-500">No transactional email logs recorded for this order.</p>
+        ) : (
+          <div className="space-y-3">
+            {order.emailLogs.map((log) => (
+              <div
+                key={log.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-[#161616] border border-[#262626] rounded-lg gap-2 text-xs"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge
+                      variant={
+                        log.status === "sent"
+                          ? "success"
+                          : log.status === "failed"
+                          ? "danger"
+                          : log.status === "suppressed"
+                          ? "warning"
+                          : "muted"
+                      }
+                      size="sm"
+                    >
+                      {log.status}
+                    </Badge>
+                    <span className="font-mono text-[#C9A24A]">{log.event_type}</span>
+                    <span className="text-gray-400">
+                      attempts: {log.attempt_count}/{log.max_attempts}
+                    </span>
+                    {log.failure_type && (
+                      <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#1F1F1F] text-gray-300 border border-[#2E2E2E]">
+                        {log.failure_type}
+                      </span>
+                    )}
+                  </div>
+                  {log.suppressed_reason && (
+                    <p className="text-amber-300/90">Suppressed: {log.suppressed_reason}</p>
+                  )}
+                  {log.last_error && (
+                    <p className="text-red-400/90">Error: {log.last_error}</p>
+                  )}
+                </div>
+                <span className="text-gray-500 font-mono">
+                  {new Date(log.sent_at || log.created_at).toLocaleString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </span>
               </div>
@@ -777,43 +1102,34 @@ export function AdminOrderDetailClient({ order }: AdminOrderDetailClientProps) {
         </div>
       </Modal>
 
-      {/* Cancel Modal */}
-      <Modal
+      {/* Unified Shipment Modal (Delhivery API vs Manual Entry) */}
+      <AdminShipmentModal
+        isOpen={shipModalOpen}
+        onClose={() => setShipModalOpen(false)}
+        order={order}
+        delhiveryConfigured={delhiveryConfigured}
+        delhiveryMockMode={delhiveryMockMode}
+        onSuccess={(message) => {
+          setFeedback({ type: "success", message });
+          router.refresh();
+        }}
+        onError={(message) => setFeedback({ type: "error", message })}
+      />
+
+      {/* Unified Cancellation Modal (Pre-dispatch vs Courier-Confirmed Dispatched) */}
+      <AdminCancelOrderModal
         isOpen={cancelModalOpen}
         onClose={() => setCancelModalOpen(false)}
-        title="Cancel Order & Restore Inventory"
-        description="Cancelling will restore inventory for all books and record this administrative action in audit logs."
-      >
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              Cancellation Reason (Required)
-            </label>
-            <textarea
-              rows={3}
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="e.g., Damaged item or customer cancellation..."
-              className="w-full bg-[#161616] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-3">
-            <button
-              onClick={() => setCancelModalOpen(false)}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-            >
-              Close
-            </button>
-            <Button
-              onClick={handleConfirmCancel}
-              variant="outline"
-              className="border-red-600 text-red-400 hover:bg-red-950"
-            >
-              Cancel Order
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        order={order}
+        onSuccess={(message) => {
+          setFeedback({ type: "success", message });
+          router.refresh();
+        }}
+        onError={(message, orderCancelled) => {
+          setFeedback({ type: "error", message });
+          if (orderCancelled) router.refresh();
+        }}
+      />
     </div>
   );
 }

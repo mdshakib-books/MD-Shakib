@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/session";
 import { getOrderPaymentReceipt } from "@/lib/commerce/invoices";
+import { escapeHtml } from "@/lib/integrations/resend/templates";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isStaffRole } from "@/lib/admin/permissions";
+import { hasPermission } from "@/lib/admin/permissions";
+import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
+import { isValidUuid, NO_STORE_HEADERS } from "@/lib/security/http";
 
 export async function GET(
   req: NextRequest,
@@ -11,10 +14,18 @@ export async function GET(
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return new NextResponse("Unauthorized", { status: 401, headers: NO_STORE_HEADERS });
+    }
+
+    const rl = await checkRateLimit(`doc:receipt:${user.id}`, "api");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
     }
 
     const { orderId } = await params;
+    if (!isValidUuid(orderId)) {
+      return new NextResponse("Invalid order ID format", { status: 400, headers: NO_STORE_HEADERS });
+    }
     const adminDb = createAdminClient();
 
     const { data: order } = await adminDb
@@ -29,11 +40,15 @@ export async function GET(
 
     const { data: profile } = await adminDb
       .from("profiles")
-      .select("role")
+      .select("role, is_blocked, is_deleted")
       .eq("id", user.id)
       .single();
 
-    const isStaff = profile && isStaffRole(profile.role);
+    const isStaff =
+      profile &&
+      !profile.is_blocked &&
+      !profile.is_deleted &&
+      hasPermission(profile.role, "orders.view");
     const isOwner = order.user_id === user.id;
 
     if (!isOwner && !isStaff) {
@@ -52,7 +67,7 @@ export async function GET(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Payment Receipt - ${r.orderNumber}</title>
+  <title>Payment Receipt - ${escapeHtml(r.orderNumber)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #111; line-height: 1.5; font-size: 13px; padding: 24px; max-width: 500px; margin: auto; }
     .card { border: 1px solid #ddd; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -98,27 +113,27 @@ export async function GET(
 
     <div class="row">
       <span class="label">Customer Name:</span>
-      <span class="value">${r.customerName}</span>
+      <span class="value">${escapeHtml(r.customerName)}</span>
     </div>
     <div class="row">
       <span class="label">Order Reference:</span>
-      <span class="value">#${r.orderNumber}</span>
+      <span class="value">#${escapeHtml(r.orderNumber)}</span>
     </div>
     <div class="row">
       <span class="label">Payment Provider:</span>
-      <span class="value">${r.provider}</span>
+      <span class="value">${escapeHtml(r.provider)}</span>
     </div>
     <div class="row">
       <span class="label">Payment Method:</span>
-      <span class="value">${r.paymentMethod}</span>
+      <span class="value">${escapeHtml(r.paymentMethod)}</span>
     </div>
     <div class="row">
       <span class="label">Transaction Reference:</span>
-      <span class="value" style="font-family: monospace; font-size: 11px;">${r.paymentReference}</span>
+      <span class="value" style="font-family: monospace; font-size: 11px;">${escapeHtml(r.paymentReference)}</span>
     </div>
     <div class="row">
       <span class="label">Date:</span>
-      <span class="value">${r.paymentDate}</span>
+      <span class="value">${escapeHtml(r.paymentDate)}</span>
     </div>
 
     <div style="margin-top: 24px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px dashed #e5e7eb; padding-top: 12px;">
@@ -130,7 +145,10 @@ export async function GET(
 
     return new NextResponse(html, {
       status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        ...NO_STORE_HEADERS,
+      },
     });
   } catch (err: any) {
     console.error("Payment receipt error:", err?.message || err);

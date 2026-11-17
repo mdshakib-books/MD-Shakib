@@ -2,19 +2,24 @@ import * as React from "react";
 import { requireStaffPermission } from "@/lib/admin/auth";
 import { AdminNavClient } from "@/app/admin/AdminNavClient";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getDelhiveryConfig } from "@/lib/integrations/delhivery/client";
 import { AdminReturnsClient } from "./AdminReturnsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminReturnsPage() {
-  const admin = await requireStaffPermission("orders.manage");
+  const admin = await requireStaffPermission("returns.manage");
   const adminDb = createAdminClient();
 
-  // Fetch return requests with related order and items
+  // Fetch return requests with related order, items, and refund records
   const { data: returns } = await adminDb
     .from("return_requests")
-    .select("*, return_request_items(*), orders(order_number, total_amount, payment_method, payment_status, address_snapshot)")
+    .select(
+      "*, return_request_items(*), refund_records(id, status, payment_channel, payout_reference, gateway_refund_id, amount), orders(order_number, total_amount, payment_method, payment_status, is_paid, cod_settlement_status, cod_collection_status, address_snapshot)"
+    )
     .order("created_at", { ascending: false });
+
+  const delhivery = getDelhiveryConfig();
 
   return (
     <div className="min-h-screen bg-[#0B0B0B] text-neutral-100 flex flex-col md:flex-row">
@@ -29,7 +34,12 @@ export default async function AdminReturnsPage() {
           </p>
         </header>
 
-        <AdminReturnsClient initialReturns={returns || []} adminRole={admin.profile.role} />
+        <AdminReturnsClient
+          initialReturns={returns || []}
+          adminRole={admin.profile.role}
+          delhiveryConfigured={delhivery.isConfigured}
+          delhiveryMockMode={delhivery.allowMock}
+        />
       </main>
     </div>
   );

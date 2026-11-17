@@ -1,7 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "./auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin, requireStaffPermission } from "./auth";
 import type { Database } from "@/types/database.types";
 
 export type AuditLogRow = Database["public"]["Tables"]["audit_logs"]["Row"];
@@ -21,9 +22,9 @@ export interface RecordAuditLogParams {
 export async function recordAdminAuditLog(params: RecordAuditLogParams): Promise<boolean> {
   try {
     const { user } = await requireAdmin();
-    const supabase = await createClient();
+    const adminDb = createAdminClient();
 
-    const { error } = await supabase.from("audit_logs").insert({
+    const { error } = await adminDb.from("audit_logs").insert({
       user_id: user.id,
       action: params.action,
       model_name: params.modelName,
@@ -64,7 +65,7 @@ export async function getAdminAuditLogs(params?: {
   page: number;
   totalPages: number;
 }> {
-  await requireAdmin();
+  await requireStaffPermission("audit.view");
   const supabase = await createClient();
 
   const page = Math.max(1, params?.page || 1);

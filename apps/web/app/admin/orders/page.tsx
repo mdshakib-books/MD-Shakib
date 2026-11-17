@@ -1,5 +1,7 @@
 import React, { Suspense } from "react";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminOrders } from "@/lib/admin/orders";
+import { getDelhiveryConfig } from "@/lib/integrations/delhivery/client";
 import { AdminOrdersClient } from "./AdminOrdersClient";
 import { Loader } from "@/components/ui/Loader";
 
@@ -16,7 +18,10 @@ export default async function AdminOrdersPage({
     page?: string;
   }>;
 }) {
-  const params = await searchParams;
+  const [{ profile }, params] = await Promise.all([
+    requireStaffPermission("orders.view"),
+    searchParams,
+  ]);
   const page = parseInt(params.page || "1", 10) || 1;
   const status = params.status || "ALL";
   const paymentStatus = params.paymentStatus || "ALL";
@@ -31,6 +36,8 @@ export default async function AdminOrdersPage({
     page,
     limit: 20,
   });
+
+  const delhivery = getDelhiveryConfig();
 
   return (
     <Suspense
@@ -49,6 +56,9 @@ export default async function AdminOrdersPage({
         currentPaymentStatus={paymentStatus}
         currentPaymentMethod={paymentMethod}
         currentSearch={search}
+        delhiveryConfigured={delhivery.isConfigured}
+        delhiveryMockMode={delhivery.allowMock}
+        userRole={profile.role}
       />
     </Suspense>
   );

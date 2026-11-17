@@ -6,6 +6,9 @@
  * Fails closed against fictional placeholder numbers in production.
  */
 
+import { DELIVERY_FEE, PLATFORM_FEE } from "@/lib/commerce/pricing";
+import { getDevFallbackGstin } from "@/lib/env/shared";
+
 export interface GrievanceOfficerConfig {
   name: string;
   designation: string;
@@ -30,6 +33,7 @@ export interface BusinessConfig {
     carrier: string;
     estimatedDeliveryDays: string;
     standardShippingFee: number;
+    platformFee: number;
   };
   cancellation: {
     allowedBeforeDispatch: boolean;
@@ -58,7 +62,7 @@ export const BUSINESS_CONFIG: BusinessConfig = {
   supportPhone:
     process.env.BUSINESS_PHONE ||
     (isProduction ? "" : "+91 11 2327 0000"),
-  gstin: process.env.BUSINESS_GSTIN || (isProduction ? "" : "07AABCM1234F1Z5"),
+  gstin: process.env.BUSINESS_GSTIN || (isProduction ? "" : getDevFallbackGstin()),
   cin: process.env.BUSINESS_CIN || undefined,
   grievanceOfficer: {
     name:
@@ -81,7 +85,8 @@ export const BUSINESS_CONFIG: BusinessConfig = {
   shipping: {
     carrier: "Delhivery Logistics",
     estimatedDeliveryDays: "3–7 business days",
-    standardShippingFee: 49,
+    standardShippingFee: DELIVERY_FEE,
+    platformFee: PLATFORM_FEE,
   },
   cancellation: {
     allowedBeforeDispatch: true,

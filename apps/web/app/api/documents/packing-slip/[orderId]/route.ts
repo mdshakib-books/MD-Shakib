@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/session";
 import { getOrderPackingSlip } from "@/lib/commerce/invoices";
+import { escapeHtml } from "@/lib/integrations/resend/templates";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isStaffRole } from "@/lib/admin/permissions";
+import { hasAnyPermission } from "@/lib/admin/permissions";
+import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
+import { isValidUuid, NO_STORE_HEADERS, serverErrorResponse } from "@/lib/security/http";
 
 export async function GET(
   req: NextRequest,
@@ -11,25 +14,45 @@ export async function GET(
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return new NextResponse("Unauthorized", { status: 401, headers: NO_STORE_HEADERS });
+    }
+
+    const rl = await checkRateLimit(`doc:packing-slip:${user.id}`, "api");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
     }
 
     const { orderId } = await params;
+    if (!isValidUuid(orderId)) {
+      return new NextResponse("Invalid order ID format", { status: 400, headers: NO_STORE_HEADERS });
+    }
+
     const adminDb = createAdminClient();
 
     const { data: profile } = await adminDb
       .from("profiles")
-      .select("role")
+      .select("role, is_blocked, is_deleted")
       .eq("id", user.id)
       .single();
 
-    if (!profile || !isStaffRole(profile.role)) {
-      return new NextResponse("Forbidden: Warehouse staff access required.", { status: 403 });
+    if (
+      !profile ||
+      profile.is_blocked ||
+      profile.is_deleted ||
+      !hasAnyPermission(profile.role, ["orders.ship", "orders.manage"])
+    ) {
+      return new NextResponse("Forbidden: Fulfilment staff access required.", {
+        status: 403,
+        headers: NO_STORE_HEADERS,
+      });
     }
 
     const res = await getOrderPackingSlip(orderId);
     if (!res.success || !res.packingSlip) {
-      return new NextResponse(res.error || "Packing slip not found", { status: 404 });
+      return new NextResponse(res.error || "Packing slip not found", {
+        status: 404,
+        headers: NO_STORE_HEADERS,
+      });
     }
 
     const slip = res.packingSlip;
@@ -39,7 +62,7 @@ export async function GET(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Packing Slip - ${slip.orderNumber}</title>
+  <title>Packing Slip - ${escapeHtml(slip.orderNumber)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #111; line-height: 1.4; font-size: 13px; padding: 24px; max-width: 700px; margin: auto; }
     .header { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; }
@@ -67,8 +90,8 @@ export async function GET(
     </div>
     <div style="text-align: right;">
       <p style="margin: 0; font-size: 11px; color: #555;">ORDER REF</p>
-      <p style="margin: 0; font-size: 16px; font-weight: bold;">#${slip.orderNumber}</p>
-      <p style="margin: 2px 0 0; font-size: 10px; color: #666;">Date: ${slip.createdDate}</p>
+      <p style="margin: 0; font-size: 16px; font-weight: bold;">#${escapeHtml(slip.orderNumber)}</p>
+      <p style="margin: 2px 0 0; font-size: 10px; color: #666;">Date: ${escapeHtml(slip.createdDate)}</p>
     </div>
   </div>
 
@@ -76,16 +99,16 @@ export async function GET(
     <div style="display: flex; justify-content: space-between;">
       <div>
         <p style="margin: 0 0 4px; font-size: 10px; text-transform: uppercase; color: #555;">Ship To:</p>
-        <p style="margin: 0; font-size: 14px; font-weight: bold;">${slip.customerName}</p>
-        <p style="margin: 2px 0 0;">${addr.house_no || ""}, ${addr.area || ""}</p>
-        <p style="margin: 0;">${addr.city || ""}, ${addr.state || ""} - <strong>${addr.pincode || ""}</strong></p>
-        <p style="margin: 2px 0 0; font-size: 11px;">Contact: ${addr.phone || "N/A"}</p>
+        <p style="margin: 0; font-size: 14px; font-weight: bold;">${escapeHtml(slip.customerName)}</p>
+        <p style="margin: 2px 0 0;">${escapeHtml(addr.house_no || "")}, ${escapeHtml(addr.area || "")}</p>
+        <p style="margin: 0;">${escapeHtml(addr.city || "")}, ${escapeHtml(addr.state || "")} - <strong>${escapeHtml(addr.pincode || "")}</strong></p>
+        <p style="margin: 2px 0 0; font-size: 11px;">Contact: ${escapeHtml(addr.phone || "N/A")}</p>
       </div>
       <div style="text-align: right;">
         <p style="margin: 0 0 4px; font-size: 10px; text-transform: uppercase; color: #555;">Logistics Partner:</p>
-        <p style="margin: 0; font-size: 13px; font-weight: bold;">${slip.courier || "Delhivery"}</p>
+        <p style="margin: 0; font-size: 13px; font-weight: bold;">${escapeHtml(slip.courier || "Delhivery")}</p>
         <p style="margin: 8px 0 2px; font-size: 10px; text-transform: uppercase; color: #555;">Waybill / AWB:</p>
-        <p class="barcode" style="margin: 0;">${slip.awb || "UNASSIGNED"}</p>
+        <p class="barcode" style="margin: 0;">${escapeHtml(slip.awb || "UNASSIGNED")}</p>
       </div>
     </div>
   </div>
@@ -106,9 +129,9 @@ export async function GET(
           (item, idx) => `
         <tr>
           <td>${idx + 1}</td>
-          <td><strong>${item.title}</strong></td>
-          <td><code style="font-size: 11px;">${item.sku || "MDS-DEFAULT"}</code></td>
-          <td style="text-align: center; font-size: 14px; font-weight: bold;">${item.quantity}</td>
+          <td><strong>${escapeHtml(item.title)}</strong></td>
+          <td><code style="font-size: 11px;">${escapeHtml(item.sku || "MDS-DEFAULT")}</code></td>
+          <td style="text-align: center; font-size: 14px; font-weight: bold;">${Number(item.quantity)}</td>
           <td style="text-align: center;"><span style="display: inline-block; width: 14px; height: 14px; border: 1px solid #777;"></span></td>
         </tr>
       `
@@ -130,10 +153,12 @@ export async function GET(
 
     return new NextResponse(html, {
       status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        ...NO_STORE_HEADERS,
+      },
     });
   } catch (err: any) {
-    console.error("Packing slip error:", err?.message || err);
-    return new NextResponse("Internal server error", { status: 500 });
+    return serverErrorResponse("/api/documents/packing-slip", err, "Internal server error", req);
   }
 }

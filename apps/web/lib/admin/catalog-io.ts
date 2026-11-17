@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { escapeCsvCell } from "@/lib/security/http";
+import { invalidateCatalogCache } from "@/lib/cache/catalog";
 
 export interface ImportResult {
   success: boolean;
@@ -9,15 +11,10 @@ export interface ImportResult {
 }
 
 /**
- * Escapes a cell value for safe RFC 4180 CSV export.
+ * Escapes a cell value for safe RFC 4180 CSV export while neutralizing formula injection.
  */
 function escapeCsv(val: any): string {
-  if (val === null || val === undefined) return "";
-  const str = String(val);
-  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
+  return escapeCsvCell(val);
 }
 
 /**
@@ -115,7 +112,8 @@ export async function exportBooksToCsv(): Promise<string> {
       height_cm,
       is_active
     `)
-    .order("title", { ascending: true });
+    .order("title", { ascending: true })
+    .limit(5000);
 
   if (error || !books) {
     throw new Error(`Failed to query books for export: ${error?.message}`);
@@ -302,6 +300,10 @@ export async function importBooksFromCsv(
         inserted++;
       }
     }
+  }
+
+  if (inserted > 0 || updated > 0) {
+    invalidateCatalogCache();
   }
 
   return {

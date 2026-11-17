@@ -5,14 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
-import { Input } from "@/components/ui/Input";
-import { ORDER_STATUS_TRANSITIONS } from "@/lib/admin/constants";
 import {
-  updateAdminOrderStatus,
-  cancelAdminOrder,
-} from "@/lib/admin/orders";
+  DISPATCHED_ORDER_STATUSES,
+  FULFILLMENT_SHIPPING_STATUSES,
+  ORDER_STATUS_TRANSITIONS,
+} from "@/lib/admin/constants";
+import { hasPermission } from "@/lib/admin/permissions";
+import { updateAdminOrderStatus } from "@/lib/admin/orders";
+import { AdminShipmentModal } from "@/components/admin/AdminShipmentModal";
+import { AdminCancelOrderModal } from "@/components/admin/AdminCancelOrderModal";
 
 interface AdminOrderSummary {
   id: string;
@@ -22,8 +23,12 @@ interface AdminOrderSummary {
   payment_status: string;
   payment_method: string;
   total_amount: number;
-  shipping_courier: string;
+  shipping_courier: string | null;
   shipping_awb: string | null;
+  shipping_booking_mode?: string | null;
+  shipping_booking_status?: string | null;
+  shipping_last_error?: string | null;
+  shipping_tracking_url?: string | null;
   created_at: string;
   customerName: string;
   customerEmail: string;
@@ -39,6 +44,9 @@ interface AdminOrdersClientProps {
   currentPaymentStatus: string;
   currentPaymentMethod: string;
   currentSearch: string;
+  delhiveryConfigured?: boolean;
+  delhiveryMockMode?: boolean;
+  userRole?: string;
 }
 
 export function AdminOrdersClient({
@@ -50,9 +58,18 @@ export function AdminOrdersClient({
   currentPaymentStatus,
   currentPaymentMethod,
   currentSearch,
+  delhiveryConfigured = false,
+  delhiveryMockMode = false,
+  userRole = "user",
 }: AdminOrdersClientProps) {
+  const delhiveryUnavailable = !delhiveryConfigured && !delhiveryMockMode;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  const canManageOrders = hasPermission(userRole, "orders.manage");
+  const canShipOrders = hasPermission(userRole, "orders.ship");
+  const canCancelPreDispatch = hasPermission(userRole, "orders.cancel");
+  const canCancelDispatched = hasPermission(userRole, "orders.cancel_dispatched");
 
   // Filters & Search
   const [search, setSearch] = useState(currentSearch);
@@ -67,13 +84,10 @@ export function AdminOrdersClient({
   // Cancel modal state
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelTargetOrder, setCancelTargetOrder] = useState<AdminOrderSummary | null>(null);
-  const [cancelReason, setCancelReason] = useState("");
 
   // Shipping modal state
   const [shipModalOpen, setShipModalOpen] = useState(false);
   const [shipTargetOrder, setShipTargetOrder] = useState<AdminOrderSummary | null>(null);
-  const [courier, setCourier] = useState("Delhivery");
-  const [awb, setAwb] = useState("");
 
   const handleFilterSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -100,11 +114,13 @@ export function AdminOrdersClient({
   const handleAdvanceStatus = async (order: AdminOrderSummary, nextStatus: string) => {
     setFeedback(null);
 
-    // If next status is Shipped, open modal for AWB and courier input
-    if (nextStatus === "Shipped" && !order.shipping_awb) {
+    // If next status is Shipped and shipment has not yet been entered/booked, open unified shipment modal
+    if (
+      nextStatus === "Shipped" &&
+      !order.shipping_awb &&
+      order.shipping_booking_mode !== "manual"
+    ) {
       setShipTargetOrder(order);
-      setAwb(`DLH-${order.id.slice(0, 8).toUpperCase()}`);
-      setCourier(order.shipping_courier || "Delhivery");
       setShipModalOpen(true);
       return;
     }
@@ -121,7 +137,7 @@ export function AdminOrdersClient({
       } else {
         setFeedback({
           type: "success",
-          message: `Order #${order.id.slice(0, 8)} successfully updated to ${nextStatus}.`,
+          message: `Order #${order.order_number || order.id.slice(0, 8)} successfully updated to ${nextStatus}.`,
         });
         router.refresh();
       }
@@ -129,73 +145,6 @@ export function AdminOrdersClient({
       setFeedback({ type: "error", message: err?.message || "Operation failed." });
     } finally {
       setBusyOrderId(null);
-    }
-  };
-
-  const handleConfirmShipment = async () => {
-    if (!shipTargetOrder) return;
-    if (!awb.trim()) {
-      setFeedback({ type: "error", message: "AWB tracking number is required to ship." });
-      return;
-    }
-
-    setBusyOrderId(shipTargetOrder.id);
-    setShipModalOpen(false);
-    try {
-      const res = await updateAdminOrderStatus({
-        orderId: shipTargetOrder.id,
-        nextStatus: "Shipped",
-        courier: courier.trim() || "Delhivery",
-        awb: awb.trim(),
-      });
-
-      if (!res.success) {
-        setFeedback({ type: "error", message: res.error || "Failed to update status." });
-      } else {
-        setFeedback({
-          type: "success",
-          message: `Order #${shipTargetOrder.id.slice(0, 8)} shipped with AWB ${awb}.`,
-        });
-        router.refresh();
-      }
-    } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Operation failed." });
-    } finally {
-      setBusyOrderId(null);
-      setShipTargetOrder(null);
-    }
-  };
-
-  const handleConfirmCancel = async () => {
-    if (!cancelTargetOrder) return;
-    if (!cancelReason.trim()) {
-      setFeedback({ type: "error", message: "Cancellation reason is required." });
-      return;
-    }
-
-    setBusyOrderId(cancelTargetOrder.id);
-    setCancelModalOpen(false);
-    try {
-      const res = await cancelAdminOrder({
-        orderId: cancelTargetOrder.id,
-        reason: cancelReason.trim(),
-      });
-
-      if (!res.success) {
-        setFeedback({ type: "error", message: res.error || "Failed to cancel order." });
-      } else {
-        setFeedback({
-          type: "success",
-          message: `Order #${cancelTargetOrder.id.slice(0, 8)} cancelled and stock restored.`,
-        });
-        router.refresh();
-      }
-    } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Cancellation failed." });
-    } finally {
-      setBusyOrderId(null);
-      setCancelTargetOrder(null);
-      setCancelReason("");
     }
   };
 
@@ -228,6 +177,8 @@ export function AdminOrdersClient({
         return "danger";
       case "Refunded":
         return "muted";
+      case "Partially Refunded":
+        return "gold";
       default:
         return "muted";
     }
@@ -252,6 +203,14 @@ export function AdminOrdersClient({
           </div>
         </div>
       </div>
+
+      {/* Delhivery Configuration Notice */}
+      {delhiveryUnavailable && (
+        <div className="p-4 rounded-xl border bg-amber-950/20 border-amber-500/30 text-xs text-amber-200 leading-relaxed">
+          <span className="font-semibold text-amber-300">Delhivery is not configured on this server.</span>{" "}
+          Automated Delhivery AWB booking, pickup requests, and shipping labels are disabled; manual order lifecycle management remains active.
+        </div>
+      )}
 
       {/* Feedback Alert */}
       {feedback && (
@@ -379,9 +338,22 @@ export function AdminOrdersClient({
                   const allowed = ORDER_STATUS_TRANSITIONS[order.order_status] || [];
                   const isBusy = busyOrderId === order.id;
 
-                  // Next primary status (excluding Cancelled which gets its own button)
-                  const primaryNext = allowed.find((s) => s !== "Cancelled");
-                  const canCancel = allowed.includes("Cancelled");
+                  // Next primary status respecting caller role permissions
+                  const primaryNext = allowed.find((s) => {
+                    if (s === "Cancelled") return false;
+                    return FULFILLMENT_SHIPPING_STATUSES.has(s) ? canShipOrders : canManageOrders;
+                  });
+                  const canOpenShipModal =
+                    canShipOrders &&
+                    allowed.includes("Shipped") &&
+                    !order.shipping_awb &&
+                    order.shipping_booking_mode !== "manual" &&
+                    primaryNext !== "Shipped";
+
+                  const isDispatched = DISPATCHED_ORDER_STATUSES.has(order.order_status);
+                  const canCancel = isDispatched
+                    ? canCancelDispatched
+                    : allowed.includes("Cancelled") && canCancelPreDispatch;
 
                   return (
                     <tr key={order.id} className="hover:bg-[#161616]/50 transition">
@@ -436,13 +408,19 @@ export function AdminOrdersClient({
                         </div>
                       </td>
 
-                      {/* Status */}
+                      {/* Status & Shipment Summary */}
                       <td className="py-4 px-4 align-top">
                         <Badge variant={getOrderStatusBadgeVariant(order.order_status)}>
                           {order.order_status}
                         </Badge>
+                        {order.shipping_courier && (
+                          <div className="text-[10px] text-gray-400 mt-1">
+                            {order.shipping_courier}
+                            {order.shipping_booking_mode ? ` (${order.shipping_booking_mode})` : ""}
+                          </div>
+                        )}
                         {order.shipping_awb && (
-                          <div className="text-[10px] text-gray-500 font-mono mt-1">
+                          <div className="text-[10px] text-gray-500 font-mono">
                             AWB: {order.shipping_awb}
                           </div>
                         )}
@@ -462,7 +440,21 @@ export function AdminOrdersClient({
                             </button>
                           )}
 
-                          {/* Admin Cancel Button */}
+                          {/* Fulfill / Ship Order CTA */}
+                          {canOpenShipModal && (
+                            <button
+                              onClick={() => {
+                                setShipTargetOrder(order);
+                                setShipModalOpen(true);
+                              }}
+                              disabled={isBusy}
+                              className="px-2.5 py-1 text-xs font-medium bg-[#C9A24A] hover:bg-[#B89139] text-black rounded transition disabled:opacity-50"
+                            >
+                              Ship
+                            </button>
+                          )}
+
+                          {/* Cancel Button */}
                           {canCancel && (
                             <button
                               onClick={() => {
@@ -472,7 +464,7 @@ export function AdminOrdersClient({
                               disabled={isBusy}
                               className="px-2.5 py-1 text-xs font-medium bg-red-950/60 hover:bg-red-900 border border-red-700/50 text-red-300 rounded transition disabled:opacity-50"
                             >
-                              Cancel
+                              {isDispatched ? "Cancel (Courier)" : "Cancel"}
                             </button>
                           )}
 
@@ -520,88 +512,40 @@ export function AdminOrdersClient({
         )}
       </div>
 
-      {/* Shipment Modal */}
-      <Modal
+      {/* Unified Shipment Modal (Delhivery API vs Manual Entry) */}
+      <AdminShipmentModal
         isOpen={shipModalOpen}
-        onClose={() => setShipModalOpen(false)}
-        title="Fulfill & Ship Order"
-        description="Provide courier and tracking details to transition order to Shipped."
-      >
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              Courier Partner
-            </label>
-            <input
-              type="text"
-              value={courier}
-              onChange={(e) => setCourier(e.target.value)}
-              className="w-full bg-[#161616] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              AWB Tracking Number
-            </label>
-            <input
-              type="text"
-              value={awb}
-              onChange={(e) => setAwb(e.target.value)}
-              placeholder="e.g. 123456789012"
-              className="w-full bg-[#161616] border border-[#2A2A2A] rounded-lg px-3 py-2 text-sm text-white"
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-3">
-            <button
-              onClick={() => setShipModalOpen(false)}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-            >
-              Cancel
-            </button>
-            <Button onClick={handleConfirmShipment} variant="primary">
-              Confirm Shipment
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onClose={() => {
+          setShipModalOpen(false);
+          setShipTargetOrder(null);
+        }}
+        order={shipTargetOrder}
+        delhiveryConfigured={delhiveryConfigured}
+        delhiveryMockMode={delhiveryMockMode}
+        onSuccess={(message) => {
+          setFeedback({ type: "success", message });
+          router.refresh();
+        }}
+        onError={(message) => setFeedback({ type: "error", message })}
+      />
 
-      {/* Admin Cancellation Modal */}
-      <Modal
+      {/* Unified Cancellation Modal (Pre-dispatch vs Courier-Confirmed Dispatched) */}
+      <AdminCancelOrderModal
         isOpen={cancelModalOpen}
-        onClose={() => setCancelModalOpen(false)}
-        title="Cancel Order & Restore Inventory"
-        description="This administrative action will cancel the order, restore inventory for all books, and record an audit log."
-      >
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">
-              Cancellation Reason (Required)
-            </label>
-            <textarea
-              rows={3}
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="e.g., Customer requested via phone, or stock damaged..."
-              className="w-full bg-[#161616] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-3">
-            <button
-              onClick={() => setCancelModalOpen(false)}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-            >
-              Close
-            </button>
-            <Button
-              onClick={handleConfirmCancel}
-              variant="outline"
-              className="border-red-600 text-red-400 hover:bg-red-950"
-            >
-              Cancel Order
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onClose={() => {
+          setCancelModalOpen(false);
+          setCancelTargetOrder(null);
+        }}
+        order={cancelTargetOrder}
+        onSuccess={(message) => {
+          setFeedback({ type: "success", message });
+          router.refresh();
+        }}
+        onError={(message, orderCancelled) => {
+          setFeedback({ type: "error", message });
+          if (orderCancelled) router.refresh();
+        }}
+      />
     </div>
   );
 }

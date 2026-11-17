@@ -1,12 +1,12 @@
 import React from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminCategories } from "@/lib/admin/categories";
 import { AdminCategoriesClient } from "./AdminCategoriesClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCategoriesPage() {
-  await requireAdmin();
+  await requireStaffPermission("books.manage");
   const categories = await getAdminCategories();
 
   return (

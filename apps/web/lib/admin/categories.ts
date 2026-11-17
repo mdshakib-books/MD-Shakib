@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "./auth";
+import { invalidateCatalogCache } from "@/lib/cache/catalog";
+import { requireStaffPermission, verifyStaffActionPermission } from "./auth";
 import { recordAdminAuditLog } from "./audit";
 import type { Database } from "@/types/database.types";
 
@@ -25,7 +26,7 @@ export interface EnrichedCategory extends CategoryRow {
  * Lists all categories with associated book counts for administrative management.
  */
 export async function getAdminCategories(): Promise<EnrichedCategory[]> {
-  await requireAdmin();
+  await requireStaffPermission("books.view");
   const supabase = await createClient();
 
   const { data: categories, error } = await supabase
@@ -69,7 +70,8 @@ export async function createAdminCategory(input: CategoryInput): Promise<{
   category?: CategoryRow;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("books.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const trimmedName = input.name?.trim();
@@ -114,9 +116,7 @@ export async function createAdminCategory(input: CategoryInput): Promise<{
 
   revalidatePath("/admin/categories");
   revalidatePath("/admin/books");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
+  invalidateCatalogCache();
 
   return { success: true, category: newCategory };
 }
@@ -132,7 +132,8 @@ export async function updateAdminCategory(
   category?: CategoryRow;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("books.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { data: existing, error: fetchErr } = await supabase
@@ -202,9 +203,7 @@ export async function updateAdminCategory(
 
   revalidatePath("/admin/categories");
   revalidatePath("/admin/books");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
+  invalidateCatalogCache();
 
   return { success: true, category: updated };
 }
@@ -216,7 +215,8 @@ export async function deleteAdminCategory(id: string): Promise<{
   success: boolean;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("books.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { data: category, error: fetchErr } = await supabase
@@ -264,9 +264,7 @@ export async function deleteAdminCategory(id: string): Promise<{
 
   revalidatePath("/admin/categories");
   revalidatePath("/admin/books");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
+  invalidateCatalogCache();
 
   return { success: true };
 }
