@@ -15,9 +15,11 @@ const SENSITIVE_KEY_PATTERNS = [
   /cvv/i,
   /pan/i,
   /ssn/i,
+  /private[_-]?key/i,
 ];
 
 const JWT_PATTERN = /eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/g;
+const RAW_SECRET_PREFIX_PATTERN = /\b(rzp_live_[A-Za-z0-9]+|re_[A-Za-z0-9_]{16,}|whsec_[A-Za-z0-9_]+|sb_secret_[A-Za-z0-9_]+)\b/g;
 
 /**
  * Deeply redacts sensitive keys, secrets, tokens, and PII from objects and primitives.
@@ -27,8 +29,10 @@ export function redactSensitiveData(data: any, depth = 0): any {
   if (data === null || data === undefined) return data;
 
   if (typeof data === "string") {
-    // Redact JWTs
-    return data.replace(JWT_PATTERN, "[REDACTED_JWT]");
+    // Redact JWTs and provider secret prefixes
+    return data
+      .replace(JWT_PATTERN, "[REDACTED_JWT]")
+      .replace(RAW_SECRET_PREFIX_PATTERN, "[REDACTED_SECRET]");
   }
 
   if (typeof data === "number" || typeof data === "boolean") {
@@ -162,6 +166,11 @@ export const logger = {
     if (lastAlertTime && now - lastAlertTime < ALERT_DEDUPLICATION_WINDOW_MS) {
       // Suppress duplicate alert within window
       return false;
+    }
+
+    if (alertDeduplicationMap.size >= 1000) {
+      const oldestKey = alertDeduplicationMap.keys().next().value;
+      if (oldestKey) alertDeduplicationMap.delete(oldestKey);
     }
 
     alertDeduplicationMap.set(alertKey, now);

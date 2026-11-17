@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "./auth";
+import { requireStaffPermission, verifyStaffActionPermission } from "./auth";
+import type { StaffRole } from "./permissions";
 import type { Database } from "@/types/database.types";
 
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -55,7 +56,7 @@ export async function getAdminCustomers(params?: {
   page: number;
   totalPages: number;
 }> {
-  await requireAdmin();
+  await requireStaffPermission("users.view");
   const supabase = await createClient();
 
   const page = Math.max(1, params?.page || 1);
@@ -134,7 +135,7 @@ export async function getAdminCustomers(params?: {
  * Retrieves comprehensive customer information including order history and saved delivery addresses.
  */
 export async function getAdminCustomerDetails(customerId: string): Promise<CustomerDetails | null> {
-  await requireAdmin();
+  await requireStaffPermission("users.view");
   const supabase = await createClient();
 
   const { data: profile, error: profErr } = await supabase
@@ -208,7 +209,9 @@ export async function updateCustomerAccountStatus(payload: {
   customerId: string;
   action: "BLOCK" | "UNBLOCK" | "SOFT_DELETE" | "RESTORE";
 }): Promise<{ success: boolean; error?: string }> {
-  const { user } = await requireAdmin();
+  const perm = await verifyStaffActionPermission("users.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
+  const { user } = perm;
   const supabase = await createClient();
 
   const { customerId, action } = payload;
@@ -245,9 +248,11 @@ export async function updateCustomerAccountStatus(payload: {
  */
 export async function updateUserRole(payload: {
   userId: string;
-  newRole: "user" | "admin";
+  newRole: StaffRole;
 }): Promise<{ success: boolean; error?: string }> {
-  const { user } = await requireAdmin();
+  const perm = await verifyStaffActionPermission("users.manage_roles");
+  if (!perm.authorized) return { success: false, error: perm.error };
+  const { user } = perm;
   const supabase = await createClient();
 
   const { userId, newRole } = payload;

@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createRazorpayOrder } from "@/lib/integrations/razorpay/service";
+import {
+  createRazorpayOrder,
+  RazorpayConfigurationError,
+  RazorpayDisabledError,
+} from "@/lib/integrations/razorpay/service";
 import { checkRateLimit, rateLimitExceededResponse, getClientIp } from "@/lib/security/rate-limit";
 import { logger } from "@/lib/logger";
+import {
+  isValidUuid,
+  NO_STORE_HEADERS,
+  readBoundedJsonBody,
+  sanitizeClientErrorMessage,
+} from "@/lib/security/http";
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +25,7 @@ export async function POST(req: Request) {
     if (authErr || !user) {
       return NextResponse.json(
         { error: "Authentication required to initiate payment." },
-        { status: 401 }
+        { status: 401, headers: NO_STORE_HEADERS }
       );
     }
 
@@ -28,24 +38,39 @@ export async function POST(req: Request) {
       return rateLimitExceededResponse(rl);
     }
 
-    const body = await req.json();
-    const { orderId } = body;
-
-    if (!orderId) {
+    const parsedBody = await readBoundedJsonBody(req);
+    if (!parsedBody.ok) {
       return NextResponse.json(
-        { error: "Missing required parameter: orderId" },
-        { status: 400 }
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: NO_STORE_HEADERS }
       );
     }
 
-    const result = await createRazorpayOrder(orderId, user.id);
+    const { orderId, forceNewAttempt } = parsedBody.data;
 
-    return NextResponse.json(result);
+    if (!orderId || !isValidUuid(orderId)) {
+      return NextResponse.json(
+        { error: "Missing or invalid parameter: orderId" },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
+
+    const result = await createRazorpayOrder(orderId, user.id, {
+      forceNewAttempt: Boolean(forceNewAttempt),
+    });
+
+    return NextResponse.json(result, { headers: NO_STORE_HEADERS });
   } catch (error: any) {
+    if (error instanceof RazorpayDisabledError || error instanceof RazorpayConfigurationError) {
+      return NextResponse.json(
+        { configured: false, error: error.message },
+        { status: 503, headers: NO_STORE_HEADERS }
+      );
+    }
     logger.error("API /payments/create-order failure", { endpoint: "/api/payments/create-order" }, error);
     return NextResponse.json(
-      { error: error?.message || "Internal server error creating payment order." },
-      { status: 400 }
+      { error: sanitizeClientErrorMessage(error, "Unable to initiate payment order.") },
+      { status: 400, headers: NO_STORE_HEADERS }
     );
   }
 }

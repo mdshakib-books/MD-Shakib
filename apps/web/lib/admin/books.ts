@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "./auth";
+import { invalidateCatalogCache } from "@/lib/cache/catalog";
+import { requireStaffPermission, verifyStaffActionPermission } from "./auth";
 import { recordAdminAuditLog } from "./audit";
 import type { Database } from "@/types/database.types";
 
@@ -49,7 +50,7 @@ export async function getAdminBooks(params?: {
   page: number;
   totalPages: number;
 }> {
-  await requireAdmin();
+  await requireStaffPermission("books.view");
   const supabase = await createClient();
 
   const page = Math.max(1, params?.page || 1);
@@ -101,7 +102,7 @@ export async function getAdminBooks(params?: {
  * Retrieves a single book by ID for admin edit form.
  */
 export async function getAdminBookById(id: string): Promise<BookRow | null> {
-  await requireAdmin();
+  await requireStaffPermission("books.view");
   const supabase = await createClient();
 
   const { data: book, error } = await supabase
@@ -125,7 +126,8 @@ export async function createAdminBook(input: BookInput): Promise<{
   book?: BookRow;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("books.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const trimmedTitle = input.title?.trim();
@@ -201,9 +203,7 @@ export async function createAdminBook(input: BookInput): Promise<{
   revalidatePath("/admin/books");
   revalidatePath("/admin/inventory");
   revalidatePath("/admin");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
+  invalidateCatalogCache(newBook.id);
 
   return { success: true, book: newBook };
 }
@@ -219,7 +219,8 @@ export async function updateAdminBook(
   book?: BookRow;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("books.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { data: existing, error: fetchErr } = await supabase
@@ -353,10 +354,7 @@ export async function updateAdminBook(
   revalidatePath("/admin/books");
   revalidatePath("/admin/inventory");
   revalidatePath("/admin");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
-  revalidatePath(`/books/${id}`);
+  invalidateCatalogCache(id);
 
   return { success: true, book: updated };
 }
@@ -371,7 +369,8 @@ export async function deleteAdminBook(id: string): Promise<{
   message?: string;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("books.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { data: book, error: fetchErr } = await supabase
@@ -413,10 +412,7 @@ export async function deleteAdminBook(id: string): Promise<{
 
     revalidatePath("/admin/books");
     revalidatePath("/admin/inventory");
-    revalidatePath("/catalog");
-    revalidatePath("/books");
-    revalidatePath("/");
-    revalidatePath(`/books/${id}`);
+    invalidateCatalogCache(id);
 
     return {
       success: true,
@@ -443,9 +439,7 @@ export async function deleteAdminBook(id: string): Promise<{
   revalidatePath("/admin/books");
   revalidatePath("/admin/inventory");
   revalidatePath("/admin");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
+  invalidateCatalogCache(id);
 
   return {
     success: true,
@@ -461,7 +455,8 @@ export async function toggleBookStatus(
   id: string,
   isActive: boolean
 ): Promise<{ success: boolean; error?: string }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("books.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -481,10 +476,7 @@ export async function toggleBookStatus(
   });
 
   revalidatePath("/admin/books");
-  revalidatePath("/catalog");
-  revalidatePath("/books");
-  revalidatePath("/");
-  revalidatePath(`/books/${id}`);
+  invalidateCatalogCache(id);
 
   return { success: true };
 }

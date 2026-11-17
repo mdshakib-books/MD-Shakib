@@ -118,10 +118,10 @@ export function renderOrderConfirmationHtml(
 
       <div style="background-color: #1A1A1A; border: 1px solid #2A2A2A; border-radius: 6px; padding: 16px; margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; color: #B0B0B0;">
-          <span>Delivery Charge:</span> <span>₹${Number(order.delivery_fee || 35).toFixed(2)}</span>
+          <span>Delivery Charge:</span> <span>₹${Number(order.delivery_fee ?? 35).toFixed(2)}</span>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: #B0B0B0;">
-          <span>Platform Fee:</span> <span>₹${Number(order.platform_fee || 10).toFixed(2)}</span>
+          <span>Platform Fee:</span> <span>₹${Number(order.platform_fee ?? 10).toFixed(2)}</span>
         </div>
         ${
           order.discount_amount && order.discount_amount > 0
@@ -308,9 +308,18 @@ export function renderShipmentNotificationHtml(
 ): string {
   const displayOrderNum = order.order_number || order.id.slice(0, 8).toUpperCase();
   const safeCustomer = escapeHtml(customerName);
-  const safeAwb = escapeHtml(awb || "Tracking in progress");
-  const safeCourier = escapeHtml(courier || "Delhivery");
-  const safeTrackingUrl = escapeHtml(trackingUrl || `https://track.delhivery.com/p/${awb || ""}`);
+  const safeAwb = awb ? escapeHtml(awb) : null;
+  const trimmedCourier = (courier || "").trim();
+  const safeCourier = escapeHtml(trimmedCourier || "Carrier Assigned");
+  const cleanTrackingUrl = (trackingUrl || "").trim();
+  const isDelhivery = trimmedCourier.toLowerCase() === "delhivery";
+  const resolvedTrackingUrl =
+    cleanTrackingUrl && /^https?:\/\//i.test(cleanTrackingUrl)
+      ? cleanTrackingUrl
+      : isDelhivery && awb
+      ? `https://track.delhivery.com/p/${encodeURIComponent(awb)}`
+      : null;
+  const safeTrackingUrl = resolvedTrackingUrl ? escapeHtml(resolvedTrackingUrl) : null;
 
   const titleMap = {
     shipped: "Your Books Have Shipped!",
@@ -319,7 +328,7 @@ export function renderShipmentNotificationHtml(
   };
 
   const descMap = {
-    shipped: "Your order has been handed over to our verified logistics partner for express transit.",
+    shipped: "Your order has been handed over to our logistics partner for transit.",
     out_for_delivery: "Our courier delivery associate is in your area today to complete your doorstep delivery.",
     delivered: "Your package has been successfully delivered. We hope these scholarly books enrich your study and library.",
   };
@@ -345,10 +354,12 @@ export function renderShipmentNotificationHtml(
       <div style="background-color: #1A1A1A; border: 1px solid #2A2A2A; border-radius: 6px; padding: 18px; margin-bottom: 24px;">
         <p style="margin: 0 0 6px 0; font-size: 14px; color: #E0E0E0;"><strong>Order:</strong> ${escapeHtml(displayOrderNum)}</p>
         <p style="margin: 0 0 6px 0; font-size: 14px; color: #E0E0E0;"><strong>Logistics Partner:</strong> ${safeCourier}</p>
-        <p style="margin: 0 0 12px 0; font-size: 14px; color: #E0E0E0;"><strong>AWB Number:</strong> <code>${safeAwb}</code></p>
-        <a href="${safeTrackingUrl}" target="_blank" style="display: inline-block; background-color: #C9A24A; color: #000000; font-weight: 700; font-size: 13px; text-decoration: none; padding: 10px 18px; border-radius: 6px;">
-          Track Shipment Live →
-        </a>
+        <p style="margin: 0 0 12px 0; font-size: 14px; color: #E0E0E0;"><strong>Tracking / AWB:</strong> <code>${safeAwb || "Not provided by carrier"}</code></p>
+        ${
+          safeTrackingUrl
+            ? `<a href="${safeTrackingUrl}" target="_blank" style="display: inline-block; background-color: #C9A24A; color: #000000; font-weight: 700; font-size: 13px; text-decoration: none; padding: 10px 18px; border-radius: 6px;">Track Shipment Live →</a>`
+            : `<p style="margin: 0; font-size: 12px; color: #999999;">Live carrier tracking URL is not available for this dispatch method.</p>`
+        }
       </div>
     </div>
 

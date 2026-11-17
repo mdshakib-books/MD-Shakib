@@ -1,17 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyAdminApi } from "@/lib/admin/auth";
 import { getBookVariants, createBookVariant } from "@/lib/catalog/variants";
+import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
+import {
+  isValidUuid,
+  NO_STORE_HEADERS,
+  readBoundedJsonBody,
+  serverErrorResponse,
+} from "@/lib/security/http";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await verifyAdminApi("books.view");
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
+    const rl = await checkRateLimit(`admin:variants:get:${auth.user.id}`, "admin");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
+    }
+
     const { id } = await params;
+    if (!isValidUuid(id)) {
+      return NextResponse.json(
+        { error: "Invalid book ID format." },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
+
     const variants = await getBookVariants(id);
-    return NextResponse.json({ variants });
+    return NextResponse.json({ variants }, { headers: NO_STORE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to load variants" }, { status: 500 });
+    return serverErrorResponse(
+      "/api/admin/books/[id]/variants",
+      err,
+      "Failed to load variants.",
+      req
+    );
   }
 }
 
@@ -20,27 +49,33 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await verifyAdminApi("inventory.manage");
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
+    const rl = await checkRateLimit(`admin:variants:post:${auth.user.id}`, "admin");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
+    }
+
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!isValidUuid(id)) {
+      return NextResponse.json(
+        { error: "Invalid book ID format." },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    const isStaff = ["admin", "super_admin", "warehouse_staff", "operations"].includes(profile?.role || "");
-    if (!isStaff) {
-      return NextResponse.json({ error: "Forbidden: Staff role required" }, { status: 403 });
+    const parsedBody = await readBoundedJsonBody(req);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: NO_STORE_HEADERS }
+      );
     }
 
-    const body = await req.json();
-    const { title, sku, price, stock, variantType, variantValue, isActive } = body;
+    const { title, sku, price, stock, variantType, variantValue, isActive } = parsedBody.data;
 
     const result = await createBookVariant({
       bookId: id,
@@ -54,11 +89,19 @@ export async function POST(
     });
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+      return NextResponse.json(
+        { error: result.error },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: NO_STORE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to create variant" }, { status: 500 });
+    return serverErrorResponse(
+      "/api/admin/books/[id]/variants",
+      err,
+      "Failed to create variant.",
+      req
+    );
   }
 }

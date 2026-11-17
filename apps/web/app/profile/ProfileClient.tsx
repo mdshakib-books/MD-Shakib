@@ -103,6 +103,25 @@ export function ProfileClient({ initialProfile }: ProfileClientProps) {
             placeholder="+91 98765 43210"
           />
 
+          <div className="pt-2 border-t border-dark-border">
+            <input type="hidden" name="email_preferences_submitted" value="1" />
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                id="email_notifications_enabled"
+                name="email_notifications_enabled"
+                defaultChecked={initialProfile.email_notifications_enabled ?? true}
+                className="mt-0.5 h-4 w-4 rounded border-[#383838] bg-[#1A1A1A] text-[#C9A24A] focus:ring-[#C9A24A] accent-[#C9A24A]"
+              />
+              <span className="text-xs text-neutral-300 leading-relaxed">
+                Receive shipment tracking &amp; delivery email updates
+                <span className="block text-[11px] text-neutral-500">
+                  Essential payment receipts and cancellation notices remain active regardless of this setting.
+                </span>
+              </span>
+            </label>
+          </div>
+
           <div className="pt-2">
             <Button
               type="submit"

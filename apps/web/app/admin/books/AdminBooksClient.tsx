@@ -362,6 +362,10 @@ export function AdminBooksClient({
                               <img
                                 src={book.image_url}
                                 alt={book.title}
+                                loading="lazy"
+                                decoding="async"
+                                width={40}
+                                height={56}
                                 className="w-full h-full object-cover"
                               />
                             ) : (

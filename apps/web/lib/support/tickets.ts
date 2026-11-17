@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sanitizeAttachmentUrls } from "@/lib/security/http";
 
 export type TicketCategory = "order" | "payment" | "delivery" | "return" | "product" | "general";
 export type TicketPriority = "low" | "medium" | "high" | "urgent";
@@ -67,6 +68,11 @@ export async function createSupportTicket(params: {
     return { success: false, error: `Invalid ticket category: ${category}` };
   }
 
+  const attachmentCheck = sanitizeAttachmentUrls(attachments, 5);
+  if (!attachmentCheck.valid) {
+    return { success: false, error: attachmentCheck.error };
+  }
+
   const adminDb = createAdminClient();
 
   // If order_id provided, verify order exists and belongs to customer
@@ -115,7 +121,7 @@ export async function createSupportTicket(params: {
     sender_id: customerId,
     is_staff: false,
     message: description.trim(),
-    attachments,
+    attachments: attachmentCheck.urls,
   });
 
   return {
@@ -159,6 +165,11 @@ export async function addTicketMessage(params: {
     return { success: false, error: "Message cannot be empty." };
   }
 
+  const attachmentCheck = sanitizeAttachmentUrls(attachments, 5);
+  if (!attachmentCheck.valid) {
+    return { success: false, error: attachmentCheck.error };
+  }
+
   const adminDb = createAdminClient();
 
   // Verify ticket exists
@@ -187,7 +198,7 @@ export async function addTicketMessage(params: {
       sender_id: senderId,
       is_staff: isStaff,
       message: message.trim(),
-      attachments,
+      attachments: attachmentCheck.urls,
     })
     .select("*, profiles!ticket_messages_sender_id_fkey(name)")
     .single();

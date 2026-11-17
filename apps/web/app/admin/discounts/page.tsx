@@ -1,12 +1,12 @@
 import React from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminDiscounts } from "@/lib/admin/discounts";
 import { AdminDiscountsClient } from "./AdminDiscountsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDiscountsPage() {
-  await requireAdmin();
+  await requireStaffPermission("discounts.manage");
   const discounts = await getAdminDiscounts();
 
   return (

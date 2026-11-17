@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "./auth";
+import { requireStaffPermission, verifyStaffActionPermission } from "./auth";
 import { recordAdminAuditLog } from "./audit";
 import type { Database } from "@/types/database.types";
 
@@ -34,7 +34,7 @@ export interface CouponValidationResult {
  * Retrieves all promotional coupons for administrative management.
  */
 export async function getAdminDiscounts(): Promise<DiscountRow[]> {
-  await requireAdmin();
+  await requireStaffPermission("discounts.manage");
   const supabase = await createClient();
 
   const { data: discounts, error } = await supabase
@@ -58,7 +58,8 @@ export async function createAdminDiscount(input: DiscountInput): Promise<{
   discount?: DiscountRow;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("discounts.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const cleanCode = input.code?.trim().toUpperCase();
@@ -123,7 +124,8 @@ export async function updateAdminDiscount(
   discount?: DiscountRow;
   error?: string;
 }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("discounts.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { data: existing, error: fetchErr } = await supabase
@@ -218,7 +220,8 @@ export async function toggleDiscountStatus(
   id: string,
   isActive: boolean
 ): Promise<{ success: boolean; error?: string }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("discounts.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -245,7 +248,8 @@ export async function toggleDiscountStatus(
  * Permanently removes a discount coupon.
  */
 export async function deleteAdminDiscount(id: string): Promise<{ success: boolean; error?: string }> {
-  await requireAdmin();
+  const perm = await verifyStaffActionPermission("discounts.manage");
+  if (!perm.authorized) return { success: false, error: perm.error };
   const supabase = await createClient();
 
   const { data: existing } = await supabase.from("discounts").select("*").eq("id", id).single();

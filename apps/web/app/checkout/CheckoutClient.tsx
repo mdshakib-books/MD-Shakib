@@ -7,6 +7,7 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
+import { roundCurrency } from "@/lib/commerce/pricing";
 import { placeOrderCOD, placeOrderOnline } from "@/lib/commerce/orders";
 import { validateCustomerCoupon, type CustomerCouponValidationResult } from "@/lib/commerce/coupons";
 import type { CustomerCartSummary } from "@/lib/commerce/cart";
@@ -26,7 +27,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "ONLINE">("COD");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const idempotencyKeyRef = useRef<string>("");
+  const idempotencyContextRef = useRef<{ key: string; signature: string } | null>(null);
 
   // Coupon state
   const [couponInput, setCouponInput] = useState("");
@@ -42,45 +43,87 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
     message: string;
   } | null>(null);
 
-  // Address pincode serviceability state
+  // Address pincode serviceability state (keyed by pincode to avoid synchronous effect resets)
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
-  const [serviceability, setServiceability] = useState<{
-    serviceable: boolean;
-    prepaid: boolean;
-    cod: boolean;
+  const [serviceabilityState, setServiceabilityState] = useState<{
+    pincode: string;
+    result: {
+      serviceable: boolean;
+      prepaid: boolean;
+      cod: boolean;
+    } | null;
+    unavailable: boolean;
   } | null>(null);
 
+  const activePincode = selectedAddress?.pincode || "";
+  const matchingServiceability =
+    activePincode && serviceabilityState?.pincode === activePincode
+      ? serviceabilityState
+      : null;
+  const serviceability = matchingServiceability?.result ?? null;
+  const serviceabilityStatus: "idle" | "checking" | "verified" | "unavailable" = !activePincode
+    ? "idle"
+    : !matchingServiceability
+    ? "checking"
+    : matchingServiceability.unavailable || !matchingServiceability.result
+    ? "unavailable"
+    : "verified";
+  const isCodVerifiedAvailable =
+    serviceabilityStatus === "verified" &&
+    Boolean(serviceability?.serviceable && serviceability?.cod);
+
   useEffect(() => {
-    if (!selectedAddress?.pincode) return;
+    if (!activePincode) return;
 
     let isMounted = true;
 
-    fetch(`/api/shipping/serviceability?pincode=${encodeURIComponent(selectedAddress.pincode)}`)
-      .then((res) => res.json())
-      .then((data) => {
+    fetch(`/api/shipping/serviceability?pincode=${encodeURIComponent(activePincode)}`)
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        return { ok: res.ok, data };
+      })
+      .then(({ ok, data }) => {
         if (!isMounted) return;
         const svc = data?.data || data;
-        if (svc && typeof svc.serviceable === "boolean") {
-          setServiceability({
-            serviceable: Boolean(svc.serviceable),
-            prepaid: Boolean(svc.prepaid),
-            cod: Boolean(svc.cod),
+        if (ok && data?.configured !== false && !data?.error && svc && typeof svc.serviceable === "boolean") {
+          const codAvailable = Boolean(svc.serviceable) && Boolean(svc.cod);
+          setServiceabilityState({
+            pincode: activePincode,
+            result: {
+              serviceable: Boolean(svc.serviceable),
+              prepaid: Boolean(svc.prepaid),
+              cod: codAvailable,
+            },
+            unavailable: false,
           });
-          if (!svc.cod) {
+          if (!codAvailable) {
             setPaymentMethod((prev) => (prev === "COD" ? "ONLINE" : prev));
           }
         } else {
-          setServiceability({ serviceable: true, prepaid: true, cod: true });
+          setServiceabilityState({
+            pincode: activePincode,
+            result: null,
+            unavailable: true,
+          });
+          // Fail closed for COD when serviceability check is unavailable
+          setPaymentMethod((prev) => (prev === "COD" ? "ONLINE" : prev));
         }
       })
       .catch(() => {
-        if (isMounted) setServiceability({ serviceable: true, prepaid: true, cod: true });
+        if (isMounted) {
+          setServiceabilityState({
+            pincode: activePincode,
+            result: null,
+            unavailable: true,
+          });
+          setPaymentMethod((prev) => (prev === "COD" ? "ONLINE" : prev));
+        }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [selectedAddress?.pincode]);
+  }, [activePincode]);
 
   const handleApplyCoupon = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -131,9 +174,8 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
   };
 
   const discountAmount = appliedCoupon?.calculatedDiscount || 0;
-  const finalPayable = Math.max(
-    0,
-    cart.subtotal + cart.platformFee + cart.deliveryFee - discountAmount
+  const finalPayable = roundCurrency(
+    Math.max(0, cart.subtotal + cart.platformFee + cart.deliveryFee - discountAmount)
   );
 
   const handlePlaceOrder = () => {
@@ -144,20 +186,40 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
       return;
     }
 
+    if (paymentMethod === "COD" && !isCodVerifiedAvailable) {
+      setErrorMsg(
+        serviceabilityStatus === "checking"
+          ? "Please wait while we verify Cash on Delivery availability for your pincode."
+          : "Cash on Delivery cannot be placed because courier serviceability is unavailable or unverified for this pincode. Please select Online Payment."
+      );
+      return;
+    }
+
     if (!termsAccepted) {
       setErrorMsg("Please review and agree to the Terms & Conditions and Policies to complete your purchase.");
       return;
     }
 
-    if (!idempotencyKeyRef.current) {
-      idempotencyKeyRef.current =
+    const selectionSignature = JSON.stringify({
+      addressId: selectedAddressId,
+      paymentMethod,
+      coupon: (appliedCoupon?.code || "").trim().toUpperCase(),
+      items: cart.items.map((i) => `${i.bookId}:${i.quantity}`),
+    });
+
+    if (
+      !idempotencyContextRef.current ||
+      idempotencyContextRef.current.signature !== selectionSignature
+    ) {
+      const nextKey =
         typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()
           : `order-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      idempotencyContextRef.current = { key: nextKey, signature: selectionSignature };
     }
 
     setErrorMsg(null);
-    const key = idempotencyKeyRef.current;
+    const key = idempotencyContextRef.current.key;
     const couponCode = appliedCoupon?.code;
     const consentPayload = {
       termsAccepted: true,
@@ -170,8 +232,11 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
     startTransition(async () => {
       if (paymentMethod === "COD") {
         const res = await placeOrderCOD(selectedAddressId, key, couponCode, consentPayload);
-        if (!res.success && res.error) {
-          setErrorMsg(res.error);
+        if (!res.success) {
+          if (res.code === "IDEMPOTENCY_CONFLICT" || res.code === "ORDER_CANCELLED") {
+            idempotencyContextRef.current = null;
+          }
+          setErrorMsg(res.error || "Failed to place COD order.");
         } else if (res.orderId) {
           router.push(`/order-success?orderId=${res.orderId}`);
         }
@@ -180,8 +245,15 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
 
       // Online payment via Razorpay
       const res = await placeOrderOnline(selectedAddressId, key, couponCode, consentPayload);
-      if (!res.success && res.error) {
-        setErrorMsg(res.error);
+      if (!res.success) {
+        if (res.code === "IDEMPOTENCY_CONFLICT" || res.code === "ORDER_CANCELLED") {
+          idempotencyContextRef.current = null;
+        }
+        if (res.paymentInitFailed && res.orderId) {
+          router.push(`/orders/${res.orderId}`);
+          return;
+        }
+        setErrorMsg(res.error || "Failed to initiate online payment.");
         return;
       }
 
@@ -337,7 +409,7 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                         {/* Live Pincode Serviceability Indicator */}
                         {selectedAddressId === addr.id && (
                           <div className="mt-2 flex items-center gap-2 text-[11px]">
-                            {serviceability ? (
+                            {serviceabilityStatus === "verified" && serviceability ? (
                               serviceability.serviceable ? (
                                 <span className="text-emerald-400 flex items-center gap-1 font-medium">
                                   <span>✓</span>
@@ -349,6 +421,10 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
                                   <span>Limited courier coverage for this pincode.</span>
                                 </span>
                               )
+                            ) : serviceabilityStatus === "unavailable" ? (
+                              <span className="text-neutral-400">
+                                Standard shipping applies (live courier serviceability check unavailable).
+                              </span>
                             ) : (
                               <span className="text-neutral-500 italic">Verifying Delhivery courier serviceability...</span>
                             )}
@@ -369,25 +445,31 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
 
               <div className="space-y-3">
                 <label
-                  className={`flex items-start gap-3.5 p-4 rounded-xl border cursor-pointer transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] focus-within:ring-2 focus-within:ring-[#C9A24A] ${
+                  className={`flex items-start gap-3.5 p-4 rounded-xl border transition-all duration-[var(--duration-card)] [transition-timing-function:var(--ease-luxury)] focus-within:ring-2 focus-within:ring-[#C9A24A] ${
                     paymentMethod === "COD"
                       ? "border-[#C9A24A] bg-[#C9A24A]/5 shadow-[0_0_15px_rgba(201,162,74,0.1)]"
                       : "border-[#262626] hover:border-[#383838]"
-                  } ${serviceability && !serviceability.cod ? "opacity-60 cursor-not-allowed" : ""}`}
+                  } ${!isCodVerifiedAvailable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                 >
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="COD"
-                    disabled={Boolean(serviceability && !serviceability.cod)}
+                    disabled={!isCodVerifiedAvailable}
                     checked={paymentMethod === "COD"}
-                    onChange={() => setPaymentMethod("COD")}
+                    onChange={() => {
+                      if (isCodVerifiedAvailable) setPaymentMethod("COD");
+                    }}
                     className="mt-1 accent-[#C9A24A] focus:outline-none"
                   />
                   <div className="text-xs">
                     <span className="font-semibold text-neutral-100">Cash on Delivery (COD)</span>
                     <p className="text-neutral-400 mt-1 font-light">
-                      {serviceability && !serviceability.cod
+                      {serviceabilityStatus === "checking"
+                        ? "Verifying Cash on Delivery serviceability for your pincode..."
+                        : serviceabilityStatus === "unavailable"
+                        ? "COD is currently unavailable because courier serviceability could not be verified. Please choose Online Payment."
+                        : !isCodVerifiedAvailable
                         ? "COD is not available for this pincode. Please use Online Payment."
                         : "Pay cash upon doorstep delivery anywhere in India."}
                     </p>
@@ -548,7 +630,12 @@ export function CheckoutClient({ cart, addresses }: CheckoutClientProps) {
               variant="primary"
               className="w-full mt-4 uppercase tracking-wider text-xs font-bold"
               onClick={handlePlaceOrder}
-              disabled={isPending || addresses.length === 0 || !termsAccepted}
+              disabled={
+                isPending ||
+                addresses.length === 0 ||
+                !termsAccepted ||
+                (paymentMethod === "COD" && !isCodVerifiedAvailable)
+              }
             >
               {isPending ? "Placing Order..." : `Confirm Order (${formatPrice(finalPayable)})`}
             </Button>

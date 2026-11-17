@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient, createPublicClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth/session";
+import { isMockCatalogAllowed } from "@/lib/env/server";
 import { MOCK_BOOKS } from "@/data/mockCatalog";
+import {
+  calculateDiscountedUnitPrice,
+  calculateLineTotal,
+  calculateOrderFees,
+  roundCurrency,
+} from "@/lib/commerce/pricing";
 import type { Database } from "@/types/database.types";
 
 export type CartItemRow = Database["public"]["Tables"]["cart_items"]["Row"];
@@ -31,9 +38,6 @@ export interface CustomerCartSummary {
   totalAmount: number;
   itemCount: number;
 }
-
-const PLATFORM_FEE = 10;
-const DELIVERY_FEE = 35;
 
 /**
  * Ensures the authenticated customer has a row in public.carts.
@@ -122,9 +126,8 @@ export async function getCustomerCart(): Promise<CustomerCartSummary | null> {
 
     if (!book) continue;
 
-    const discount = book.discount || 0;
-    const effectivePrice = discount > 0 ? Math.round(Number(book.price) * (1 - discount / 100)) : Number(book.price);
-    const lineTotal = effectivePrice * item.quantity;
+    const effectivePrice = calculateDiscountedUnitPrice(book.price, book.discount);
+    const lineTotal = calculateLineTotal(effectivePrice, item.quantity);
 
     enrichedItems.push({
       id: item.id,
@@ -140,13 +143,12 @@ export async function getCustomerCart(): Promise<CustomerCartSummary | null> {
       lineTotal,
     });
 
-    subtotal += lineTotal;
+    subtotal = roundCurrency(subtotal + lineTotal);
     itemCount += item.quantity;
   }
 
-  const platformFee = enrichedItems.length > 0 ? PLATFORM_FEE : 0;
-  const deliveryFee = enrichedItems.length > 0 ? DELIVERY_FEE : 0;
-  const totalAmount = subtotal + platformFee + deliveryFee;
+  const { platformFee, deliveryFee } = calculateOrderFees(enrichedItems.length > 0);
+  const totalAmount = roundCurrency(subtotal + platformFee + deliveryFee);
 
   return {
     cartId,
@@ -187,7 +189,10 @@ export async function addToCart(bookId: string, quantity: number = 1): Promise<{
   }
 
   const cartId = await getOrCreateCustomerCartId(user.id);
-  const effectivePrice = book.discount > 0 ? Math.round(Number(book.price) * (1 - book.discount / 100)) : Number(book.price);
+  const effectivePrice =
+    book.discount > 0
+      ? Number((Number(book.price) * (1 - book.discount / 100)).toFixed(2))
+      : Number(book.price);
 
   // Check if item already in cart
   const { data: existingItem } = await supabase
@@ -294,10 +299,14 @@ async function fetchBooksByIds(bookIds: string[]) {
 
   try {
     const supabase = createPublicClient();
-    const { data: dbBooks } = await supabase
+    const { data: dbBooks, error } = await supabase
       .from("books")
       .select("id, title, author, price, discount, stock, image_url, is_active")
       .in("id", bookIds);
+
+    if (error) {
+      throw new Error(error.message);
+    }
 
     if (dbBooks && dbBooks.length > 0) {
       for (const b of dbBooks) {
@@ -314,24 +323,30 @@ async function fetchBooksByIds(bookIds: string[]) {
       }
     }
   } catch (err) {
-    console.warn("Could not load books from database, checking mock fixtures:", err);
+    if (!isMockCatalogAllowed()) {
+      console.error("Could not load books from database for cart:", err);
+      throw err instanceof Error ? err : new Error("Failed to load cart book details.");
+    }
+    console.warn("[MOCK][Cart] Could not load books from database, checking dev/test mock fixtures:", err);
   }
 
-  // Fill in any missing books from MOCK_BOOKS fixtures
-  for (const id of bookIds) {
-    if (!map.has(id)) {
-      const mock = MOCK_BOOKS.find((b) => b.id === id);
-      if (mock) {
-        map.set(mock.id, {
-          id: mock.id,
-          title: mock.title,
-          author: mock.author || "",
-          price: mock.price,
-          discount: mock.discount || 0,
-          stock: mock.stock || 50,
-          imageUrl: mock.imageUrl || "",
-          isActive: true,
-        });
+  // Fill in missing books from MOCK_BOOKS ONLY when explicit dev/test mocks are enabled
+  if (isMockCatalogAllowed()) {
+    for (const id of bookIds) {
+      if (!map.has(id)) {
+        const mock = MOCK_BOOKS.find((b) => b.id === id);
+        if (mock) {
+          map.set(mock.id, {
+            id: mock.id,
+            title: mock.title,
+            author: mock.author || "",
+            price: mock.price,
+            discount: mock.discount || 0,
+            stock: mock.stock || 50,
+            imageUrl: mock.imageUrl || "",
+            isActive: true,
+          });
+        }
       }
     }
   }
@@ -370,8 +385,8 @@ export async function getGuestCartDetails(
     if (!book || !book.isActive) continue;
 
     const qty = Math.max(1, Math.min(item.quantity, book.stock));
-    const effectivePrice = book.discount > 0 ? Math.round(book.price * (1 - book.discount / 100)) : book.price;
-    const lineTotal = effectivePrice * qty;
+    const effectivePrice = calculateDiscountedUnitPrice(book.price, book.discount);
+    const lineTotal = calculateLineTotal(effectivePrice, qty);
 
     enrichedItems.push({
       id: `guest-${book.id}`,
@@ -387,13 +402,12 @@ export async function getGuestCartDetails(
       lineTotal,
     });
 
-    subtotal += lineTotal;
+    subtotal = roundCurrency(subtotal + lineTotal);
     itemCount += qty;
   }
 
-  const platformFee = enrichedItems.length > 0 ? PLATFORM_FEE : 0;
-  const deliveryFee = enrichedItems.length > 0 ? DELIVERY_FEE : 0;
-  const totalAmount = subtotal + platformFee + deliveryFee;
+  const { platformFee, deliveryFee } = calculateOrderFees(enrichedItems.length > 0);
+  const totalAmount = roundCurrency(subtotal + platformFee + deliveryFee);
 
   return {
     cartId: "guest",

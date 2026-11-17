@@ -7,7 +7,7 @@ import { AdminSupportClient } from "./AdminSupportClient";
 export const dynamic = "force-dynamic";
 
 export default async function AdminSupportPage() {
-  const admin = await requireStaffPermission("orders.manage");
+  const admin = await requireStaffPermission("support.manage");
   const { tickets, total } = await getAdminSupportTickets({ limit: 50 });
 
   return (

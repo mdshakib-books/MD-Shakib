@@ -1,5 +1,14 @@
 node_modules/
 .env
+.env.local
+.env.*.local
+.env.development
+.env.staging
+.env.production
+.env.test
+.env*.bak
+*.pre-phase01.bak
+!.env.example
 dist/
 build/
 .DS_Store

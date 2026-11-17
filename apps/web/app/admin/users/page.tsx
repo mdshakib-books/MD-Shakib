@@ -1,12 +1,12 @@
 import React from "react";
-import { requireAdmin } from "@/lib/admin/auth";
+import { requireStaffPermission } from "@/lib/admin/auth";
 import { getAdminCustomers } from "@/lib/admin/customers";
 import { AdminUsersClient } from "./AdminUsersClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
-  const { user } = await requireAdmin();
+  const { user } = await requireStaffPermission("users.view");
 
   const { customers, total } = await getAdminCustomers({ limit: 100 });
 

@@ -232,6 +232,8 @@ export async function updateCustomerProfile(
 
   const name = formData.get("name")?.toString().trim();
   const phone = formData.get("phone")?.toString().trim() || null;
+  const emailPrefSubmitted = formData.get("email_preferences_submitted")?.toString() === "1";
+  const emailNotificationsEnabled = formData.get("email_notifications_enabled")?.toString() === "on";
 
   if (!name || name.length < 1) {
     return { success: false, error: "Full name cannot be empty." };
@@ -242,6 +244,12 @@ export async function updateCustomerProfile(
   const updatePayload: Database["public"]["Tables"]["profiles"]["Update"] = {
     name,
     phone,
+    ...(emailPrefSubmitted
+      ? {
+          email_notifications_enabled: emailNotificationsEnabled,
+          email_preferences_updated_at: new Date().toISOString(),
+        }
+      : {}),
   };
 
   const { error } = await supabase

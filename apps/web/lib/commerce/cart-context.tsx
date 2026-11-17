@@ -22,9 +22,14 @@ import {
   type EnrichedCartItem,
 } from "./cart";
 
+import {
+  calculateDiscountedUnitPrice,
+  calculateLineTotal,
+  calculateOrderFees,
+  roundCurrency,
+} from "./pricing";
+
 export const GUEST_CART_KEY = "guest_cart";
-const PLATFORM_FEE = 10;
-const DELIVERY_FEE = 35;
 
 export interface CartBookInput {
   id: string;
@@ -127,7 +132,7 @@ export function CartProvider({
     if (initialAuthenticated && initialServerCart) {
       return initialServerCart.items.map((i) => ({
         ...i,
-        lineTotal: i.price * i.quantity,
+        lineTotal: calculateLineTotal(i.price, i.quantity),
       }));
     }
     return [];
@@ -168,7 +173,7 @@ export function CartProvider({
         quantity: i.quantity,
         stock: i.stock,
         isActive: i.isActive,
-        lineTotal: i.price * i.quantity,
+        lineTotal: calculateLineTotal(i.price, i.quantity),
       }))
     );
   }, []);
@@ -177,8 +182,7 @@ export function CartProvider({
   const syncFromGuestStorage = useCallback(() => {
     const guestItems = loadGuestCartFromStorage();
     const unified: UnifiedCartItem[] = guestItems.map((g) => {
-      const discount = g.discount || 0;
-      const effectivePrice = discount > 0 ? Math.round(g.price * (1 - discount / 100)) : g.price;
+      const effectivePrice = calculateDiscountedUnitPrice(g.price, g.discount);
       return {
         id: `guest-${g.bookId}`,
         bookId: g.bookId,
@@ -191,7 +195,7 @@ export function CartProvider({
         quantity: g.quantity,
         stock: g.stock !== undefined ? g.stock : 999,
         isActive: true,
-        lineTotal: effectivePrice * g.quantity,
+        lineTotal: calculateLineTotal(effectivePrice, g.quantity),
       };
     });
     setItems(unified);
@@ -500,10 +504,9 @@ export function CartProvider({
 
   // Computed summary
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
-  const platformFee = items.length > 0 ? PLATFORM_FEE : 0;
-  const deliveryFee = items.length > 0 ? DELIVERY_FEE : 0;
-  const totalAmount = subtotal + platformFee + deliveryFee;
+  const subtotal = roundCurrency(items.reduce((sum, item) => sum + item.lineTotal, 0));
+  const { platformFee, deliveryFee } = calculateOrderFees(items.length > 0);
+  const totalAmount = roundCurrency(subtotal + platformFee + deliveryFee);
 
   return (
     <CartContext.Provider

@@ -28,7 +28,7 @@ export interface CustomerRefundItem {
   orderId: string;
   refundId: string | null;
   amount: number;
-  status: "pending" | "processed" | "failed" | string;
+  status: "not_required" | "pending" | "processing" | "processed" | "failed" | string;
   paymentStatus: string;
   orderStatus: string;
   refundedAt: string | null;
@@ -134,13 +134,16 @@ export async function getCustomerRefunds(): Promise<CustomerRefundItem[]> {
       payment_status,
       payment_method,
       razorpay_refund_id,
+      cod_refund_reference,
       refund_amount,
       refund_status,
       refunded_at,
       created_at
     `)
     .eq("user_id", user.id)
-    .or("refund_status.not.is.null,payment_status.in.(Refund Pending,Refunded),razorpay_refund_id.not.is.null")
+    .or(
+      "refund_status.in.(pending,processing,processed,failed),payment_status.in.(Refund Pending,Partially Refunded,Refunded),razorpay_refund_id.not.is.null,cod_refund_reference.not.is.null"
+    )
     .order("created_at", { ascending: false });
 
   if (ordersErr || !orders) {
@@ -150,7 +153,7 @@ export async function getCustomerRefunds(): Promise<CustomerRefundItem[]> {
 
   return orders.map((o) => ({
     orderId: o.id,
-    refundId: o.razorpay_refund_id || null,
+    refundId: o.razorpay_refund_id || o.cod_refund_reference || null,
     amount: o.refund_amount ? Number(o.refund_amount) : Number(o.total_amount),
     status: o.refund_status || (o.payment_status === "Refunded" ? "processed" : "pending"),
     paymentStatus: o.payment_status,

@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import { useState } from "react";
+import { hasPermission } from "@/lib/admin/permissions";
 
 interface DeliveryVerificationClientProps {
   adminRole: string;
 }
 
 export function DeliveryVerificationClient({ adminRole }: DeliveryVerificationClientProps) {
+  const canCollectCod = hasPermission(adminRole, "orders.settle_cod");
   const [searchQuery, setSearchQuery] = useState("");
   const [order, setOrder] = useState<any | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -270,7 +272,7 @@ export function DeliveryVerificationClient({ adminRole }: DeliveryVerificationCl
             </div>
 
             {/* Panel 2: Independent COD Cash Collection */}
-            {order.payment_method === "COD" && (
+            {order.payment_method === "COD" && canCollectCod && (
               <div className="bg-[#161616] p-6 rounded-xl border border-neutral-800">
                 <h2 className="font-serif text-lg font-semibold text-[#E5C87B] mb-2">
                   2. Doorstep Cash Collection (COD)

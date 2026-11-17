@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { verifyAndSettlePayment } from "@/lib/integrations/razorpay/service";
+import {
+  RazorpayConfigurationError,
+  RazorpayDisabledError,
+  verifyAndSettlePayment,
+} from "@/lib/integrations/razorpay/service";
 import { checkRateLimit, rateLimitExceededResponse, getClientIp } from "@/lib/security/rate-limit";
 import { logger } from "@/lib/logger";
+import {
+  NO_STORE_HEADERS,
+  readBoundedJsonBody,
+  sanitizeClientErrorMessage,
+} from "@/lib/security/http";
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +24,7 @@ export async function POST(req: Request) {
     if (authErr || !user) {
       return NextResponse.json(
         { error: "Authentication required to verify payment." },
-        { status: 401 }
+        { status: 401, headers: NO_STORE_HEADERS }
       );
     }
 
@@ -28,13 +37,27 @@ export async function POST(req: Request) {
       return rateLimitExceededResponse(rl);
     }
 
-    const body = await req.json();
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+    const parsedBody = await readBoundedJsonBody(req);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: NO_STORE_HEADERS }
+      );
+    }
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = parsedBody.data;
+
+    if (
+      !razorpay_order_id ||
+      typeof razorpay_order_id !== "string" ||
+      !razorpay_payment_id ||
+      typeof razorpay_payment_id !== "string" ||
+      !razorpay_signature ||
+      typeof razorpay_signature !== "string"
+    ) {
       return NextResponse.json(
         { error: "Missing required Razorpay payment signature parameters." },
-        { status: 400 }
+        { status: 400, headers: NO_STORE_HEADERS }
       );
     }
 
@@ -45,12 +68,18 @@ export async function POST(req: Request) {
       userId: user.id,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: NO_STORE_HEADERS });
   } catch (error: any) {
+    if (error instanceof RazorpayDisabledError || error instanceof RazorpayConfigurationError) {
+      return NextResponse.json(
+        { configured: false, error: error.message },
+        { status: 503, headers: NO_STORE_HEADERS }
+      );
+    }
     logger.error("API /payments/verify payment settlement failed", { endpoint: "/api/payments/verify" }, error);
     return NextResponse.json(
-      { error: error?.message || "Payment signature verification failed." },
-      { status: 400 }
+      { error: sanitizeClientErrorMessage(error, "Payment signature verification failed.") },
+      { status: 400, headers: NO_STORE_HEADERS }
     );
   }
 }

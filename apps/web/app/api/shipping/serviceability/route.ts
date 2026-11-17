@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { checkPincodeServiceability } from "@/lib/integrations/delhivery/service";
+import {
+  checkPincodeServiceability,
+  DelhiveryConfigurationError,
+  DelhiveryDisabledError,
+  DelhiveryServiceabilityTimeoutError,
+} from "@/lib/integrations/delhivery/service";
+import { sanitizeClientErrorMessage } from "@/lib/security/http";
 import { checkRateLimit, rateLimitExceededResponse, createRateLimitHeaders, getClientIp } from "@/lib/security/rate-limit";
 
 export async function GET(req: Request) {
@@ -15,7 +21,7 @@ export async function GET(req: Request) {
 
     if (!pincode) {
       return NextResponse.json(
-        { error: "Query parameter 'pincode' is required." },
+        { error: "Query parameter 'pincode' is required.", serviceable: false, prepaid: false, cod: false },
         { status: 400, headers: createRateLimitHeaders(rl) }
       );
     }
@@ -32,9 +38,42 @@ export async function GET(req: Request) {
       }
     );
   } catch (error: any) {
+    if (error instanceof DelhiveryDisabledError || error instanceof DelhiveryConfigurationError) {
+      return NextResponse.json(
+        {
+          success: false,
+          configured: false,
+          serviceable: false,
+          prepaid: false,
+          cod: false,
+          error: error.message,
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    if (error instanceof DelhiveryServiceabilityTimeoutError) {
+      return NextResponse.json(
+        {
+          success: false,
+          serviceable: false,
+          prepaid: false,
+          cod: false,
+          error: error.message,
+        },
+        { status: 504, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
     return NextResponse.json(
-      { error: error?.message || "Failed to check pincode serviceability." },
-      { status: 400 }
+      {
+        success: false,
+        serviceable: false,
+        prepaid: false,
+        cod: false,
+        error: sanitizeClientErrorMessage(error, "Failed to check pincode serviceability."),
+      },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

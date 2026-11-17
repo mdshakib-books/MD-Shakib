@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyAdminApi } from "@/lib/admin/auth";
 import { adminUpdateTicket } from "@/lib/support/tickets";
+import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rate-limit";
+import {
+  isValidUuid,
+  NO_STORE_HEADERS,
+  readBoundedJsonBody,
+  serverErrorResponse,
+} from "@/lib/security/http";
 
 export async function PATCH(
   req: NextRequest,
@@ -8,30 +15,42 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!isValidUuid(id)) {
+      return NextResponse.json(
+        { error: "Invalid ticket ID format" },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    const isStaff = ["admin", "super_admin", "support_staff", "operations"].includes(profile?.role || "");
-    if (!isStaff) {
-      return NextResponse.json({ error: "Forbidden: Staff permission required" }, { status: 403 });
+    const auth = await verifyAdminApi("support.manage");
+    if (!auth.authorized) {
+      return auth.response;
     }
 
-    const body = await req.json();
-    const { status, priority, assignedTo, resolutionNotes } = body;
+    const rl = await checkRateLimit(`admin:support-update:${auth.user.id}`, "admin");
+    if (!rl.allowed) {
+      return rateLimitExceededResponse(rl);
+    }
+
+    const parsedBody = await readBoundedJsonBody(req);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: NO_STORE_HEADERS }
+      );
+    }
+
+    const { status, priority, assignedTo, resolutionNotes } = parsedBody.data;
+    if (assignedTo && !isValidUuid(assignedTo)) {
+      return NextResponse.json(
+        { error: "Invalid assignedTo user ID format" },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
 
     const res = await adminUpdateTicket({
       ticketId: id,
-      adminId: user.id,
+      adminId: auth.user.id,
       status,
       priority,
       assignedTo,
@@ -39,11 +58,19 @@ export async function PATCH(
     });
 
     if (!res.success) {
-      return NextResponse.json({ error: res.error }, { status: 400 });
+      return NextResponse.json(
+        { error: res.error },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
     }
 
-    return NextResponse.json(res);
+    return NextResponse.json(res, { headers: NO_STORE_HEADERS });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to update ticket" }, { status: 500 });
+    return serverErrorResponse(
+      "/api/admin/support/tickets/[id]",
+      err,
+      "Failed to update ticket.",
+      req
+    );
   }
 }

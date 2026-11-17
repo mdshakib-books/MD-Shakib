@@ -12,69 +12,56 @@ export interface CodCollectionInput {
 
 /**
  * Records physical doorstep cash collection independently from delivery OTP verification (2.8).
+ * Never overwrites courier remittance settlement (`cod_settled_amount`).
  */
 export async function recordDoorstepCodCollection(
-  input: CodCollectionInput
-): Promise<{ success: boolean; collectionId?: string; error?: string }> {
-  const adminDb = createAdminClient();
-
-  const { data: order, error: orderErr } = await adminDb
-    .from("orders")
-    .select("id, total_amount, payment_method, order_status, payment_status")
-    .eq("id", input.orderId)
-    .single();
-
-  if (orderErr || !order) {
-    return { success: false, error: `Order ${input.orderId} not found.` };
+  input: CodCollectionInput,
+  deps?: { adminDb?: any }
+): Promise<{
+  success: boolean;
+  collectionId?: string;
+  collectionStatus?: string;
+  collectedAmount?: number;
+  isPaid?: boolean;
+  error?: string;
+}> {
+  if (!Number.isFinite(input.collectedAmount) || input.collectedAmount < 0) {
+    return { success: false, error: "Collected COD amount must be non-negative." };
   }
 
-  if (order.payment_method !== "COD") {
-    return { success: false, error: "Only COD orders can record cash collections." };
+  if (input.collectionStatus === "refused" && input.collectedAmount > 0) {
+    return {
+      success: false,
+      error: "Refused COD collection must record 0 collected cash.",
+    };
   }
 
-  const { data, error } = await adminDb
-    .from("cod_collections")
-    .insert({
-      order_id: input.orderId,
-      expected_amount: input.expectedAmount,
-      collected_amount: input.collectedAmount,
-      collector_id: input.collectorId,
-      collection_status: input.collectionStatus,
-      collection_reference: input.collectionReference || null,
-      notes: input.notes || null,
-      collected_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
+  const adminDb = deps?.adminDb || createAdminClient();
 
-  if (error || !data) {
-    return { success: false, error: error?.message || "Failed to record cash collection." };
-  }
-
-  // Update order's COD collection status
-  await adminDb
-    .from("orders")
-    .update({
-      cod_settled_amount: input.collectedAmount,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", input.orderId);
-
-  // Log in administrative audit logs
-  await adminDb.from("audit_logs").insert({
-    action: "COD_DOORSTEP_COLLECTION",
-    model_name: "orders",
-    model_id: input.orderId,
-    user_id: input.collectorId,
-    new_values: {
-      expected: input.expectedAmount,
-      collected: input.collectedAmount,
-      status: input.collectionStatus,
-      reference: input.collectionReference,
-    },
+  const { data: rpcRes, error: rpcErr } = await adminDb.rpc("record_cod_collection_atomic", {
+    p_order_id: input.orderId,
+    p_expected_amount: Number(input.expectedAmount),
+    p_collected_amount: Number(input.collectedAmount),
+    p_collector_id: input.collectorId,
+    p_collection_status: input.collectionStatus,
+    p_collection_reference: input.collectionReference || null,
+    p_notes: input.notes || null,
   });
 
-  return { success: true, collectionId: data.id };
+  if (rpcErr || !(rpcRes as any)?.success) {
+    return {
+      success: false,
+      error: (rpcRes as any)?.error || rpcErr?.message || "Failed to record cash collection.",
+    };
+  }
+
+  return {
+    success: true,
+    collectionId: (rpcRes as any).collection_id,
+    collectionStatus: (rpcRes as any).collection_status || input.collectionStatus,
+    collectedAmount: Number((rpcRes as any).collected_amount ?? input.collectedAmount),
+    isPaid: Boolean((rpcRes as any).is_paid),
+  };
 }
 
 export interface CodRemittanceInput {
@@ -88,10 +75,12 @@ export interface CodRemittanceInput {
 }
 
 /**
- * Reconciles courier remittance against expected COD collection (2.9).
+ * Reconciles courier bank remittance against expected COD collection (2.9).
+ * Unifies `cod_remittances` ledger inserts and `orders` remittance state atomically.
  */
 export async function reconcileCourierRemittance(
-  input: CodRemittanceInput
+  input: CodRemittanceInput,
+  deps?: { adminDb?: any }
 ): Promise<{
   success: boolean;
   remittanceId?: string;
@@ -99,80 +88,61 @@ export async function reconcileCourierRemittance(
   difference: number;
   error?: string;
 }> {
-  const adminDb = createAdminClient();
-
-  // Check for duplicate remittance reference
-  const { data: existing } = await adminDb
-    .from("cod_remittances")
-    .select("id, remittance_ref")
-    .eq("remittance_ref", input.remittanceRef)
-    .maybeSingle();
-
-  if (existing) {
+  const cleanRef = String(input.remittanceRef || "").trim();
+  if (!cleanRef) {
     return {
       success: false,
-      status: "duplicate",
+      status: "unmatched",
       difference: 0,
-      error: `Remittance reference ${input.remittanceRef} has already been recorded.`,
+      error: "Bank remittance reference ID is required.",
     };
   }
 
-  const difference = Number((input.expectedAmount - input.remittedAmount).toFixed(2));
-  const isMatch = Math.abs(difference) <= 0.01;
-  const status: "matched" | "disputed" | "unmatched" = !input.orderId
-    ? "unmatched"
-    : isMatch
-    ? "matched"
-    : "disputed";
-
-  const { data, error } = await adminDb
-    .from("cod_remittances")
-    .insert({
-      remittance_ref: input.remittanceRef,
-      courier: input.courier || "Delhivery",
-      order_id: input.orderId || null,
-      expected_amount: input.expectedAmount,
-      remitted_amount: input.remittedAmount,
-      difference_amount: difference,
-      reconciliation_status: status,
-      reconciled_by: input.adminId,
-      reconciled_at: new Date().toISOString(),
-      notes: input.notes || null,
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) {
+  if (!Number.isFinite(input.remittedAmount) || input.remittedAmount < 0) {
     return {
       success: false,
-      status,
-      difference,
-      error: error?.message || "Failed to persist remittance record.",
+      status: "disputed",
+      difference: 0,
+      error: "Remitted amount must be a valid non-negative number.",
     };
   }
 
-  // If matched and linked to an order, update order COD settlement
-  if (status === "matched" && input.orderId) {
-    const nowIso = new Date().toISOString();
-    await adminDb
-      .from("orders")
-      .update({
-        cod_settlement_status: "reconciled",
-        cod_settlement_ref: input.remittanceRef,
-        cod_settled_amount: input.remittedAmount,
-        cod_settled_at: nowIso,
-        payment_status: "Paid",
-        is_paid: true,
-        paid_at: nowIso,
-        updated_at: nowIso,
-      })
-      .eq("id", input.orderId);
+  const adminDb = deps?.adminDb || createAdminClient();
+
+  const { data: rpcRes, error: rpcErr } = await adminDb.rpc("reconcile_cod_remittance_atomic", {
+    p_remittance_ref: cleanRef,
+    p_courier: input.courier || "Delhivery",
+    p_order_id: input.orderId || null,
+    p_expected_amount: Number(input.expectedAmount),
+    p_remitted_amount: Number(input.remittedAmount),
+    p_admin_id: input.adminId,
+    p_notes: input.notes || null,
+  });
+
+  if (rpcErr || !rpcRes) {
+    return {
+      success: false,
+      status: "disputed",
+      difference: 0,
+      error: rpcErr?.message || "Failed to persist remittance record.",
+    };
   }
+
+  const resObj = rpcRes as any;
+  const rawStatus = resObj.status;
+  const normalizedStatus: "matched" | "disputed" | "unmatched" | "duplicate" =
+    rawStatus === "matched" ||
+    rawStatus === "disputed" ||
+    rawStatus === "unmatched" ||
+    rawStatus === "duplicate"
+      ? rawStatus
+      : "disputed";
 
   return {
-    success: true,
-    remittanceId: data.id,
-    status,
-    difference,
+    success: Boolean(resObj.success),
+    remittanceId: resObj.remittance_id,
+    status: normalizedStatus,
+    difference: Number(resObj.difference ?? 0),
+    error: resObj.error || undefined,
   };
 }

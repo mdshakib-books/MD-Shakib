@@ -1,5 +1,14 @@
-import { getCloudinaryClient } from "./client";
-import { getIntegrationsConfig } from "../config";
+import { v2 as cloudinarySdk } from "cloudinary";
+import {
+  CloudinaryConfigurationError,
+  CloudinaryDisabledError,
+  getCloudinaryClient,
+  resolveCloudinaryExecution,
+} from "./client";
+import { logger } from "@/lib/logger";
+import type { ServiceExecutionMode } from "@/lib/env/shared";
+
+export { CloudinaryConfigurationError, CloudinaryDisabledError };
 
 export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -12,6 +21,8 @@ export interface SignedUploadParameters {
   apiKey: string;
   cloudName: string;
   folder: string;
+  mode?: Exclude<ServiceExecutionMode, "disabled">;
+  isMock?: boolean;
 }
 
 /**
@@ -23,32 +34,41 @@ export function generateSignedUploadParams(folder = "mdshakib_books"): SignedUpl
     throw new Error("Security violation: Uploads are restricted strictly to the 'mdshakib_books' namespace.");
   }
 
-  const { cloudinary: cConfig } = getIntegrationsConfig();
-
-  if (!cConfig.apiSecret || !cConfig.apiKey || !cConfig.cloudName || cConfig.apiKey.startsWith("mock")) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "Production configuration error: Cloudinary credentials are not configured. Cannot generate signed upload parameters in production."
-      );
-    }
-  }
-
+  const { mode, config: cConfig } = resolveCloudinaryExecution("signed upload generation");
   const timestamp = Math.round(Date.now() / 1000);
-  const client = getCloudinaryClient();
-
   const paramsToSign = {
     folder,
     timestamp,
   };
 
-  const signature = client.utils.api_sign_request(paramsToSign, cConfig.apiSecret || "mock_secret");
+  if (mode === "mock") {
+    const signature = cloudinarySdk.utils.api_sign_request(paramsToSign, "dev_only_mock_cloudinary_secret");
+    logger.info("[MOCK][Cloudinary] Generated dev/test mock upload signature", {
+      folder,
+      mode: "mock",
+    });
+    return {
+      timestamp,
+      signature,
+      apiKey: "mock_key",
+      cloudName: cConfig.cloudName || "mock-demo",
+      folder,
+      mode: "mock",
+      isMock: true,
+    };
+  }
+
+  const client = getCloudinaryClient();
+  const signature = client.utils.api_sign_request(paramsToSign, cConfig.apiSecret);
 
   return {
     timestamp,
     signature,
-    apiKey: cConfig.apiKey || "mock_key",
-    cloudName: cConfig.cloudName || "demo",
+    apiKey: cConfig.apiKey,
+    cloudName: cConfig.cloudName,
     folder,
+    mode,
+    isMock: false,
   };
 }
 
@@ -153,7 +173,12 @@ export async function uploadImageBuffer(
   buffer: Buffer,
   mimeType: string,
   folder = "mdshakib_books"
-): Promise<{ secure_url: string; public_id: string }> {
+): Promise<{
+  secure_url: string;
+  public_id: string;
+  mode?: Exclude<ServiceExecutionMode, "disabled">;
+  isMock?: boolean;
+}> {
   if (folder !== "mdshakib_books" && !folder.startsWith("mdshakib_books/")) {
     throw new Error("Security violation: Target folder must reside within 'mdshakib_books'.");
   }
@@ -199,31 +224,46 @@ export async function uploadImageBuffer(
     }
   }
 
-  const { cloudinary: cConfig } = getIntegrationsConfig();
+  const { mode, config: cConfig } = resolveCloudinaryExecution("image upload");
 
-  // Production Fail-Closed verification: If running in production without valid credentials, fail immediately.
-  if (!cConfig.isConfigured) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "Production configuration error: Cloudinary credentials are not configured. Mock media generation is strictly prohibited in production."
-      );
-    }
-
+  if (mode === "mock") {
+    const publicId = `mdshakib_books/mock_${Date.now()}`;
+    logger.info("[MOCK][Cloudinary] Simulated image upload (no external API call)", {
+      publicId,
+      mode: "mock",
+    });
     return {
-      secure_url: `https://res.cloudinary.com/${cConfig.cloudName || "demo"}/image/upload/v1/mdshakib_books/mock_${Date.now()}.webp`,
-      public_id: `mdshakib_books/mock_${Date.now()}`,
+      secure_url: `https://res.cloudinary.com/${cConfig.cloudName || "mock-demo"}/image/upload/v1/${publicId}.webp`,
+      public_id: publicId,
+      mode: "mock",
+      isMock: true,
     };
   }
 
   const client = getCloudinaryClient();
 
+  const CLOUDINARY_UPLOAD_TIMEOUT_MS = 15000;
+
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(new Error("Cloudinary upload timed out after 15000ms."));
+      }
+    }, CLOUDINARY_UPLOAD_TIMEOUT_MS);
+
     const uploadStream = client.uploader.upload_stream(
       {
         folder,
         resource_type: "image",
+        timeout: CLOUDINARY_UPLOAD_TIMEOUT_MS,
       },
       (error, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+
         if (error || !result) {
           return reject(new Error(error?.message || "Cloudinary upload failed."));
         }
@@ -240,6 +280,8 @@ export async function uploadImageBuffer(
         resolve({
           secure_url: result.secure_url,
           public_id: result.public_id,
+          mode,
+          isMock: false,
         });
       }
     );
@@ -270,13 +312,14 @@ export async function deleteImageByPublicId(publicId: string): Promise<boolean> 
     throw new Error("Security violation: Deletions are restricted strictly to the 'mdshakib_books' namespace.");
   }
 
-  const { cloudinary: cConfig } = getIntegrationsConfig();
+  const { mode } = resolveCloudinaryExecution("image deletion");
 
-  if (!cConfig.isConfigured) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Production error: Cloudinary is not configured. Cannot delete assets in production.");
-    }
-    return true; // Mock test pass
+  if (mode === "mock") {
+    logger.info("[MOCK][Cloudinary] Simulated image deletion (no external API call)", {
+      publicId,
+      mode: "mock",
+    });
+    return true;
   }
 
   const client = getCloudinaryClient();

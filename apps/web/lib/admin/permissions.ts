@@ -11,7 +11,9 @@ export type StaffPermission =
   | "orders.view"
   | "orders.manage"
   | "orders.cancel"
+  | "orders.cancel_dispatched"
   | "orders.ship"
+  | "orders.refund"
   | "orders.settle_cod"
   | "orders.export"
   | "customers.export"
@@ -26,6 +28,7 @@ export type StaffPermission =
   | "reviews.manage"
   | "support.manage"
   | "users.view"
+  | "users.manage"
   | "users.manage_roles"
   | "audit.view";
 
@@ -35,7 +38,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "orders.view",
     "orders.manage",
     "orders.cancel",
+    "orders.cancel_dispatched",
     "orders.ship",
+    "orders.refund",
     "orders.settle_cod",
     "orders.export",
     "customers.export",
@@ -50,6 +55,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "reviews.manage",
     "support.manage",
     "users.view",
+    "users.manage",
     "users.manage_roles",
     "audit.view",
   ],
@@ -58,7 +64,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "orders.view",
     "orders.manage",
     "orders.cancel",
+    "orders.cancel_dispatched",
     "orders.ship",
+    "orders.refund",
     "orders.settle_cod",
     "orders.export",
     "customers.export",
@@ -73,6 +81,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "reviews.manage",
     "support.manage",
     "users.view",
+    "users.manage",
     "audit.view",
   ],
   order_manager: [
@@ -80,7 +89,6 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "orders.view",
     "orders.manage",
     "orders.cancel",
-    "orders.settle_cod",
     "orders.export",
     "returns.manage",
     "books.view",
@@ -95,12 +103,12 @@ const ROLE_PERMISSIONS: Record<StaffRole, readonly StaffPermission[]> = {
     "returns.manage",
     "delivery.verify",
     "inventory.view",
+    "inventory.manage",
     "books.view",
   ],
   support_staff: [
     "dashboard.view",
     "orders.view",
-    "returns.manage",
     "reviews.manage",
     "support.manage",
   ],
@@ -112,6 +120,24 @@ export function hasPermission(role: string, permission: StaffPermission): boolea
   const permissions = ROLE_PERMISSIONS[staffRole] || [];
   return permissions.includes(permission);
 }
+
+export function hasAnyPermission(role: string, permissions: readonly StaffPermission[]): boolean {
+  return permissions.some((p) => hasPermission(role, p));
+}
+
+export function getPermissionsForRole(role: string): readonly StaffPermission[] {
+  const staffRole = (role || "user") as StaffRole;
+  return ROLE_PERMISSIONS[staffRole] || [];
+}
+
+export const ASSIGNABLE_STAFF_ROLES: readonly StaffRole[] = [
+  "user",
+  "support_staff",
+  "warehouse_staff",
+  "order_manager",
+  "admin",
+  "super_admin",
+];
 
 export function isStaffRole(role: string): boolean {
   return ["super_admin", "admin", "order_manager", "warehouse_staff", "support_staff"].includes(role);

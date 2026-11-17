@@ -1,414 +1,115 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { invalidateCatalogCache } from "@/lib/cache/catalog";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthenticatedUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/admin/auth";
 import { getCustomerCart } from "./cart";
-import { createRazorpayOrder, type CreatePaymentOrderResult } from "@/lib/integrations/razorpay/service";
-import { sendOrderEmails, sendAdminNewOrderNotification } from "@/lib/integrations/resend/service";
-import { checkPincodeServiceability } from "@/lib/integrations/delhivery/service";
-import { checkAndTriggerLowStockAlerts } from "@/lib/admin/inventory";
-import { checkRateLimit } from "@/lib/security/rate-limit";
+import { runReleaseExpiredReservationsWorker } from "./reservations";
+import {
+  executeOrderCancellation,
+  executeOrderCheckout,
+  executeRetryOrderPayment,
+  type CheckoutConsentPayload,
+  type OrderCancellationResult,
+  type OrderCheckoutResult,
+} from "./orders-core";
+import type { CreatePaymentOrderResult } from "@/lib/integrations/razorpay/service";
 import type { Database } from "@/types/database.types";
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
+export type { CheckoutConsentPayload, OrderCancellationResult, OrderCheckoutResult };
 
 export interface EnrichedOrder extends OrderRow {
   items: OrderItemRow[];
 }
 
-export interface CheckoutConsentPayload {
-  termsAccepted: boolean;
-  termsVersion?: string;
-  privacyVersion?: string;
-  shippingVersion?: string;
-  returnsVersion?: string;
+async function readRequestClientMeta(): Promise<{ ipAddress: string | null; userAgent: string | null }> {
+  try {
+    const h = await headers();
+    const forwardedFor = h.get("x-forwarded-for");
+    const realIp = h.get("x-real-ip");
+    const ipAddress = (forwardedFor ? forwardedFor.split(",")[0].trim() : realIp?.trim()) || null;
+    const userAgent = h.get("user-agent") || null;
+    return { ipAddress, userAgent };
+  } catch {
+    return { ipAddress: null, userAgent: null };
+  }
+}
+
+function safeRevalidate(paths: string[]) {
+  try {
+    for (const p of paths) revalidatePath(p);
+  } catch {
+    // No-op outside Next.js request context
+  }
+  invalidateCatalogCache();
 }
 
 /**
- * Places a Cash on Delivery (COD) order atomically.
- * Prevents duplicate orders via server-side validation and idempotency keys.
- * Strictly verifies statutory purchase consent server-side.
+ * Places a Cash on Delivery (COD) order atomically with strict fail-closed Delhivery verification.
  */
 export async function placeOrderCOD(
   addressId: string,
   idempotencyKey?: string,
   couponCode?: string,
   consent?: CheckoutConsentPayload
-): Promise<{ success: boolean; error?: string; orderId?: string }> {
-  // Statutory purchase consent verification (Requirement 3.6 / Rule 4(11))
-  if (!consent || !consent.termsAccepted) {
-    return {
-      success: false,
-      error: "Statutory purchase consent is required. You must review and agree to the Terms & Conditions and Policies before completing your order.",
-    };
-  }
-
+): Promise<OrderCheckoutResult> {
   const user = await getAuthenticatedUser();
-  if (!user) {
-    return { success: false, error: "Authentication required to place order." };
-  }
+  const meta = await readRequestClientMeta();
+  const adminDb = createAdminClient();
 
-  const rl = await checkRateLimit(`checkout:${user.id}`, "checkout");
-  if (!rl.allowed) {
-    return { success: false, error: "You are placing orders too quickly. Please wait a moment." };
-  }
-
-  const supabase = await createClient();
-
-  // 0. Check for existing order with same idempotency key
-  if (idempotencyKey) {
-    const { data: existingOrder } = await supabase
-      .from("orders")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("idempotency_key", idempotencyKey)
-      .maybeSingle();
-
-    if (existingOrder?.id) {
-      return { success: true, orderId: existingOrder.id };
+  return executeOrderCheckout(
+    {
+      paymentMethod: "COD",
+      addressId,
+      idempotencyKey,
+      couponCode,
+      consent,
+      ...meta,
+    },
+    {
+      user,
+      adminDb,
+      getCart: getCustomerCart,
+      revalidateFn: safeRevalidate,
     }
-  }
-
-  // 1. Fetch and validate selected address
-  const { data: address, error: addrErr } = await supabase
-    .from("addresses")
-    .select("*")
-    .eq("id", addressId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (addrErr || !address) {
-    return { success: false, error: "Please select a valid delivery address." };
-  }
-
-  // 1.5 Server-side Delhivery pincode serviceability check
-  try {
-    const pinCheck = await checkPincodeServiceability(address.pincode);
-    if (!pinCheck.serviceable || !pinCheck.cod) {
-      return {
-        success: false,
-        error: `Cash on Delivery is not available for pincode ${address.pincode}. Please choose Online Payment or another address.`,
-      };
-    }
-  } catch (pinErr: any) {
-    console.warn("Pincode check error (COD):", pinErr?.message);
-  }
-
-  // 2. Fetch customer cart and calculate authoritative total
-  const cart = await getCustomerCart();
-  if (!cart || cart.items.length === 0) {
-    return { success: false, error: "Your shopping cart is empty." };
-  }
-
-  // Check that all books are active and in stock
-  for (const item of cart.items) {
-    if (!item.isActive) {
-      return { success: false, error: `"${item.title}" is no longer available.` };
-    }
-    if (item.stock < item.quantity) {
-      return { success: false, error: `Insufficient stock for "${item.title}". Available: ${item.stock}.` };
-    }
-  }
-
-  const addressSnapshot = {
-    full_name: address.full_name,
-    phone: address.phone,
-    house_no: address.house_no,
-    area: address.area,
-    city: address.city,
-    state: address.state,
-    pincode: address.pincode,
-    landmark: address.landmark,
-    address_type: address.address_type,
-  };
-
-  const orderItemsPayload = cart.items.map((item) => ({
-    book_id: item.bookId,
-    quantity: item.quantity,
-    price: item.price,
-  }));
-
-  // 3. Call atomic RPC: locks rows, validates stock, reduces inventory, clears cart
-  const rpcParams: any = {
-    p_user_id: user.id,
-    p_items: orderItemsPayload,
-    p_address_snapshot: addressSnapshot,
-    p_payment_method: "COD",
-    p_total_amount: cart.totalAmount,
-    p_coupon_code: couponCode?.trim() || null,
-  };
-  if (idempotencyKey) {
-    rpcParams.p_idempotency_key = idempotencyKey;
-  }
-
-  let { data: orderId, error: rpcErr } = await supabase.rpc("create_order_atomic", rpcParams);
-
-  // Backward compatibility fallback if database procedure doesn't yet have p_idempotency_key
-  if (rpcErr && rpcErr.message.includes("p_idempotency_key")) {
-    const fallbackParams = {
-      p_user_id: user.id,
-      p_items: orderItemsPayload,
-      p_address_snapshot: addressSnapshot,
-      p_payment_method: "COD",
-      p_total_amount: cart.totalAmount,
-    };
-    const fallbackRes = await supabase.rpc("create_order_atomic", fallbackParams);
-    orderId = fallbackRes.data;
-    rpcErr = fallbackRes.error;
-    if (orderId && idempotencyKey) {
-      // Record idempotency key directly on order
-      await supabase.from("orders").update({ idempotency_key: idempotencyKey }).eq("id", orderId as string);
-    }
-  }
-
-  if (rpcErr || !orderId) {
-    console.error("Atomic order creation failed:", rpcErr?.message);
-    return { success: false, error: rpcErr?.message || "Failed to create order." };
-  }
-
-  // 3.5 Persist statutory checkout consent audit record
-  try {
-    await supabase.rpc("record_order_consent_atomic", {
-      p_order_id: orderId as string,
-      p_user_id: user.id,
-      p_terms_accepted: true,
-      p_terms_version: consent?.termsVersion || "2026.11-v1",
-      p_privacy_version: consent?.privacyVersion || "2026.11-v1",
-      p_shipping_version: consent?.shippingVersion || "2026.11-v1",
-      p_returns_version: consent?.returnsVersion || "2026.11-v1",
-    });
-  } catch (consentErr: any) {
-    console.warn("Consent record persistence notice:", consentErr?.message);
-  }
-
-  revalidatePath("/orders");
-  revalidatePath("/cart");
-  revalidatePath("/checkout");
-
-  // Asynchronously dispatch customer order confirmation email (non-blocking)
-  sendOrderEmails({
-    orderId: orderId as string,
-    userId: user.id,
-    eventType: "order_confirmation",
-  }).catch((e) => console.error("Async COD order email dispatch error:", e));
-
-  // Asynchronously dispatch admin new order alert (non-blocking)
-  sendAdminNewOrderNotification(orderId as string).catch((e) =>
-    console.error("Async admin new order alert error:", e)
   );
-
-  // Asynchronously check and trigger low stock alerts (non-blocking)
-  checkAndTriggerLowStockAlerts(cart.items.map((i) => i.bookId)).catch((e) =>
-    console.error("Async low stock alert check error:", e)
-  );
-
-  return { success: true, orderId: orderId as string };
 }
 
 /**
  * Places an Online order atomically and initializes the Razorpay payment session.
- * Prevents duplicate orders via server-side validation and idempotency keys.
- * Strictly verifies statutory purchase consent server-side.
  */
 export async function placeOrderOnline(
   addressId: string,
   idempotencyKey?: string,
   couponCode?: string,
   consent?: CheckoutConsentPayload
-): Promise<{
-  success: boolean;
-  error?: string;
-  orderId?: string;
-  razorpayOrder?: CreatePaymentOrderResult;
-}> {
-  // Statutory purchase consent verification (Requirement 3.6 / Rule 4(11))
-  if (!consent || !consent.termsAccepted) {
-    return {
-      success: false,
-      error: "Statutory purchase consent is required. You must review and agree to the Terms & Conditions and Policies before completing your order.",
-    };
-  }
-
+): Promise<OrderCheckoutResult> {
   const user = await getAuthenticatedUser();
-  if (!user) {
-    return { success: false, error: "Authentication required to place order." };
-  }
+  const meta = await readRequestClientMeta();
+  const adminDb = createAdminClient();
 
-  const rl = await checkRateLimit(`checkout:${user.id}`, "checkout");
-  if (!rl.allowed) {
-    return { success: false, error: "You are placing orders too quickly. Please wait a moment." };
-  }
-
-  const supabase = await createClient();
-
-  // 0. Check for existing order with same idempotency key
-  if (idempotencyKey) {
-    const { data: existingOrder } = await supabase
-      .from("orders")
-      .select("id, razorpay_order_id, total_amount")
-      .eq("user_id", user.id)
-      .eq("idempotency_key", idempotencyKey)
-      .maybeSingle();
-
-    if (existingOrder?.id) {
-      if (existingOrder.razorpay_order_id) {
-        return {
-          success: true,
-          orderId: existingOrder.id,
-          razorpayOrder: {
-            razorpayOrderId: existingOrder.razorpay_order_id,
-            amount: Math.round(Number(existingOrder.total_amount) * 100),
-            currency: "INR",
-            keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "",
-            orderId: existingOrder.id,
-          },
-        };
-      }
-      return { success: true, orderId: existingOrder.id };
+  return executeOrderCheckout(
+    {
+      paymentMethod: "ONLINE",
+      addressId,
+      idempotencyKey,
+      couponCode,
+      consent,
+      ...meta,
+    },
+    {
+      user,
+      adminDb,
+      getCart: getCustomerCart,
+      revalidateFn: safeRevalidate,
     }
-  }
-
-  // 1. Fetch and validate selected address
-  const { data: address, error: addrErr } = await supabase
-    .from("addresses")
-    .select("*")
-    .eq("id", addressId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (addrErr || !address) {
-    return { success: false, error: "Please select a valid delivery address." };
-  }
-
-  // 1.5 Server-side Delhivery pincode serviceability check
-  try {
-    const pinCheck = await checkPincodeServiceability(address.pincode);
-    if (!pinCheck.serviceable || !pinCheck.prepaid) {
-      return {
-        success: false,
-        error: `Courier delivery is not serviceable for pincode ${address.pincode}. Please select another delivery address.`,
-      };
-    }
-  } catch (pinErr: any) {
-    console.warn("Pincode check error (Online):", pinErr?.message);
-  }
-
-  // 2. Fetch customer cart and calculate authoritative total
-  const cart = await getCustomerCart();
-  if (!cart || cart.items.length === 0) {
-    return { success: false, error: "Your shopping cart is empty." };
-  }
-
-  // Check that all books are active and in stock
-  for (const item of cart.items) {
-    if (!item.isActive) {
-      return { success: false, error: `"${item.title}" is no longer available.` };
-    }
-    if (item.stock < item.quantity) {
-      return { success: false, error: `Insufficient stock for "${item.title}". Available: ${item.stock}.` };
-    }
-  }
-
-  const addressSnapshot = {
-    full_name: address.full_name,
-    phone: address.phone,
-    house_no: address.house_no,
-    area: address.area,
-    city: address.city,
-    state: address.state,
-    pincode: address.pincode,
-    landmark: address.landmark,
-    address_type: address.address_type,
-  };
-
-  const orderItemsPayload = cart.items.map((item) => ({
-    book_id: item.bookId,
-    quantity: item.quantity,
-    price: item.price,
-  }));
-
-  // 3. Call atomic RPC with ONLINE payment method
-  const rpcParams: any = {
-    p_user_id: user.id,
-    p_items: orderItemsPayload,
-    p_address_snapshot: addressSnapshot,
-    p_payment_method: "ONLINE",
-    p_total_amount: cart.totalAmount,
-    p_coupon_code: couponCode?.trim() || null,
-  };
-  if (idempotencyKey) {
-    rpcParams.p_idempotency_key = idempotencyKey;
-  }
-
-  let { data: orderId, error: rpcErr } = await supabase.rpc("create_order_atomic", rpcParams);
-
-  // Backward compatibility fallback if database procedure doesn't yet have p_idempotency_key
-  if (rpcErr && rpcErr.message.includes("p_idempotency_key")) {
-    const fallbackParams = {
-      p_user_id: user.id,
-      p_items: orderItemsPayload,
-      p_address_snapshot: addressSnapshot,
-      p_payment_method: "ONLINE",
-      p_total_amount: cart.totalAmount,
-    };
-    const fallbackRes = await supabase.rpc("create_order_atomic", fallbackParams);
-    orderId = fallbackRes.data;
-    rpcErr = fallbackRes.error;
-    if (orderId && idempotencyKey) {
-      await supabase.from("orders").update({ idempotency_key: idempotencyKey }).eq("id", orderId as string);
-    }
-  }
-
-  if (rpcErr || !orderId) {
-    console.error("Atomic online order creation failed:", rpcErr?.message);
-    return { success: false, error: rpcErr?.message || "Failed to create order." };
-  }
-
-  // 3.5 Persist statutory checkout consent audit record
-  try {
-    await supabase.rpc("record_order_consent_atomic", {
-      p_order_id: orderId as string,
-      p_user_id: user.id,
-      p_terms_accepted: true,
-      p_terms_version: consent?.termsVersion || "2026.11-v1",
-      p_privacy_version: consent?.privacyVersion || "2026.11-v1",
-      p_shipping_version: consent?.shippingVersion || "2026.11-v1",
-      p_returns_version: consent?.returnsVersion || "2026.11-v1",
-    });
-  } catch (consentErr: any) {
-    console.warn("Consent record persistence notice (Online):", consentErr?.message);
-  }
-
-  // 4. Create Razorpay payment order
-  let razorpayOrder: CreatePaymentOrderResult;
-  try {
-    razorpayOrder = await createRazorpayOrder(orderId as string, user.id);
-  } catch (err: any) {
-    console.error("Razorpay order creation error:", err?.message || err);
-    return {
-      success: false,
-      error: `Order created (${orderId}) but payment initialization failed: ${err?.message || err}`,
-      orderId: orderId as string,
-    };
-  }
-
-  // Asynchronously check and trigger low stock alerts (non-blocking)
-  checkAndTriggerLowStockAlerts(cart.items.map((i) => i.bookId)).catch((e) =>
-    console.error("Async low stock alert check error:", e)
   );
-
-  revalidatePath("/orders");
-  revalidatePath("/cart");
-  revalidatePath("/checkout");
-
-  return {
-    success: true,
-    orderId: orderId as string,
-    razorpayOrder,
-  };
 }
 
 /**
@@ -435,7 +136,7 @@ export async function getCustomerOrders(): Promise<OrderRow[]> {
 
 /**
  * Retrieves an order and its line items, enforcing customer ownership.
- * Supports lookup by internal UUID or public order number (e.g. MDS-100001) (Feature 1.3).
+ * Supports lookup by internal UUID or public order number (e.g. MDS-100001).
  */
 export async function getCustomerOrderById(orderIdentifier: string): Promise<EnrichedOrder | null> {
   const user = await getAuthenticatedUser();
@@ -476,12 +177,11 @@ export async function getCustomerOrderById(orderIdentifier: string): Promise<Enr
 }
 
 /**
- * Retries payment for an eligible unpaid online order (Feature 1.5).
- * Validates ownership, online payment method, pending status, stock availability,
- * and initializes a new Razorpay checkout session.
+ * Retries payment for an eligible unpaid online order.
  */
 export async function retryOrderPayment(
-  orderIdentifier: string
+  orderIdentifier: string,
+  forceNewAttempt: boolean = false
 ): Promise<{
   success: boolean;
   error?: string;
@@ -493,106 +193,44 @@ export async function retryOrderPayment(
     return { success: false, error: "Authentication required to retry payment." };
   }
 
-  const order = await getCustomerOrderById(orderIdentifier);
-  if (!order) {
-    return { success: false, error: "Order not found or unauthorized." };
-  }
-
-  // 1. Eligibility checks
-  if (order.payment_method !== "ONLINE") {
-    return {
-      success: false,
-      error: "Only online payment orders are eligible for payment retry. COD orders do not require upfront payment.",
-    };
-  }
-
-  if (order.payment_status === "Paid" || order.is_paid) {
-    return {
-      success: false,
-      error: "This order is already marked as paid.",
-    };
-  }
-
-  if (order.order_status !== "Pending") {
-    return {
-      success: false,
-      error: `Payment cannot be retried for order in "${order.order_status}" status.`,
-    };
-  }
-
-  // 2. Validate current stock availability for the order items
-  const supabase = await createClient();
-  for (const item of order.items) {
-    const { data: book } = await supabase
-      .from("books")
-      .select("id, title, stock, is_active")
-      .eq("id", item.book_id)
-      .maybeSingle();
-
-    if (!book || !book.is_active) {
-      return {
-        success: false,
-        error: `"${item.title || "A book in this order"}" is no longer available.`,
-      };
-    }
-  }
-
-  // 3. Re-create or reuse Razorpay gateway order
-  try {
-    const razorpayOrder = await createRazorpayOrder(order.id, user.id);
-    return {
-      success: true,
-      orderId: order.id,
-      razorpayOrder,
-    };
-  } catch (err: any) {
-    console.error("Failed to re-initialize Razorpay payment attempt:", err?.message || err);
-    return {
-      success: false,
-      error: `Payment initialization failed: ${err?.message || "Unknown error"}`,
-      orderId: order.id,
-    };
-  }
+  const adminDb = createAdminClient();
+  return executeRetryOrderPayment(
+    {
+      orderIdentifier,
+      userId: user.id,
+      forceNewAttempt,
+    },
+    { adminDb }
+  );
 }
 
 /**
- * Cancels an order atomically and restores inventory.
+ * Cancels a customer order atomically, restores inventory, and initiates Razorpay refund if paid online.
  */
-export async function cancelOrder(orderId: string, reason: string): Promise<{ success: boolean; error?: string }> {
+export async function cancelOrder(
+  orderId: string,
+  reason: string
+): Promise<OrderCancellationResult> {
   const user = await getAuthenticatedUser();
   if (!user) return { success: false, error: "Authentication required." };
 
-  const supabase = await createClient();
-
-  const { data: success, error } = await supabase.rpc("cancel_order_atomic", {
-    p_order_id: orderId,
-    p_user_id: user.id,
-    p_cancel_reason: reason || "Cancelled by customer",
-    p_is_admin: false,
-  });
-
-  if (error || !success) {
-    console.error("Error cancelling order:", error?.message);
-    return { success: false, error: error?.message || "Unable to cancel order." };
-  }
-
-  revalidatePath(`/orders/${orderId}`);
-  revalidatePath("/orders");
-
-  // Asynchronously dispatch cancellation email
-  sendOrderEmails({
-    orderId,
-    userId: user.id,
-    eventType: "order_cancellation",
-    cancelReason: reason,
-  }).catch((e) => console.error("Async cancel order email dispatch error:", e));
-
-  return { success: true };
+  const adminDb = createAdminClient();
+  return executeOrderCancellation(
+    {
+      orderId,
+      actorUserId: user.id,
+      reason,
+      isAdmin: false,
+    },
+    {
+      adminDb,
+      revalidateFn: safeRevalidate,
+    }
+  );
 }
 
 /**
- * Requests an order replacement under the strict 7-day post-delivery policy.
- * (Deprecated: Direct replacement fulfillment is unsupported; returns must use the Return for Refund workflow).
+ * Deprecated: Direct book replacements are unsupported.
  */
 export async function requestOrderReplacement(
   _orderId: string,
@@ -625,25 +263,37 @@ export async function getCustomerReplacements(): Promise<EnrichedOrder[]> {
     return [];
   }
 
-  const enriched: EnrichedOrder[] = [];
-  for (const order of orders) {
-    const { data: items } = await supabase
-      .from("order_items")
-      .select("*")
-      .eq("order_id", order.id);
-
-    enriched.push({
-      ...order,
-      items: items || [],
-    });
+  const orderIds = orders.map((o) => o.id);
+  if (orderIds.length === 0) {
+    return [];
   }
 
-  return enriched;
+  // Single batched query eliminates N+1 per-order queries
+  const { data: allItems, error: itemsErr } = await supabase
+    .from("order_items")
+    .select("*")
+    .in("order_id", orderIds);
+
+  if (itemsErr) {
+    console.error("Error batch fetching replacement order items:", itemsErr.message);
+  }
+
+  const itemsByOrderId = new Map<string, OrderItemRow[]>();
+  for (const item of allItems || []) {
+    const existing = itemsByOrderId.get(item.order_id);
+    if (existing) existing.push(item);
+    else itemsByOrderId.set(item.order_id, [item]);
+  }
+
+  return orders.map((order) => ({
+    ...order,
+    items: itemsByOrderId.get(order.id) || [],
+  }));
 }
 
 /**
- * Automatically releases expired unpaid inventory reservations (prepaid orders pending > 15 minutes).
- * Safe, idempotent, restores inventory and marks abandoned orders cancelled.
+ * Admin-gated server action wrapper to release expired unpaid online inventory reservations.
+ * Scheduled background runs must use /api/cron/release-reservations (authenticated by CRON_SECRET).
  */
 export async function releaseExpiredReservations(limit: number = 50): Promise<{
   success: boolean;
@@ -651,22 +301,8 @@ export async function releaseExpiredReservations(limit: number = 50): Promise<{
   orderIds?: string[];
   error?: string;
 }> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("release_expired_reservations_atomic", {
-    p_limit: limit,
-  });
-
-  if (error) {
-    console.error("Failed to release expired reservations:", error.message);
-    return { success: false, error: error.message };
-  }
-
-  const res = data as any;
-  return {
-    success: true,
-    releasedCount: res?.released_orders_count || 0,
-    orderIds: res?.order_ids || [],
-  };
+  await requireAdmin();
+  return runReleaseExpiredReservationsWorker(limit);
 }
 
 /**
@@ -709,5 +345,3 @@ export async function calculateAuthoritativeCartPricing(
     totalAmount: res.total_amount,
   };
 }
-
-
