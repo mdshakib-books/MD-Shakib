@@ -486,9 +486,11 @@ function resolveServiceMode(params: {
   flag: { value: boolean; explicit: boolean };
   allowMockServices: boolean;
   ctx: ResolvedAppContext;
+  isSandboxOverride?: boolean;
 }): ServiceExecutionMode {
-  const { flag, allowMockServices, ctx } = params;
+  const { flag, allowMockServices, ctx, isSandboxOverride } = params;
   if (flag.value) {
+    if (isSandboxOverride) return "sandbox";
     return ctx.isProduction ? "live" : "sandbox";
   }
   // Explicit "false" forces disabled even if ALLOW_MOCK_SERVICES=true
@@ -592,6 +594,20 @@ export function resolveServerIntegrations(
   const razorpayKeySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
   const razorpayWebhookSecret = (process.env.RAZORPAY_WEBHOOK_SECRET || "").trim();
 
+  const allowTestRazorpayInProd = parseStrictBooleanEnv(
+    process.env.ALLOW_TEST_RAZORPAY_IN_PROD,
+    "ALLOW_TEST_RAZORPAY_IN_PROD",
+    false
+  );
+  if (allowTestRazorpayInProd.error) {
+    issues.push({
+      severity: "error",
+      code: "INVALID_BOOLEAN_FLAG",
+      variable: "ALLOW_TEST_RAZORPAY_IN_PROD",
+      message: allowTestRazorpayInProd.error,
+    });
+  }
+
   const rzpKeyIsLive = razorpayKeyId.startsWith("rzp_live_");
   const rzpKeyIsTest = razorpayKeyId.startsWith("rzp_test_") && !isMockTokenValue(razorpayKeyId);
 
@@ -604,13 +620,22 @@ export function resolveServerIntegrations(
     });
   }
 
-  if (ctx.isProduction && razorpayKeyId && (razorpayKeyId.startsWith("rzp_test_") || isMockTokenValue(razorpayKeyId))) {
-    issues.push({
-      severity: "error",
-      code: "TEST_RAZORPAY_KEY_IN_PROD",
-      variable: "NEXT_PUBLIC_RAZORPAY_KEY_ID",
-      message: "Production environment cannot use Razorpay test or mock keys.",
-    });
+  if (ctx.isProduction && razorpayKeyId) {
+    if (isMockTokenValue(razorpayKeyId)) {
+      issues.push({
+        severity: "error",
+        code: "TEST_RAZORPAY_KEY_IN_PROD",
+        variable: "NEXT_PUBLIC_RAZORPAY_KEY_ID",
+        message: "Production environment cannot use Razorpay test or mock keys.",
+      });
+    } else if (razorpayKeyId.startsWith("rzp_test_") && !allowTestRazorpayInProd.value) {
+      issues.push({
+        severity: "error",
+        code: "TEST_RAZORPAY_KEY_IN_PROD",
+        variable: "NEXT_PUBLIC_RAZORPAY_KEY_ID",
+        message: "Production environment cannot use Razorpay test or mock keys.",
+      });
+    }
   }
 
   if (
@@ -636,7 +661,9 @@ export function resolveServerIntegrations(
     !razorpayKeySecret.startsWith("rzp_test_") &&
     !razorpayKeySecret.startsWith("rzp_live_") &&
     razorpayKeySecret !== razorpayKeyId &&
-    (ctx.isProduction ? rzpKeyIsLive : rzpKeyIsTest);
+    (ctx.isProduction
+      ? (rzpKeyIsLive || (allowTestRazorpayInProd.value && rzpKeyIsTest))
+      : rzpKeyIsTest);
 
   if (enableRazorpay.value) {
     if (!razorpayValidCreds) {
@@ -644,7 +671,7 @@ export function resolveServerIntegrations(
         severity: "error",
         code: "RAZORPAY_CREDENTIALS_INVALID",
         variable: "NEXT_PUBLIC_RAZORPAY_KEY_ID",
-        message: ctx.isProduction
+        message: ctx.isProduction && !allowTestRazorpayInProd.value
           ? "ENABLE_RAZORPAY=true in production requires valid live Razorpay credentials (rzp_live_* and RAZORPAY_KEY_SECRET)."
           : "ENABLE_RAZORPAY=true in non-production requires valid test Razorpay credentials (rzp_test_* and RAZORPAY_KEY_SECRET).",
       });
@@ -663,6 +690,7 @@ export function resolveServerIntegrations(
     flag: enableRazorpay,
     allowMockServices,
     ctx,
+    isSandboxOverride: ctx.isProduction && allowTestRazorpayInProd.value && rzpKeyIsTest,
   });
 
   // ---------------------------------------------------------------------------
@@ -988,7 +1016,7 @@ function checkCoreAppAndBusinessEnv(
 
   if (ctx.isProduction && (options.requireBusinessConfigInProd ?? true)) {
     const gstin = (process.env.BUSINESS_GSTIN || "").trim();
-    if (!isValidProductionGstin(gstin)) {
+    if (gstin && !isValidProductionGstin(gstin)) {
       issues.push({
         severity: "error",
         code: "INVALID_BUSINESS_GSTIN",

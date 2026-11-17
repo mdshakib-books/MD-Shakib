@@ -25,6 +25,7 @@ export interface PublicEnvConfig {
   supabaseProjectRef: string | null;
   razorpayKeyId: string;
   cloudinaryCloudName: string;
+  allowTestRazorpayInProd?: boolean;
 }
 
 /**
@@ -82,10 +83,21 @@ export function getPublicEnv(): PublicEnvConfig {
     );
   }
 
-  if (appEnv === "production" && razorpayKeyId && (razorpayKeyId.startsWith("rzp_test_") || isMockTokenValue(razorpayKeyId))) {
-    throw new Error(
-      "Configuration error: Test or mock Razorpay key ID is prohibited in production."
-    );
+  const allowTestRazorpayInProd =
+    process.env.NEXT_PUBLIC_ALLOW_TEST_RAZORPAY_IN_PROD === "true" ||
+    process.env.ALLOW_TEST_RAZORPAY_IN_PROD === "true";
+
+  if (appEnv === "production" && razorpayKeyId) {
+    if (isMockTokenValue(razorpayKeyId)) {
+      throw new Error(
+        "Configuration error: Test or mock Razorpay key ID is prohibited in production."
+      );
+    }
+    if (razorpayKeyId.startsWith("rzp_test_") && !allowTestRazorpayInProd) {
+      throw new Error(
+        "Configuration error: Test or mock Razorpay key ID is prohibited in production."
+      );
+    }
   }
 
   return {
@@ -97,6 +109,7 @@ export function getPublicEnv(): PublicEnvConfig {
     supabaseProjectRef: extractSupabaseProjectRef(supabaseUrl),
     razorpayKeyId,
     cloudinaryCloudName,
+    allowTestRazorpayInProd,
   };
 }
 
